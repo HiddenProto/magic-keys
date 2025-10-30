@@ -3,91 +3,308 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🪄 Keyboard Effects - Press Any Key!</title>
+    <title>🎮 Keyboard Survival - Dodge or DIE! 🔥</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            height: 100vh; width: 100vw;
-            background: radial-gradient(circle at center, #000, #111);
-            overflow: hidden;
-            font-family: 'Courier New', monospace;
-            cursor: none; /* Fun: hides cursor */
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            color: white;
+        body { 
+            background: #000; overflow: hidden; font-family: 'Courier New', monospace; 
+            cursor: none; color: #0ff; 
+        }
+        canvas { display: block; }
+        #ui {
+            position: fixed; top: 10px; left: 10px; z-index: 100;
+            pointer-events: none; font-size: 20px; text-shadow: 0 0 10px #0ff;
         }
         #instructions {
-            position: fixed; top: 20px; left: 20px; right: 20px;
-            text-align: center; font-size: 24px; z-index: 10;
-            animation: glow 2s ease-in-out infinite alternate;
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            text-align: center; font-size: 18px; opacity: 0.8;
         }
-        @keyframes glow {
-            from { text-shadow: 0 0 10px #fff; }
-            to { text-shadow: 0 0 30px #0ff; }
-        }
-        .effect {
-            position: fixed; pointer-events: none;
-            font-size: clamp(40px, 10vw, 120px);
-            animation: explode 4s ease-out forwards;
-            filter: drop-shadow(0 0 20px currentColor);
-            z-index: 1;
-        }
-        @keyframes explode {
-            0% {
-                transform: scale(0) rotate(0deg) translateY(0);
-                opacity: 0;
-            }
-            10% {
-                transform: scale(1.2) rotate(45deg) translateY(-20px);
-                opacity: 1;
-            }
-            50% {
-                transform: scale(1.8) rotate(180deg) translateY(-50vh);
-                opacity: 0.8;
-            }
-            100% {
-                transform: scale(0.5) rotate(720deg) translateY(-120vh);
-                opacity: 0;
-            }
-        }
-        /* Mobile glow on focus */
-        body:focus-within #instructions { opacity: 0.7; }
     </style>
 </head>
-<body tabindex="0">
+<body>
+    <canvas id="game"></canvas>
+    <div id="ui">
+        <div>HP: <span id="hp">100</span>/100</div>
+        <div>Mode: <span id="mode">--</span></div>
+    </div>
     <div id="instructions">
-        🎹 **PRESS ANY KEY** (or tap screen!) <br>
-        <small>Every key = unique magic ✨</small>
+        🖱️ **MOVE CURSOR** | **PRESS KEYS** = NEW STAGE! | **ESC** = RESET | **Tap mobile** = Chaos!
     </div>
 
     <script>
-        document.addEventListener('keydown', createEffect);
-        document.addEventListener('pointerdown', () => { // Mobile tap
-            const evt = new KeyboardEvent('keydown', { key: '💥' });
-            document.dispatchEvent(evt);
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+        const hpEl = document.getElementById('hp');
+        const modeEl = document.getElementById('mode');
+
+        let W, H, mouseX = 0, mouseY = 0;
+        let hp = 100, maxHp = 100, lastRegen = 0;
+        let currentMode = '';
+        let flash = 0, gameOver = false;
+
+        // Particles/Attacks/Damages
+        let particles = [], damages = [], trails = [];
+
+        // Resize
+        function resize() {
+            W = canvas.width = window.innerWidth;
+            H = canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Mouse
+        canvas.addEventListener('mousemove', e => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+        });
+        canvas.addEventListener('touchmove', e => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            mouseX = touch.clientX;
+            mouseY = touch.clientY;
         });
 
-        function createEffect(e) {
-            const div = document.createElement('div');
-            const key = e.key.length > 1 ? e.code.slice(5) : e.key; // Clean: "ArrowUp" -> "Up", "Shift" -> "Shift"
-            div.textContent = key;
-            div.className = 'effect';
+        // Keys
+        const keyMap = {}; // Track pressed
+        document.addEventListener('keydown', e => {
+            keyMap[e.key.toLowerCase()] = true;
+            if (!currentMode || e.key.toLowerCase() !== currentMode) {
+                setMode(e.key.toLowerCase() === 'escape' ? '' : e.key.toLowerCase());
+            }
+        });
+        document.addEventListener('keyup', e => keyMap[e.key.toLowerCase()] = false);
 
-            // 🎨 Unique per key!
-            const hue = (e.key.charCodeAt?.(0) ?? Math.random() * 360) % 360;
-            div.style.color = `hsl(${hue}, 100%, ${50 + Math.sin(Date.now()/1000)*20}%)`;
-            div.style.left = Math.random() * 100 + '%';
-            div.style.top = '90vh';
-            div.style.fontSize = (40 + Math.random() * 60) + 'px';
+        // Tap mobile = random mode
+        canvas.addEventListener('touchstart', () => setMode('space')); // Chaos!
 
-            // Vary speed/shape
-            const duration = 2.5 + Math.random() * 2.5;
-            div.style.animationDuration = duration + 's';
+        // MODES CONFIG - UNIQUE ATTACKS!
+        const modes = {
+            'a': { color: '#f00', attacks: ['beam'] },
+            'b': { color: '#00f', attacks: ['orb'] },
+            'c': { color: '#0f0', special: 'trail', attacks: ['shard'] },
+            'd': { color: '#800', attacks: ['drill'] },
+            'e': { color: '#ff0', attacks: ['bolt'] },
+            'f': { color: '#f80', attacks: ['fireball'] },
+            'g': { color: '#f0f', attacks: ['pixel'] },
+            'h': { color: '#f00', attacks: ['missile'] },
+            'i': { color: '#0ff', attacks: ['spike'] },
+            'j': { color: '#888', attacks: ['rock'] },
+            'k': { color: '#0ff', attacks: ['plasma'] },
+            'l': { color: '#f00', attacks: ['sweep'] },
+            'm': { color: '#ff0', attacks: ['meteor'] },
+            'n': { color: '#080', attacks: ['swarm'] },
+            'o': { color: '#00f', attacks: ['orbit'] },
+            'p': { color: '#080', attacks: ['gas'] },
+            'q': { color: '#f80', attacks: ['quake'] },
+            'r': { color: '#fff', special: 'blink', attacks: ['laser'] },
+            's': { color: '#0f0', attacks: ['slime'] },
+            't': { color: '#00f', attacks: ['tornado'] },
+            'u': { color: '#f0f', attacks: ['ufo'] },
+            'v': { color: '#080', attacks: ['vine'] },
+            'w': { color: '#00f', attacks: ['wave'] },
+            'x': { color: '#f00', attacks: ['xplode'] },
+            'y': { color: '#ff0', attacks: ['yin'] },
+            'z': { color: '#888', attacks: ['zombie'] },
+            // Numbers: Spawn THAT MANY
+            '0': { color: '#fff', attacks: ['mix'], count: 10 },
+            '1': { color: '#f00', attacks: ['mix'], count: 1 },
+            '2': { color: '#0f0', attacks: ['mix'], count: 2 },
+            // ... (etc, auto-fills)
+        };
+        for (let i = 3; i <= 9; i++) modes[i] = { color: `hsl(${i*40},100%,50%)`, attacks: ['mix'], count: i };
 
-            document.body.appendChild(div);
+        // Special keys
+        [' ', 'enter', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', '!', '@', '#'].forEach(k => {
+            modes[k.replace('arrow', '').toLowerCase()] = { 
+                color: `hsl(${Math.random()*360},100%,50%)`, 
+                attacks: ['chaos'] 
+            };
+        });
 
-            // Clean up
-            setTimeout(() => div.remove(), duration * 1000 + 500);
+        function setMode(mode) {
+            currentMode = mode;
+            modeEl.textContent = mode.toUpperCase();
+            particles = []; damages = []; trails = []; // Reset stage
+            if (mode === 'escape') { hp = 100; gameOver = false; }
         }
+
+        // Attack SPAWNER
+        function spawnAttack(type, color) {
+            const sides = [
+                {x: Math.random()*W, y: 0}, // top
+                {x: Math.random()*W, y: H}, // bot
+                {x: 0, y: Math.random()*H}, // left
+                {x: W, y: Math.random()*H}  // right
+            ];
+            const start = sides[Math.floor(Math.random()*4)];
+
+            particles.push({
+                type, color,
+                x: start.x, y: start.y,
+                vx: (mouseX - start.x) * 0.01 + (Math.random()-0.5)*2,
+                vy: (mouseY - start.y) * 0.01 + (Math.random()-0.5)*2,
+                life: 1, size: 4 + Math.random()*8,
+                rot: 0, blink: 0, dmg: 3 + Math.random()*4 |0
+            });
+        }
+
+        // Damage Popup
+        function addDamage(dmg, heal=false) {
+            damages.push({
+                x: mouseX, y: mouseY - 20,
+                text: `${heal ? '+' : '-'}${dmg}`,
+                life: 1, vy: -2, color: heal ? '#0f0' : '#f00'
+            });
+        }
+
+        // GAME LOOP
+        let time = 0;
+        function loop() {
+            ctx.fillStyle = 'rgba(0,0,0,0.1)';
+            ctx.fillRect(0,0,W,H); // Trail bg
+
+            time += 0.016;
+
+            // BG per mode
+            if (currentMode) {
+                const m = modes[currentMode] || {color: '#fff'};
+                const gradient = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, W);
+                gradient.addColorStop(0, m.color + '88');
+                gradient.addColorStop(1, '#000');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0,0,W,H);
+            }
+
+            // TRAILS for C
+            if (currentMode === 'c') {
+                trails.push({x: mouseX, y: mouseY, life: 1});
+                trails.forEach((t, i) => {
+                    t.life -= 0.02;
+                    if (t.life <= 0) trails.splice(i,1);
+                    else {
+                        ctx.fillStyle = `rgba(0,0,0,${t.life})`;
+                        ctx.beginPath();
+                        ctx.arc(t.x, t.y, 30 * t.life, 0, Math.PI*2);
+                        ctx.fill();
+                    }
+                });
+            }
+
+            // UPDATE PARTICLES
+            particles.forEach((p, i) => {
+                // Homing
+                p.vx += (mouseX - p.x) * 0.005;
+                p.vy += (mouseY - p.y) * 0.005;
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life -= 0.01;
+                p.rot += 0.1;
+                p.blink += 0.2; // For R
+
+                // COLLISION
+                const dx = p.x - mouseX, dy = p.y - mouseY;
+                if (Math.hypot(dx,dy) < p.size + 10) {
+                    hp -= p.dmg;
+                    addDamage(p.dmg);
+                    particles.splice(i,1);
+                    flash = 20;
+                    if (hp <= 0) gameOver = true;
+                    return;
+                }
+
+                // DRAW
+                ctx.save();
+                ctx.translate(p.x, p.y);
+                ctx.rotate(p.rot);
+                if (p.type === 'laser' && currentMode === 'r' && Math.sin(p.blink) > 0) {
+                    ctx.strokeStyle = p.color;
+                    ctx.lineWidth = 4;
+                    ctx.lineCap = 'round';
+                    ctx.beginPath();
+                    ctx.moveTo(-W, 0);
+                    ctx.lineTo(W, 0);
+                    ctx.stroke();
+                } else {
+                    ctx.fillStyle = p.color + Math.floor(p.life*255).toString(16).padStart(2,'0');
+                    ctx.beginPath();
+                    ctx.arc(0,0, p.size * p.life, 0, Math.PI*2);
+                    ctx.fill();
+                    // Trails/glow
+                    ctx.shadowColor = p.color;
+                    ctx.shadowBlur = 20 * p.life;
+                }
+                ctx.restore();
+
+                if (p.life <= 0) particles.splice(i,1);
+            });
+
+            // SPAWN ATTACKS (per mode rate)
+            if (currentMode && Math.random() < 0.05 + time*0.0001) {
+                const m = modes[currentMode];
+                const types = m.attacks || ['beam'];
+                spawnAttack(types[Math.floor(Math.random()*types.length)], m.color);
+            }
+
+            // REGEN
+            if (Date.now() - lastRegen > 1000 && hp < maxHp) {
+                hp = Math.min(maxHp, hp + 1);
+                addDamage(1, true);
+                lastRegen = Date.now();
+            }
+
+            // DAMAGES
+            damages.forEach((d, i) => {
+                d.y += d.vy;
+                d.life -= 0.02;
+                d.vy *= 0.95;
+                ctx.fillStyle = d.color + Math.floor(d.life*255).toString(16).padStart(2,'0');
+                ctx.font = 'bold 24px Courier';
+                ctx.textAlign = 'center';
+                ctx.fillText(d.text, d.x, d.y);
+                if (d.life <= 0) damages.splice(i,1);
+            });
+
+            // CURSOR + HP BAR
+            const cx = mouseX, cy = mouseY;
+            // Flash
+            if (flash > 0) {
+                ctx.fillStyle = (flash%2 ? '#f00' : '#fff') + '66';
+                ctx.fillRect(0,0,W,H);
+                flash--;
+            }
+            // Cursor
+            ctx.fillStyle = '#fff';
+            ctx.beginPath(); ctx.arc(cx, cy, 12, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(cx, cy, 4, 0, Math.PI*2); ctx.fill();
+            // HP Bar
+            const barW = 100, barH = 8;
+            ctx.fillStyle = '#333'; ctx.fillRect(cx - barW/2, cy - 50, barW, barH);
+            ctx.fillStyle = hp > 50 ? '#0f0' : hp > 20 ? '#ff0' : '#f00';
+            ctx.fillRect(cx - barW/2, cy - 50, (hp/maxHp)*barW, barH);
+            ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(cx - barW/2, cy - 50, barW, barH);
+
+            // UI Update
+            hpEl.textContent = Math.max(0, hp |0);
+
+            // GAME OVER
+            if (gameOver) {
+                ctx.fillStyle = 'rgba(0,0,0,0.8)';
+                ctx.fillRect(0,0,W,H);
+                ctx.fillStyle = '#f00';
+                ctx.font = 'bold 64px Courier';
+                ctx.textAlign = 'center';
+                ctx.fillText('GAME OVER', W/2, H/2);
+                ctx.font = '32px Courier';
+                ctx.fillText('ESC or R to REVIVE!', W/2, H/2 + 60);
+            }
+
+            requestAnimationFrame(loop);
+        }
+        loop();
+
+        // Init random mode on load
+        setTimeout(() => setMode(String.fromCharCode(65 + Math.floor(Math.random()*26)).toLowerCase()), 500);
     </script>
 </body>
 </html>
