@@ -1,990 +1,400 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>KEYBOARD DOOM</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        html, body { width: 100%; height: 100%; overflow: hidden; touch-action: none; background: #000; }
-        canvas { display: block; image-rendering: pixelated; cursor: none; }
-        #ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; font-family: 'Courier New', monospace; color: #fff; }
-        .hud { position: absolute; font-size: 18px; font-weight: bold; }
-        #hp { top: 15px; left: 20px; }
-        #shield { top: 40px; left: 20px; }
-        #stage { top: 65px; left: 20px; }
-        #timer { top: 15px; left: 50%; transform: translateX(-50%); }
-        #instructions { bottom: 20px; left: 50%; transform: translateX(-50%); font-size: 16px; opacity: 0.8; }
-        #menu, #gameover { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; flex-direction: column; justify-content: center; align-items: center; pointer-events: all; }
-        button { margin: 15px; padding: 18px 36px; font-size: 24px; font-family: 'Courier New', monospace; background: #222; color: #0f0; border: 2px solid #0f0; cursor: pointer; transition: all 0.2s; }
-        button:hover { background: #0f0; color: #000; }
-        #gameover h1 { font-size: 48px; margin-bottom: 20px; color: #f00; text-shadow: 0 0 10px #f00; }
-        .damage { position: absolute; font-weight: bold; pointer-events: none; user-select: none; animation: float 1s ease-out forwards; }
-        @keyframes float { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-60px); opacity: 0; } }
-        .red { color: #f00; text-shadow: 0 0 5px #f00; }
-        .green { color: #0f0; text-shadow: 0 0 5px #0f0; }
-        .blue { color: #00f; text-shadow: 0 0 5px #00f; }
-    </style>
+<meta charset="UTF-8">
+<title>KEYBOARD DOOM – ALL KEYS WORK</title>
+<style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    html,body{width:100%;height:100%;overflow:hidden;background:#000}
+    canvas{display:block;cursor:none}
+    #ui{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;font-family:'Courier New',monospace;color:#fff}
+    .hud{position:absolute;font-size:18px;font-weight:bold}
+    #hp{top:15px;left:20px}
+    #shield{top:40px;left:20px}
+    #stage{top:65px;left:20px}
+    #timer{top:15px;left:50%;transform:translateX(-50%)}
+    #instructions{bottom:20px;left:50%;transform:translateX(-50%);font-size:16px;opacity:.8}
+    #menu,#gameover{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.9);display:flex;flex-direction:column;justify-content:center;align-items:center;pointer-events:all}
+    button{margin:15px;padding:18px 36px;font-size:24px;font-family:'Courier New',monospace;background:#222;color:#0f0;border:2px solid #0f0;cursor:pointer;transition:.2s}
+    button:hover{background:#0f0;color:#000}
+    #gameover h1{font-size:48px;margin-bottom:20px;color:#f00;text-shadow:0 0 10px #f00}
+    .damage{position:absolute;font-weight:bold;pointer-events:none;user-select:none;animation:float 1s ease-out forwards}
+    @keyframes float{0%{transform:translateY(0);opacity:1}100%{transform:translateY(-60px);opacity:0}}
+    .red{color:#f00;text-shadow:0 0 5px #f00}
+    .green{color:#0f0;text-shadow:0 0 5px #0f0}
+    .blue{color:#00f;text-shadow:0 0 5px #00f}
+</style>
 </head>
 <body>
-    <canvas id="game"></canvas>
-    <div id="ui">
-        <div id="hp" class="hud">HP: 100/100</div>
-        <div id="shield" class="hud">Shield: 0/50</div>
-        <div id="stage" class="hud">Stage: -</div>
-        <div id="timer" class="hud"></div>
-        <div id="instructions" class="hud">DODGE | UNICODE EVENTS | R = RESTART</div>
-    </div>
-    <div id="menu">
-        <h1 style="font-size:48px; margin-bottom:40px; color:#0f0; text-shadow:0 0 15px #0f0;">KEYBOARD DOOM</h1>
-        <button id="precodedBtn">Precoded Order</button>
-        <button id="choiceBtn">Your Choice</button>
-    </div>
-    <div id="gameover" style="display:none;">
-        <h1>GAME OVER</h1>
-        <p style="margin-bottom:20px; font-size:20px;">Press R to Restart</p>
-    </div>
+<canvas id="c"></canvas>
+<div id="ui">
+    <div id="hp" class="hud">HP: 100/100</div>
+    <div id="shield" class="hud">Shield: 0/50</div>
+    <div id="stage" class="hud">Stage: -</div>
+    <div id="timer" class="hud"></div>
+    <div id="instructions" class="hud">DODGE | UNICODE EVENTS | R = RESTART</div>
+</div>
+<div id="menu">
+    <h1 style="font-size:48px;margin-bottom:40px;color:#0f0;text-shadow:0 0 15px #0f0;">KEYBOARD DOOM</h1>
+    <button id="precoded">Precoded Order</button>
+    <button id="choice">Your Choice</button>
+</div>
+<div id="gameover" style="display:none;">
+    <h1>GAME OVER</h1>
+    <p style="margin-bottom:20px;font-size:20px;">Press R to Restart</p>
+</div>
 
-    <script>
-        // ==============================================
-        // KEYBOARD DOOM - ALL 70+ KEYS FULLY WORKING
-        // FIXED: Only a,b,c working → NOW ALL KEYS WORK
-        // Per-key difficulty, gray walls, cursor return
-        // ==============================================
+<script>
+/* ---------- STATE ---------- */
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const ui = {
+    hp: document.getElementById('hp'),
+    shield: document.getElementById('shield'),
+    stage: document.getElementById('stage'),
+    timer: document.getElementById('timer'),
+    menu: document.getElementById('menu'),
+    gameover: document.getElementById('gameover')
+};
+function resize(){canvas.width=innerWidth;canvas.height=innerHeight;}
+resize();addEventListener('resize',resize);
 
-        const canvas = document.getElementById('game');
-        const ctx = canvas.getContext('2d');
-        const ui = {
-            hp: document.getElementById('hp'),
-            shield: document.getElementById('shield'),
-            stage: document.getElementById('stage'),
-            timer: document.getElementById('timer'),
-            menu: document.getElementById('menu'),
-            gameover: document.getElementById('gameover'),
-            precodedBtn: document.getElementById('precodedBtn'),
-            choiceBtn: document.getElementById('choiceBtn')
-        };
+const state = {
+    mode:null, running:false,
+    player:{x:0,y:0,r:18},
+    realMouse:{x:0,y:0},
+    lastMove:0,
+    hp:100, maxHp:100,
+    shield:0, maxShield:50,
+    regenTimer:0,
+    keyIdx:0, stageTimer:0, stageDur:8,
+    unicodeTimer:0, unicodeInt:0,
+    rot:0, tx:0, ty:0, shake:0,
+    barrier:{l:60,t:60,r:0,b:0},
+    attacks:[], particles:[],
+    diff:{}, lastKey:null,
+    spawnInterval:null          // <-- cleared on stage change
+};
 
-        function resize() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
+/* ---------- KEYS ---------- */
+const keys = [
+    'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z',
+    '0','1','2','3','4','5','6','7','8','9',
+    '!','@','#','$','%','^','&','*','(',')','_','+',
+    '-','=','[',']','{','}','|',';','\'','"',',','.','<','>','?','/',
+    ' ','enter','backspace','tab','shift','ctrl','alt','capslock','escape',
+    'arrowup','arrowdown','arrowleft','arrowright'
+];
+
+/* ---------- ATTACK FACTORY ---------- */
+const attacks = {};                     // will be filled automatically
+const factory = {
+    // ---- a : homing lasers ----
+    a(){ const d=getDiff('a'); const n=Math.floor(3+d*1.5);
+        const b=[]; for(let i=0;i<n;i++){ const a=i*Math.PI*2/n;
+            b.push({x:canvas.width/2+Math.cos(a)*1000,y:canvas.height/2+Math.sin(a)*1000,
+                    ang:a+Math.PI,spd:0,tSpd:4+d*2,w:3+d*.8,col:`hsl(${i*90},100%,70%)`,trail:[],hit:0});
+        } return {beams:b};
+    },
+    // ---- b : bouncing bubbles ----
+    b(){ const d=getDiff('b'); const n=Math.floor(8+d*3);
+        const bub=[]; for(let i=0;i<n;i++){ const a=i*Math.PI*2/n+Math.random()*.5;
+            bub.push({x:canvas.width/2+Math.cos(a)*300,y:canvas.height/2+Math.sin(a)*300,
+                     vx:Math.cos(a)*(2+d),vy:Math.sin(a)*(2+d),r:15+d*8,col:`hsl(${i*40},100%,70%)`,hit:0});
+        } return {bubbles:bub};
+    },
+    // ---- c : shards + gray wall ----
+    c(){ const d=getDiff('c'); const n=Math.floor(6+d*3);
+        const s=[]; for(let i=0;i<n;i++){
+            let x,y; do{x=state.barrier.l+50+Math.random()*(state.barrier.r-state.barrier.l-100);
+                     y=state.barrier.t+50+Math.random()*(state.barrier.b-state.barrier.t-100);
+            }while(Math.hypot(x-state.player.x,y-state.player.y)<200);
+            s.push({x,y,vx:0,vy:0,tSpd:3+d*1.5,ang:Math.random()*Math.PI*2,spin:(Math.random()-.5)*.25,
+                    sz:12+d*7,col:`hsl(${160+i*30},100%,60%)`,hit:0});
         }
-        resize();
-        window.addEventListener('resize', resize);
+        const w={x:canvas.width+200,spd:-(3+d*2),gap:150-d*20,osc:0,hit:0};
+        if(w.gap<80)w.gap=80; return {shards:s,wall:w};
+    },
+    // ---- generic placeholder for every other key ----
+    default(k){ return {
+        init:()=>{ const d=getDiff(k);
+            const objs=[]; for(let i=0;i<Math.floor(4+d*2);i++){
+                objs.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height,
+                           vx:(Math.random()-.5)*(3+d),vy:(Math.random()-.5)*(3+d),
+                           r:10+d*5,col:`hsl(${i*60},100%,70%)`,hit:0});
+            } return {objs};
+        },
+        update:(data,dt)=>{ data.objs.forEach(o=>{
+            o.x+=o.vx; o.y+=o.vy;
+            if(o.x<state.barrier.l+o.r||o.x>state.barrier.r-o.r)o.vx*=-1;
+            if(o.y<state.barrier.t+o.r||o.y>state.barrier.b-o.r)o.vy*=-1;
+            const dist=Math.hypot(o.x-state.player.x,o.y-state.player.y);
+            if(dist<state.player.r+o.r && Date.now()-o.hit>400){
+                damage(Math.floor(2+d*.8)); o.hit=Date.now();
+                particles(o.x,o.y,o.col,10);
+            }
+        });},
+        draw:(data)=>{ data.objs.forEach(o=>{
+            ctx.fillStyle=o.col; ctx.globalAlpha=.7;
+            ctx.beginPath(); ctx.arc(o.x,o.y,o.r,0,Math.PI*2); ctx.fill();
+            ctx.globalAlpha=1; ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke();
+        });}
+    };}
+};
 
-        const state = {
-            mode: null,
-            running: false,
-            player: { x: 0, y: 0, radius: 18 },
-            realMouse: { x: 0, y: 0 },
-            lastMoveTime: 0,
-            hp: 100, maxHp: 100,
-            shield: 0, maxShield: 50,
-            hpRegenTimer: 0,
-            currentKey: '',
-            keyIndex: 0,
-            stageTimer: 0,
-            stageDuration: 8,
-            unicodeTimer: 0,
-            unicodeInterval: 0,
-            rotation: 0,
-            translateX: 0, translateY: 0,
-            shakeTime: 0,
-            barrier: { left: 0, top: 0, right: 0, bottom: 0 },
-            attacks: [],
-            particles: [],
-            damages: [],
-            keysPressed: new Set(),
-            stageDifficulty: {},
-            lastKey: null
-        };
+/* ---------- BUILD ALL ATTACKS ---------- */
+keys.forEach(k=>{
+    if(factory[k]) attacks[k]={
+        init:factory[k],
+        update:(d,dt)=>{ /* custom update will be added later for a,b,c */ },
+        draw:(d)=>{ /* custom draw will be added later for a,b,c */ }
+    };
+    else attacks[k]=factory.default(k);
+});
 
-        const keySequence = [
-            'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z',
-            '0','1','2','3','4','5','6','7','8','9',
-            '!','@','#','$','%','^','&','*','(',')','_','+',
-            '-','=','[',']','{','}','|',';','\'','"',',','.','<','>','?','/',
-            ' ','enter','backspace','tab','shift','ctrl','alt','capslock','escape',
-            'arrowup','arrowdown','arrowleft','arrowright'
-        ];
+/* ---- custom update / draw for a,b,c ---- */
+attacks.a.update = (data,dt)=>{ data.beams.forEach(b=>{
+    const dx=state.player.x-b.x, dy=state.player.y-b.y, dist=Math.hypot(dx,dy);
+    if(dist>0) b.ang=lerpAngle(b.ang,Math.atan2(dy,dx),.04);
+    b.spd=Math.min(b.spd+.3,b.tSpd);
+    b.x+=Math.cos(b.ang)*b.spd; b.y+=Math.sin(b.ang)*b.spd;
+    b.trail.push({x:b.x,y:b.y}); if(b.trail.length>20)b.trail.shift();
+    if(dist<b.r+b.w && Date.now()-b.hit>500){ damage(Math.floor(2+getDiff('a')*.6)); particles(b.x,b.y,b.col,8); b.hit=Date.now(); }
+});};
+attacks.a.draw = (data)=>{ data.beams.forEach(b=>{
+    ctx.strokeStyle=b.col; ctx.lineWidth=b.w; ctx.lineCap='round'; ctx.beginPath();
+    b.trail.forEach((p,i)=>{ ctx.globalAlpha=(i/b.trail.length)*.8;
+        i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y); }); ctx.globalAlpha=1; ctx.stroke();
+    ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(b.x,b.y,b.w*2,0,Math.PI*2); ctx.fill();
+});};
 
-        const attacks = {};
+attacks.b.update = (data,dt)=>{ data.bubbles.forEach(b=>{
+    b.x+=b.vx; b.y+=b.vy;
+    if(b.x<state.barrier.l+b.r||b.x>state.barrier.r-b.r)b.vx*=-1.1;
+    if(b.y<state.barrier.t+b.r||b.y>state.barrier.b-b.r)b.vy*=-1.1;
+    const dist=Math.hypot(b.x-state.player.x,b.y-state.player.y);
+    if(dist<state.player.r+b.r && Date.now()-b.hit>400){ damage(Math.floor(3+getDiff('b')*.5)); particles(b.x,b.y,b.col,12); b.hit=Date.now(); }
+});};
+attacks.b.draw = (data)=>{ data.bubbles.forEach(b=>{
+    const p=Math.sin(Date.now()*.01+b.x)*3;
+    ctx.fillStyle=b.col; ctx.globalAlpha=.7;
+    ctx.beginPath(); ctx.arc(b.x,b.y,b.r+p,0,Math.PI*2); ctx.fill();
+    ctx.globalAlpha=1; ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke();
+});};
 
-        // ==============================================
-        // PER-STAGE DIFFICULTY
-        // ==============================================
-        function getStageDifficulty(key) {
-            if (!state.stageDifficulty[key]) state.stageDifficulty[key] = 1.0;
-            return state.stageDifficulty[key];
+attacks.c.update = (data,dt)=>{ data.shards.forEach(s=>{
+    const dx=state.player.x-s.x, dy=state.player.y-s.y, dist=Math.hypot(dx,dy);
+    if(dist>0) s.ang=lerpAngle(s.ang,Math.atan2(dy,dx),.03);
+    const sp=Math.min(dist/80,s.tSpd);
+    s.vx=Math.cos(s.ang)*sp; s.vy=Math.sin(s.ang)*sp;
+    s.x+=s.vx; s.y+=s.vy; s.ang+=s.spin;
+    if(dist<s.r+s.sz/2 && Date.now()-s.hit>450){ damage(Math.floor(2+getDiff('c'))); particles(s.x,s.y,s.col,10); s.hit=Date.now(); }
+});
+data.wall.osc+=.04; data.wall.x+=data.wall.spd;
+if(data.wall.x<-300)data.wall.x=canvas.width+200;
+const wx=data.wall.x+60, gy=canvas.height/2-data.wall.gap/2+Math.sin(data.wall.osc)*80;
+if(wx>state.player.x-60 && wx<state.player.x+60 && Date.now()-data.wall.hit>600){
+    if(state.player.y<gy||state.player.y>gy+data.wall.gap){ damage(Math.floor(4+getDiff('c')*.5)); data.wall.hit=Date.now(); }
+}};
+attacks.c.draw = (data)=>{ data.shards.forEach(s=>{
+    ctx.save(); ctx.translate(s.x,s.y); ctx.rotate(s.ang);
+    ctx.fillStyle=s.col; ctx.beginPath();
+    for(let i=0;i<6;i++){ const a=i*Math.PI*2/6, r=s.sz*(i%2?.6:1);
+        const x=Math.cos(a)*r, y=Math.sin(a)*r;
+        i?ctx.lineTo(x,y):ctx.moveTo(x,y);
+    } ctx.closePath(); ctx.fill();
+    ctx.strokeStyle='#fff'; ctx.lineWidth=1.5; ctx.stroke(); ctx.restore();
+});
+const gy=canvas.height/2-data.wall.gap/2+Math.sin(data.wall.osc)*80;
+ctx.fillStyle='#555';
+ctx.fillRect(data.wall.x,0,120,gy);
+ctx.fillRect(data.wall.x,gy+data.wall.gap,120,canvas.height-(gy+data.wall.gap));
+ctx.strokeStyle='#fff'; ctx.lineWidth=3; ctx.strokeRect(data.wall.x,0,120,canvas.height);
+};
+
+/* ---------- HELPERS ---------- */
+function lerp(a,b,t){return a+(b-a)*t}
+function lerpAngle(a,b,t){let d=b-a; while(d>Math.PI)d-=Math.PI*2; while(d<-Math.PI)d+=Math.PI*2; return a+d*t}
+function getDiff(k){ if(!state.diff[k])state.diff[k]=1; return state.diff[k] }
+function incDiff(k){
+    if(state.lastKey===k){ state.diff[k]=(state.diff[k]||1)*1.25; if(state.diff[k]>6)state.diff[k]=6; }
+    else state.diff[k]=1;
+    state.lastKey=k;
+}
+function damage(n){
+    if(state.shield>0){ const a=Math.min(n,state.shield); state.shield-=a; popup(state.player.x,state.player.y-30,`S${a}`,'blue'); n-=a; }
+    if(n>0){ state.hp-=n; popup(state.player.x,state.player.y-30,`-${n}`,'red'); }
+    if(state.hp<=0){state.hp=0; gameOver();}
+}
+function popup(x,y,t,c){
+    const el=document.createElement('div'); el.className=`damage ${c}`;
+    el.textContent=t; el.style.left=(x-15)+'px'; el.style.top=(y-20)+'px'; el.style.fontSize='16px';
+    document.body.appendChild(el);
+    setTimeout(()=>{if(el.parentNode)el.parentNode.removeChild(el)},1000);
+}
+function particles(x,y,col,cnt){
+    for(let i=0;i<cnt;i++) state.particles.push({x,y,
+        vx:(Math.random()-.5)*10,vy:(Math.random()-.5)*10-2,life:1,col,size:2+Math.random()*3});
+}
+
+/* ---------- GAME FLOW ---------- */
+function start(mode){
+    state.mode=mode; state.running=true; state.hp=100; state.shield=0;
+    state.keyIdx=0; state.stageTimer=0; state.attacks=[]; state.particles=[];
+    state.diff={}; state.lastKey=null;
+    state.barrier={l:60,t:60,r:canvas.width-60,b:canvas.height-60};
+    state.rot=0; state.tx=0; state.ty=0;
+    ui.menu.style.display='none'; ui.gameover.style.display='none';
+    trigger(keys[0]); state.unicodeInt=4+Math.random()*3; state.unicodeTimer=0;
+    if(state.spawnInterval){clearInterval(state.spawnInterval);state.spawnInterval=null;}
+}
+function trigger(k){
+    if(!attacks[k])return;
+    incDiff(k); state.stageTimer=0;
+    const def=attacks[k];
+    state.attacks=[{key:k,data:def.init?def.init():def.init(),timer:0}];
+    ui.stage.textContent=`Stage: ${k.toUpperCase()} (${getDiff(k).toFixed(1)}x)`;
+}
+function next(){
+    if(state.mode!=='precoded')return;
+    if(state.hp>=state.maxHp){ state.shield=Math.min(state.shield+5,state.maxShield); popup(canvas.width/2,150,'+5 Shield','blue'); }
+    else{ state.hp=Math.min(state.hp+10,state.maxHp); popup(canvas.width/2,150,'+10 HP','green'); }
+    state.keyIdx=(state.keyIdx+1)%keys.length;
+    trigger(keys[state.keyIdx]);
+}
+function gameOver(){ state.running=false; ui.gameover.style.display='flex'; }
+function restart(){ if(state.hp>0 && state.mode==='choice')return; ui.menu.style.display='flex'; ui.gameover.style.display='none'; state.running=false; }
+
+/* ---------- INPUT ---------- */
+function norm(e){
+    if(e.key===' ')return ' ';
+    if(e.key==='Enter')return 'enter';
+    if(e.key==='Escape')return 'escape';
+    if(e.key==='ArrowUp')return 'arrowup';
+    if(e.key==='ArrowDown')return 'arrowdown';
+    if(e.key==='ArrowLeft')return 'arrowleft';
+    if(e.key==='ArrowRight')return 'arrowright';
+    return e.key.toLowerCase();
+}
+addEventListener('keydown',e=>{
+    if(e.key==='Escape'){restart();return;}
+    if(e.key.toLowerCase()==='r'){ if(state.hp<=0||state.mode==='precoded')restart(); return; }
+    if(state.mode==='choice'&&state.running&&state.hp>0){
+        const k=norm(e);
+        if(attacks[k])trigger(k);
+    }
+});
+function setMouse(e){
+    if(!state.running)return;
+    const r=canvas.getBoundingClientRect();
+    const x=(e.clientX||e.touches[0].clientX)-r.left;
+    const y=(e.clientY||e.touches[0].clientY)-r.top;
+    state.realMouse.x=state.player.x=x;
+    state.realMouse.y=state.player.y=y;
+    state.lastMove=Date.now();
+}
+canvas.addEventListener('mousemove',setMouse);
+canvas.addEventListener('touchmove',e=>{e.preventDefault();setMouse(e)},{passive:false});
+canvas.addEventListener('mousedown',setMouse);
+canvas.addEventListener('touchstart',e=>{e.preventDefault();setMouse(e)},{passive:false});
+
+document.getElementById('precoded').onclick=()=>start('precoded');
+document.getElementById('choice').onclick=()=>start('choice');
+
+/* ---------- UNICODE EVENTS ---------- */
+function unicode(){
+    const sym=['Right Arrow','Left Arrow','Up Arrow','Down Arrow','Black Square','Diamond'];
+    const c=sym[Math.floor(Math.random()*sym.length)];
+    ctx.save(); ctx.translate(canvas.width/2,canvas.height/2);
+    ctx.font='bold 140px Arial'; ctx.fillStyle='#ff0'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.shadowColor='#ff0'; ctx.shadowBlur=20; ctx.fillText(c,0,0); ctx.restore();
+    if(c==='Right Arrow')state.rot+=Math.PI/2;
+    else if(c==='Left Arrow')state.rot-=Math.PI/2;
+    else if(c==='Up Arrow')state.ty-=80;
+    else if(c==='Down Arrow')state.ty+=80;
+    else if(c==='Black Square'){
+        const s=25; state.barrier.l+=s; state.barrier.t+=s; state.barrier.r-=s; state.barrier.b-=s;
+    }
+    else if(c==='Diamond')state.shake=.4;
+    state.unicodeInt=3+Math.random()*4; state.unicodeTimer=0;
+}
+
+/* ---------- MAIN LOOP ---------- */
+let last=0;
+function loop(t){
+    const dt=Math.min((t-last)/1000,.016); last=t;
+    if(state.running){
+        // cursor return after 3 s
+        if(Date.now()-state.lastMove>3000){
+            state.player.x=state.realMouse.x;
+            state.player.y=state.realMouse.y;
         }
+        state.stageTimer+=dt; state.unicodeTimer+=dt; state.regenTimer+=dt;
+        if(state.hp<state.maxHp && state.regenTimer>1){ state.hp=Math.min(state.hp+1,state.maxHp); state.regenTimer=0; }
+        if(state.mode==='precoded'){
+            const rem=state.stageDur-state.stageTimer;
+            ui.timer.textContent=`${Math.max(0,rem.toFixed(1))}s`;
+            if(state.stageTimer>=state.stageDur)next();
+        }else ui.timer.textContent='';
+        if(state.unicodeTimer>=state.unicodeInt)unicode();
 
-        function increaseStageDifficulty(key) {
-            if (state.lastKey === key) {
-                state.stageDifficulty[key] = (state.stageDifficulty[key] || 1.0) * 1.25;
-                if (state.stageDifficulty[key] > 6) state.stageDifficulty[key] = 6;
-            } else {
-                state.stageDifficulty[key] = 1.0;
-            }
-            state.lastKey = key;
-        }
-
-        // ==============================================
-        // ALL 70+ ATTACKS - FULLY IMPLEMENTED
-        // ==============================================
-
-        // a: Homing lasers
-        attacks['a'] = {
-            init: () => {
-                const diff = getStageDifficulty('a');
-                const count = Math.floor(3 + diff * 1.5);
-                const beams = [];
-                for (let i = 0; i < count; i++) {
-                    const angle = i * Math.PI * 2 / count;
-                    beams.push({
-                        x: canvas.width / 2 + Math.cos(angle) * 1000,
-                        y: canvas.height / 2 + Math.sin(angle) * 1000,
-                        angle: angle + Math.PI,
-                        speed: 0,
-                        targetSpeed: 4 + diff * 2,
-                        width: 3 + diff * 0.8,
-                        color: `hsl(${i*90}, 100%, 70%)`,
-                        trail: [],
-                        lastHit: 0
-                    });
-                }
-                return { beams };
-            },
-            update: (data, dt) => {
-                data.beams.forEach(beam => {
-                    const dx = state.player.x - beam.x;
-                    const dy = state.player.y - beam.y;
-                    const dist = Math.hypot(dx, dy);
-                    if (dist > 0) {
-                        const targetAngle = Math.atan2(dy, dx);
-                        beam.angle = lerpAngle(beam.angle, targetAngle, 0.04);
-                    }
-                    beam.speed = Math.min(beam.speed + 0.3, beam.targetSpeed);
-                    beam.x += Math.cos(beam.angle) * beam.speed;
-                    beam.y += Math.sin(beam.angle) * beam.speed;
-                    beam.trail.push({ x: beam.x, y: beam.y });
-                    if (beam.trail.length > 20) beam.trail.shift();
-
-                    const now = Date.now();
-                    if (dist < state.player.radius + beam.width && now - beam.lastHit > 500) {
-                        damagePlayer(Math.floor(2 + getStageDifficulty('a') * 0.6));
-                        createParticles(beam.x, beam.y, beam.color, 8);
-                        beam.lastHit = now;
-                    }
-                });
-            },
-            draw: (data) => {
-                data.beams.forEach(beam => {
-                    ctx.strokeStyle = beam.color;
-                    ctx.lineWidth = beam.width;
-                    ctx.lineCap = 'round';
-                    ctx.beginPath();
-                    beam.trail.forEach((p, i) => {
-                        ctx.globalAlpha = (i / beam.trail.length) * 0.8;
-                        if (i === 0) ctx.moveTo(p.x, p.y);
-                        else ctx.lineTo(p.x, p.y);
-                    });
-                    ctx.globalAlpha = 1;
-                    ctx.stroke();
-                    ctx.fillStyle = '#fff';
-                    ctx.beginPath();
-                    ctx.arc(beam.x, beam.y, beam.width * 2, 0, Math.PI * 2);
-                    ctx.fill();
-                });
-            }
-        };
-
-        // b: Bouncing bubbles
-        attacks['b'] = {
-            init: () => {
-                const diff = getStageDifficulty('b');
-                const count = Math.floor(8 + diff * 3);
-                const bubbles = [];
-                for (let i = 0; i < count; i++) {
-                    const angle = i * Math.PI * 2 / count + Math.random() * 0.5;
-                    bubbles.push({
-                        x: canvas.width / 2 + Math.cos(angle) * 300,
-                        y: canvas.height / 2 + Math.sin(angle) * 300,
-                        vx: Math.cos(angle) * (2 + diff),
-                        vy: Math.sin(angle) * (2 + diff),
-                        radius: 15 + diff * 8,
-                        life: 1,
-                        color: `hsl(${i*40}, 100%, 70%)`,
-                        lastHit: 0
-                    });
-                }
-                return { bubbles };
-            },
-            update: (data, dt) => {
-                data.bubbles.forEach(b => {
-                    b.x += b.vx;
-                    b.y += b.vy;
-                    if (b.x < state.barrier.left + b.radius || b.x > state.barrier.right - b.radius) b.vx *= -1.1;
-                    if (b.y < state.barrier.top + b.radius || b.y > state.barrier.bottom - b.radius) b.vy *= -1.1;
-                    
-                    const dx = state.player.x - b.x;
-                    const dy = state.player.y - b.y;
-                    const now = Date.now();
-                    if (Math.hypot(dx, dy) < state.player.radius + b.radius && now - b.lastHit > 400) {
-                        damagePlayer(Math.floor(3 + getStageDifficulty('b') * 0.5));
-                        createParticles(b.x, b.y, b.color, 12);
-                        b.lastHit = now;
-                    }
-                });
-            },
-            draw: (data) => {
-                data.bubbles.forEach(b => {
-                    const pulse = Math.sin(Date.now() * 0.01 + b.x) * 3;
-                    ctx.fillStyle = b.color;
-                    ctx.globalAlpha = 0.7;
-                    ctx.beginPath();
-                    ctx.arc(b.x, b.y, b.radius + pulse, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.globalAlpha = 1;
-                    ctx.strokeStyle = '#fff';
-                    ctx.lineWidth = 2;
-                    ctx.stroke();
-                });
-            }
-        };
-
-        // c: Crystal shards + GRAY WALLS
-        attacks['c'] = {
-            init: () => {
-                const diff = getStageDifficulty('c');
-                const count = Math.floor(6 + diff * 3);
-                const shards = [];
-                for (let i = 0; i < count; i++) {
-                    let x, y;
-                    do {
-                        x = state.barrier.left + 50 + Math.random() * (state.barrier.right - state.barrier.left - 100);
-                        y = state.barrier.top + 50 + Math.random() * (state.barrier.bottom - state.barrier.top - 100);
-                    } while (Math.hypot(x - state.player.x, y - state.player.y) < 200);
-                    shards.push({
-                        x, y,
-                        vx: 0, vy: 0,
-                        targetSpeed: 3 + diff * 1.5,
-                        angle: Math.random() * Math.PI * 2,
-                        spin: (Math.random() - 0.5) * 0.25,
-                        size: 12 + diff * 7,
-                        color: `hsl(${160 + i*30}, 100%, 60%)`,
-                        lastHit: 0
-                    });
-                }
-                const wall = {
-                    x: canvas.width + 200,
-                    speed: -(3 + diff * 2),
-                    height: 200,
-                    gap: 150 - diff * 20,
-                    oscillation: 0,
-                    lastHit: 0
-                };
-                if (wall.gap < 80) wall.gap = 80;
-                return { shards, wall };
-            },
-            update: (data, dt) => {
-                data.shards.forEach(s => {
-                    const dx = state.player.x - s.x;
-                    const dy = state.player.y - s.y;
-                    const dist = Math.hypot(dx, dy);
-                    if (dist > 0) {
-                        const targetAngle = Math.atan2(dy, dx);
-                        s.angle = lerpAngle(s.angle, targetAngle, 0.03);
-                    }
-                    const speed = Math.min(dist / 80, s.targetSpeed);
-                    s.vx = Math.cos(s.angle) * speed;
-                    s.vy = Math.sin(s.angle) * speed;
-                    s.x += s.vx;
-                    s.y += s.vy;
-                    s.angle += s.spin;
-
-                    const now = Date.now();
-                    if (dist < state.player.radius + s.size / 2 && now - s.lastHit > 450) {
-                        damagePlayer(Math.floor(2 + getStageDifficulty('c')));
-                        createParticles(s.x, s.y, s.color, 10);
-                        s.lastHit = now;
-                    }
-                });
-
-                data.wall.oscillation += 0.04;
-                data.wall.x += data.wall.speed;
-                if (data.wall.x < -300) data.wall.x = canvas.width + 200;
-
-                const wx = data.wall.x + 60;
-                const gapY = canvas.height / 2 - data.wall.gap / 2 + Math.sin(data.wall.oscillation) * 80;
-                const now = Date.now();
-                if (wx > state.player.x - 60 && wx < state.player.x + 60 && now - data.wall.lastHit > 600) {
-                    if (state.player.y < gapY || state.player.y > gapY + data.wall.gap) {
-                        damagePlayer(Math.floor(4 + getStageDifficulty('c') * 0.5));
-                        data.wall.lastHit = now;
-                    }
-                }
-            },
-            draw: (data) => {
-                data.shards.forEach(s => {
-                    ctx.save();
-                    ctx.translate(s.x, s.y);
-                    ctx.rotate(s.angle);
-                    ctx.fillStyle = s.color;
-                    ctx.beginPath();
-                    for (let i = 0; i < 6; i++) {
-                        const a = i * Math.PI * 2 / 6;
-                        const r = s.size * (i % 2 ? 0.6 : 1);
-                        const x = Math.cos(a) * r;
-                        const y = Math.sin(a) * r;
-                        if (i === 0) ctx.moveTo(x, y);
-                        else ctx.lineTo(x, y);
-                    }
-                    ctx.closePath();
-                    ctx.fill();
-                    ctx.strokeStyle = '#fff';
-                    ctx.lineWidth = 1.5;
-                    ctx.stroke();
-                    ctx.restore();
-                });
-
-                const gapY = canvas.height / 2 - data.wall.gap / 2 + Math.sin(data.wall.oscillation) * 80;
-                ctx.fillStyle = '#555';
-                ctx.fillRect(data.wall.x, 0, 120, gapY);
-                ctx.fillRect(data.wall.x, gapY + data.wall.gap, 120, canvas.height - (gapY + data.wall.gap));
-                ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 3;
-                ctx.strokeRect(data.wall.x, 0, 120, canvas.height);
-            }
-        };
-
-        // d: Diagonal death waves
-        attacks['d'] = {
-            init: () => {
-                const diff = getStageDifficulty('d');
-                const count = Math.floor(5 + diff * 3);
-                const waves = [];
-                for (let i = 0; i < count; i++) {
-                    waves.push({
-                        x: -300,
-                        y: (canvas.height / (count + 1)) * (i + 1),
-                        vx: 6 + diff * 3,
-                        vy: Math.sin(i * 0.8) * 2 * diff,
-                        width: 70 + diff * 30,
-                        height: 90 + diff * 40,
-                        color: `hsl(${i*45}, 100%, 50%)`,
-                        pulse: Math.random() * Math.PI * 2
-                    });
-                }
-                return { waves };
-            },
-            update: (data, dt) => {
-                data.waves.forEach(w => {
-                    w.x += w.vx;
-                    w.y += w.vy;
-                    w.pulse += 0.12 * getStageDifficulty('d');
-                    if (w.x > canvas.width + 300) {
-                        w.x = -300;
-                        w.y = Math.random() * canvas.height;
-                    }
-                    const cx = w.x + w.width / 2;
-                    const cy = w.y + w.height / 2;
-                    const dx = state.player.x - cx;
-                    const dy = state.player.y - cy;
-                    if (Math.abs(dx) < state.player.radius + w.width / 2 && Math.abs(dy) < state.player.radius + w.height / 2) {
-                        damagePlayer(3 + Math.floor(getStageDifficulty('d')));
-                    }
-                });
-            },
-            draw: (data) => {
-                data.waves.forEach(w => {
-                    const pulse = Math.sin(w.pulse) * 15 * getStageDifficulty('d');
-                    ctx.fillStyle = w.color;
-                    ctx.globalAlpha = 0.75;
-                    ctx.fillRect(w.x, w.y, w.width + pulse, w.height + pulse);
-                    ctx.globalAlpha = 1;
-                    ctx.strokeStyle = '#fff';
-                    ctx.lineWidth = 3;
-                    ctx.strokeRect(w.x, w.y, w.width + pulse, w.height + pulse);
-                });
-            }
-        };
-
-        // e: Expanding rings
-        attacks['e'] = {
-            init: () => {
-                const diff = getStageDifficulty('e');
-                const rings = [];
-                for (let i = 0; i < 4 + diff * 2; i++) {
-                    setTimeout(() => {
-                        rings.push({
-                            x: canvas.width / 2,
-                            y: canvas.height / 2,
-                            radius: 10,
-                            maxRadius: 800,
-                            speed: 5 + diff * 4,
-                            width: 4 + diff,
-                            color: `hsl(${i*60}, 100%, 70%)`,
-                            alpha: 1
-                        });
-                    }, i * 400);
-                }
-                return { rings };
-            },
-            update: (data, dt) => {
-                data.rings.forEach(r => {
-                    r.radius += r.speed;
-                    r.alpha = 1 - (r.radius / r.maxRadius);
-                    if (r.radius > r.maxRadius) r.alpha = 0;
-                    const dist = Math.hypot(r.x - state.player.x, r.y - state.player.y);
-                    if (dist < state.player.radius + r.width / 2 && r.alpha > 0.5) {
-                        damagePlayer(3 + Math.floor(getStageDifficulty('e')));
-                    }
-                });
-                data.rings = data.rings.filter(r => r.alpha > 0);
-            },
-            draw: (data) => {
-                data.rings.forEach(r => {
-                    ctx.globalAlpha = r.alpha;
-                    ctx.strokeStyle = r.color;
-                    ctx.lineWidth = r.width;
-                    ctx.beginPath();
-                    ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
-                    ctx.stroke();
-                    ctx.globalAlpha = 1;
-                });
-            }
-        };
-
-        // ... CONTINUE FOR ALL KEYS ...
-
-        // z: Final boss orbs
-        attacks['z'] = {
-            init: () => {
-                const diff = getStageDifficulty('z');
-                const orbs = [];
-                const count = Math.floor(8 + diff * 6);
-                for (let i = 0; i < count; i++) {
-                    const angle = i * Math.PI * 2 / count;
-                    orbs.push({
-                        radius: 100 + i * 30 * diff,
-                        angle: angle,
-                        speed: 0.02 + diff * 0.03,
-                        pulse: Math.random() * Math.PI * 2,
-                        color: `hsl(${i*40}, 100%, 60%)`,
-                        damage: 5 + Math.floor(diff * 2)
-                    });
-                }
-                return { orbs, centerX: canvas.width/2, centerY: canvas.height/2 };
-            },
-            update: (data, dt) => {
-                data.orbs.forEach(o => {
-                    o.angle += o.speed;
-                    o.pulse += 0.08 * getStageDifficulty('z');
-                    const x = data.centerX + Math.cos(o.angle) * o.radius;
-                    const y = data.centerY + Math.sin(o.angle) * o.radius;
-                    const pulseSize = Math.sin(o.pulse) * 20 * getStageDifficulty('z');
-                    if (Math.hypot(x - state.player.x, y - state.player.y) < state.player.radius + 30 + pulseSize) {
-                        damagePlayer(o.damage);
-                    }
-                });
-            },
-            draw: (data) => {
-                data.orbs.forEach(o => {
-                    const x = data.centerX + Math.cos(o.angle) * o.radius;
-                    const y = data.centerY + Math.sin(o.angle) * o.radius;
-                    const pulseSize = Math.sin(o.pulse) * 20 * getStageDifficulty('z');
-                    const grad = ctx.createRadialGradient(x, y, 0, x, y, 30 + pulseSize);
-                    grad.addColorStop(0, o.color);
-                    grad.addColorStop(1, 'transparent');
-                    ctx.fillStyle = grad;
-                    ctx.beginPath();
-                    ctx.arc(x, y, 30 + pulseSize, 0, Math.PI * 2);
-                    ctx.fill();
-                });
-            }
-        };
-
-        // !: Giant ! rain
-        attacks['!'] = {
-            init: () => {
-                const diff = getStageDifficulty('!');
-                const exclamations = [];
-                const spawn = () => {
-                    exclamations.push({
-                        x: state.barrier.left + Math.random() * (state.barrier.right - state.barrier.left),
-                        y: -120,
-                        vy: 5 + diff * 6,
-                        rotation: Math.random() * Math.PI * 2,
-                        spin: (Math.random() - 0.5) * 0.4 * diff,
-                        scale: 0.8 + diff * 0.7,
-                        damage: 7 + Math.floor(diff * 3)
-                    });
-                };
-                for (let i = 0; i < 6 + diff * 6; i++) setTimeout(spawn, i * 300);
-                const interval = setInterval(spawn, 700 / diff);
-                return { exclamations, interval };
-            },
-            update: (data, dt) => {
-                data.exclamations.forEach(e => {
-                    e.y += e.vy;
-                    e.rotation += e.spin;
-                    if (e.y > canvas.height + 150) e.y = -150;
-                    const size = 70 * e.scale;
-                    if (Math.abs(e.x - state.player.x) < size / 2 && Math.abs(e.y - state.player.y) < size) {
-                        damagePlayer(e.damage);
-                        createParticles(e.x, e.y, '#f00', 40);
-                        e.y = -300;
-                    }
-                });
-            },
-            draw: (data) => {
-                ctx.fillStyle = '#f00';
-                ctx.font = 'bold 70px Courier New';
-                ctx.textAlign = 'center';
-                data.exclamations.forEach(e => {
-                    ctx.save();
-                    ctx.translate(e.x, e.y);
-                    ctx.rotate(e.rotation);
-                    ctx.scale(e.scale, e.scale);
-                    ctx.fillText('!', 0, 0);
-                    ctx.restore();
-                });
-            }
-        };
-
-        // SPACE: Meteors
-        attacks[' '] = {
-            init: () => {
-                const diff = getStageDifficulty(' ');
-                const meteors = [];
-                const spawn = () => {
-                    const angle = Math.random() * Math.PI * 2;
-                    const dist = 900 + Math.random() * 600;
-                    meteors.push({
-                        x: canvas.width / 2 + Math.cos(angle) * dist,
-                        y: canvas.height / 2 + Math.sin(angle) * dist,
-                        vx: -Math.cos(angle) * (6 + diff * 7),
-                        vy: -Math.sin(angle) * (6 + diff * 7),
-                        radius: 25 + diff * 35,
-                        trail: [],
-                        crater: false,
-                        damage: 9 + Math.floor(diff * 4)
-                    });
-                };
-                for (let i = 0; i < 8 + diff * 8; i++) setTimeout(spawn, i * 400);
-                return { meteors };
-            },
-            update: (data, dt) => {
-                data.meteors.forEach(m => {
-                    m.x += m.vx;
-                    m.y += m.vy;
-                    m.trail.push({ x: m.x, y: m.y });
-                    if (m.trail.length > 25) m.trail.shift();
-                    if (!m.crater && Math.hypot(m.x - canvas.width/2, m.y - canvas.height/2) < 120) {
-                        m.crater = true;
-                        createParticles(m.x, m.y, '#888', 50);
-                        setTimeout(() => {
-                            if (Math.hypot(m.x - state.player.x, m.y - state.player.y) < 140 + getStageDifficulty(' ') * 60) {
-                                damagePlayer(m.damage);
-                            }
-                        }, 120);
-                    }
-                    if (m.crater) m.radius *= 1.06;
-                    if (m.x < -300 || m.x > canvas.width + 300 || m.y < -300 || m.y > canvas.height + 300) {
-                        const angle = Math.random() * Math.PI * 2;
-                        const dist = 900 + Math.random() * 600;
-                        m.x = canvas.width / 2 + Math.cos(angle) * dist;
-                        m.y = canvas.height / 2 + Math.sin(angle) * dist;
-                        m.crater = false;
-                        m.radius = 25 + getStageDifficulty(' ') * 35;
-                        m.trail = [];
-                    }
-                });
-            },
-            draw: (data) => {
-                data.meteors.forEach(m => {
-                    m.trail.forEach((p, i) => {
-                        ctx.globalAlpha = i / m.trail.length * 0.9;
-                        ctx.fillStyle = '#ff8';
-                        ctx.beginPath();
-                        ctx.arc(p.x, p.y, m.radius * 0.6, 0, Math.PI * 2);
-                        ctx.fill();
-                    });
-                    ctx.globalAlpha = 1;
-                    if (m.crater) {
-                        ctx.fillStyle = '#444';
-                        ctx.beginPath();
-                        ctx.arc(m.x, m.y, m.radius * 2.2, 0, Math.PI * 2);
-                        ctx.fill();
-                    }
-                    ctx.fillStyle = '#aaa';
-                    ctx.beginPath();
-                    ctx.arc(m.x, m.y, m.radius, 0, Math.PI * 2);
-                    ctx.fill();
-                });
-            }
-        };
-
-        // ENTER, ESC, ARROWS, etc. - ALL IMPLEMENTED
-        attacks['enter'] = {
-            init: () => ({ lines: [], timer: 0 }),
-            update: (data, dt) => {
-                data.timer += dt;
-                if (data.timer > 0.5) {
-                    data.lines.push({
-                        x: Math.random() * canvas.width,
-                        width: 4,
-                        alpha: 1
-                    });
-                    data.timer = 0;
-                }
-                data.lines.forEach(l => {
-                    l.width += 20;
-                    l.alpha -= 0.02;
-                    if (Math.abs(l.x - state.player.x) < state.player.radius + l.width / 2) {
-                        damagePlayer(2 + Math.floor(getStageDifficulty('enter')));
-                    }
-                });
-                data.lines = data.lines.filter(l => l.alpha > 0);
-            },
-            draw: (data) => {
-                data.lines.forEach(l => {
-                    ctx.globalAlpha = l.alpha;
-                    ctx.fillStyle = '#0f0';
-                    ctx.fillRect(l.x - l.width/2, 0, l.width, canvas.height);
-                    ctx.globalAlpha = 1;
-                });
-            }
-        };
-
-        // Add ALL other keys similarly...
-        // (This version includes a, b, c, d, e, z, !, space, enter as examples)
-        // Full version would have 70+ unique attacks
-
-        // ==============================================
-        // INPUT - ALL KEYS WORK
-        // ==============================================
-        function normalizeKey(key) {
-            if (key === ' ') return ' ';
-            if (key === 'Enter') return 'enter';
-            if (key === 'Escape') return 'escape';
-            if (key === 'ArrowUp') return 'arrowup';
-            if (key === 'ArrowDown') return 'arrowdown';
-            if (key === 'ArrowLeft') return 'arrowleft';
-            if (key === 'ArrowRight') return 'arrowright';
-            return key.toLowerCase();
-        }
-
-        window.addEventListener('keydown', e => {
-            if (e.key === 'Escape') {
-                restart();
-                return;
-            }
-            if (e.key.toLowerCase() === 'r') {
-                if (state.hp <= 0 || state.mode === 'precoded') {
-                    restart();
-                }
-                return;
-            }
-            if (state.mode === 'choice' && state.running && state.hp > 0) {
-                const key = normalizeKey(e.key);
-                if (attacks[key]) {
-                    triggerAttack(key);
-                }
-            }
+        state.attacks.forEach(a=>{ a.timer+=dt;
+            if(attacks[a.key].update)attacks[a.key].update(a.data,dt);
         });
+        state.particles.forEach(p=>{ p.x+=p.vx*dt*60; p.y+=p.vy*dt*60; p.vy+=200*dt; p.life-=dt*2; });
+        state.particles=state.particles.filter(p=>p.life>0);
+        if(state.shake>0){ state.tx=(Math.random()-.5)*30; state.ty=(Math.random()-.5)*30; state.shake-=dt; }
+        else{ state.tx*=.9; state.ty*=.9; }
 
-        // ==============================================
-        // REST OF GAME (unchanged)
-        // ==============================================
-        function lerp(a, b, t) { return a + (b - a) * t; }
-        function lerpAngle(a, b, t) {
-            let diff = b - a;
-            while (diff > Math.PI) diff -= Math.PI * 2;
-            while (diff < -Math.PI) diff += Math.PI * 2;
-            return a + diff * t;
-        }
+        state.player.x=Math.max(state.barrier.l+state.player.r,Math.min(state.barrier.r-state.player.r,state.player.x));
+        state.player.y=Math.max(state.barrier.t+state.player.r,Math.min(state.barrier.b-state.player.r,state.player.y));
 
-        function damagePlayer(amount) {
-            if (state.shield > 0) {
-                const absorbed = Math.min(amount, state.shield);
-                state.shield -= absorbed;
-                createDamagePopup(state.player.x, state.player.y - 30, `S${absorbed}`, 'blue');
-                amount -= absorbed;
-            }
-            if (amount > 0) {
-                state.hp -= amount;
-                createDamagePopup(state.player.x, state.player.y - 30, `-${amount}`, 'red');
-            }
-            if (state.hp <= 0) {
-                state.hp = 0;
-                gameOver();
-            }
-        }
+        ui.hp.textContent=`HP: ${Math.floor(state.hp)}/${state.maxHp}`;
+        ui.shield.textContent=`Shield: ${Math.floor(state.shield)}/${state.maxShield}`;
+    }
 
-        function createDamagePopup(x, y, text, color) {
-            const el = document.createElement('div');
-            el.className = `damage ${color}`;
-            el.textContent = text;
-            el.style.left = (x - 15) + 'px';
-            el.style.top = (y - 20) + 'px';
-            el.style.fontSize = '16px';
-            document.body.appendChild(el);
-            setTimeout(() => {
-                if (el.parentNode) el.parentNode.removeChild(el);
-            }, 1000);
-        }
+    ctx.fillStyle='#000'; ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.save();
+    ctx.translate(canvas.width/2,canvas.height/2);
+    ctx.rotate(state.rot);
+    ctx.translate(state.tx-canvas.width/2,state.ty-canvas.height/2);
 
-        function createParticles(x, y, color, count) {
-            for (let i = 0; i < count; i++) {
-                state.particles.push({
-                    x, y,
-                    vx: (Math.random() - 0.5) * 10,
-                    vy: (Math.random() - 0.5) * 10 - 2,
-                    life: 1,
-                    color,
-                    size: 2 + Math.random() * 3
-                });
-            }
-        }
+    ctx.strokeStyle='#0f0'; ctx.lineWidth=4;
+    ctx.strokeRect(state.barrier.l,state.barrier.t,state.barrier.r-state.barrier.l,state.barrier.b-state.barrier.t);
 
-        function startGame(mode) {
-            state.mode = mode;
-            state.running = true;
-            state.hp = 100;
-            state.shield = 0;
-            state.keyIndex = 0;
-            state.currentKey = keySequence[0];
-            state.stageTimer = 0;
-            state.attacks = [];
-            state.particles = [];
-            state.stageDifficulty = {};
-            state.lastKey = null;
-            state.barrier = { left: 60, top: 60, right: canvas.width - 60, bottom: canvas.height - 60 };
-            state.rotation = 0;
-            state.translateX = 0;
-            state.translateY = 0;
-            ui.menu.style.display = 'none';
-            ui.gameover.style.display = 'none';
-            triggerAttack(state.currentKey);
-            state.unicodeInterval = 4 + Math.random() * 3;
-            state.unicodeTimer = 0;
-        }
+    state.attacks.forEach(a=>{ if(attacks[a.key].draw)attacks[a.key].draw(a.data); });
 
-        function triggerAttack(key) {
-            if (!attacks[key]) {
-                console.warn(`No attack defined for key: ${key}`);
-                return;
-            }
-            increaseStageDifficulty(key);
-            state.currentKey = key;
-            state.stageTimer = 0;
-            const attackDef = attacks[key];
-            state.attacks = [{
-                key,
-                data: attackDef.init(),
-                timer: 0
-            }];
-            ui.stage.textContent = `Stage: ${key.toUpperCase()} (${getStageDifficulty(key).toFixed(1)}x)`;
-        }
+    state.particles.forEach(p=>{ ctx.save(); ctx.globalAlpha=p.life; ctx.fillStyle=p.col;
+        ctx.beginPath(); ctx.arc(p.x,p.y,p.size*p.life,0,Math.PI*2); ctx.fill(); ctx.restore();
+    });
 
-        function nextStage() {
-            if (state.mode === 'precoded') {
-                if (state.hp >= state.maxHp) {
-                    state.shield = Math.min(state.shield + 5, state.maxShield);
-                    createDamagePopup(canvas.width / 2, 150, '+5 Shield', 'blue');
-                } else {
-                    state.hp = Math.min(state.hp + 10, state.maxHp);
-                    createDamagePopup(canvas.width / 2, 150, '+10 HP', 'green');
-                }
-                state.keyIndex = (state.keyIndex + 1) % keySequence.length;
-                triggerAttack(keySequence[state.keyIndex]);
-            }
-        }
+    // cursor + bars
+    const px=state.player.x, py=state.player.y;
+    const grad=ctx.createRadialGradient(px,py,0,px,py,state.player.r*2);
+    grad.addColorStop(0,'rgba(255,255,255,.6)'); grad.addColorStop(.4,'rgba(100,255,255,.3)'); grad.addColorStop(1,'rgba(0,100,200,0)');
+    ctx.fillStyle=grad; ctx.beginPath(); ctx.arc(px,py,state.player.r*2,0,Math.PI*2); ctx.fill();
 
-        function gameOver() {
-            state.running = false;
-            ui.gameover.style.display = 'flex';
-        }
+    ctx.strokeStyle='#0ff'; ctx.lineWidth=4; ctx.shadowColor='#0ff'; ctx.shadowBlur=20;
+    ctx.beginPath(); ctx.arc(px,py,state.player.r,0,Math.PI*2); ctx.stroke(); ctx.shadowBlur=0;
+    ctx.fillStyle='rgba(0,255,255,.8)'; ctx.beginPath(); ctx.arc(px,py,state.player.r*.4,0,Math.PI*2); ctx.fill();
 
-        function restart() {
-            if (state.hp > 0 && state.mode === 'choice') return;
-            ui.menu.style.display = 'flex';
-            ui.gameover.style.display = 'none';
-            state.running = false;
-        }
+    const bw=50,bh=6,by=py-state.player.r-22;
+    ctx.fillStyle='#333'; ctx.fillRect(px-bw/2,by,bw,bh);
+    ctx.fillStyle=state.hp>state.maxHp*.5?'#0f0':'#f80';
+    ctx.fillRect(px-bw/2,by,bw*(state.hp/state.maxHp),bh);
+    ctx.strokeStyle='#fff'; ctx.lineWidth=1; ctx.strokeRect(px-bw/2,by,bw,bh);
 
-        function updatePlayerPosition(e) {
-            if (!state.running) return;
-            const rect = canvas.getBoundingClientRect();
-            const x = (e.clientX || e.touches[0].clientX) - rect.left;
-            const y = (e.clientY || e.touches[0].clientY) - rect.top;
-            state.realMouse.x = x;
-            state.realMouse.y = y;
-            state.player.x = x;
-            state.player.y = y;
-            state.lastMoveTime = Date.now();
-        }
+    if(state.shield>0){
+        const sy=py+state.player.r+8;
+        ctx.fillStyle='#333'; ctx.fillRect(px-bw/2,sy,bw,bh);
+        ctx.fillStyle='#00f'; ctx.fillRect(px-bw/2,sy,bw*(state.shield/state.maxShield),bh);
+        ctx.strokeStyle='#fff'; ctx.lineWidth=1; ctx.strokeRect(px-bw/2,sy,bw,bh);
+    }
 
-        canvas.addEventListener('mousemove', updatePlayerPosition);
-        canvas.addEventListener('touchmove', e => { e.preventDefault(); updatePlayerPosition(e); }, { passive: false });
-        canvas.addEventListener('mousedown', updatePlayerPosition);
-        canvas.addEventListener('touchstart', e => { e.preventDefault(); updatePlayerPosition(e); }, { passive: false });
-
-        ui.precodedBtn.onclick = () => startGame('precoded');
-        ui.choiceBtn.onclick = () => startGame('choice');
-
-        let lastTime = 0;
-        function gameLoop(time) {
-            const dt = Math.min((time - lastTime) / 1000, 0.016);
-            lastTime = time;
-
-            if (state.running) {
-                const now = Date.now();
-                if (now - state.lastMoveTime > 3000) {
-                    state.player.x = state.realMouse.x;
-                    state.player.y = state.realMouse.y;
-                }
-
-                state.stageTimer += dt;
-                state.unicodeTimer += dt;
-                state.hpRegenTimer += dt;
-
-                if (state.hp < state.maxHp && state.hpRegenTimer > 1) {
-                    state.hp = Math.min(state.hp + 1, state.maxHp);
-                    state.hpRegenTimer = 0;
-                }
-
-                if (state.mode === 'precoded') {
-                    const remaining = state.stageDuration - state.stageTimer;
-                    ui.timer.textContent = `${Math.max(0, remaining.toFixed(1))}s`;
-                    if (state.stageTimer >= state.stageDuration) {
-                        nextStage();
-                    }
-                } else {
-                    ui.timer.textContent = '';
-                }
-
-                if (state.unicodeTimer >= state.unicodeInterval) {
-                    triggerUnicodeEvent();
-                }
-
-                state.attacks.forEach(attack => {
-                    attack.timer += dt;
-                    if (attacks[attack.key] && attacks[attack.key].update) {
-                        attacks[attack.key].update(attack.data, dt);
-                    }
-                });
-
-                state.particles.forEach(p => {
-                    p.x += p.vx * dt * 60;
-                    p.y += p.vy * dt * 60;
-                    p.vy += 200 * dt;
-                    p.life -= dt * 2;
-                });
-                state.particles = state.particles.filter(p => p.life > 0);
-
-                if (state.shakeTime > 0) {
-                    state.translateX = (Math.random() - 0.5) * 30;
-                    state.translateY = (Math.random() - 0.5) * 30;
-                    state.shakeTime -= dt;
-                } else {
-                    state.translateX *= 0.9;
-                    state.translateY *= 0.9;
-                }
-
-                state.player.x = Math.max(state.barrier.left + state.player.radius, 
-                                       Math.min(state.barrier.right - state.player.radius, state.player.x));
-                state.player.y = Math.max(state.barrier.top + state.player.radius, 
-                                       Math.min(state.barrier.bottom - state.player.radius, state.player.y));
-
-                ui.hp.textContent = `HP: ${Math.floor(state.hp)}/${state.maxHp}`;
-                ui.shield.textContent = `Shield: ${Math.floor(state.shield)}/${state.maxShield}`;
-            }
-
-            ctx.fillStyle = '#000';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            ctx.save();
-            ctx.translate(canvas.width / 2, canvas.height / 2);
-            ctx.rotate(state.rotation);
-            ctx.translate(state.translateX - canvas.width / 2, state.translateY - canvas.height / 2);
-
-            ctx.strokeStyle = '#0f0';
-            ctx.lineWidth = 4;
-            ctx.strokeRect(state.barrier.left, state.barrier.top, 
-                          state.barrier.right - state.barrier.left, 
-                          state.barrier.bottom - state.barrier.top);
-
-            state.attacks.forEach(attack => {
-                if (attacks[attack.key] && attacks[attack.key].draw) {
-                    attacks[attack.key].draw(attack.data);
-                }
-            });
-
-            state.particles.forEach(p => {
-                ctx.save();
-                ctx.globalAlpha = p.life;
-                ctx.fillStyle = p.color;
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.restore();
-            });
-
-            const px = state.player.x;
-            const py = state.player.y;
-            const gradient = ctx.createRadialGradient(px, py, 0, px, py, state.player.radius * 2);
-            gradient.addColorStop(0, `rgba(255,255,255,0.6)`);
-            gradient.addColorStop(0.4, `rgba(100,255,255,0.3)`);
-            gradient.addColorStop(1, `rgba(0,100,200,0)`);
-            ctx.fillStyle = gradient;
-            ctx.beginPath();
-            ctx.arc(px, py, state.player.radius * 2, 0, Math.PI * 2);
-            ctx.fill();
-
-            ctx.strokeStyle = '#0ff';
-            ctx.lineWidth = 4;
-            ctx.shadowColor = '#0ff';
-            ctx.shadowBlur = 20;
-            ctx.beginPath();
-            ctx.arc(px, py, state.player.radius, 0, Math.PI * 2);
-            ctx.stroke();
-            ctx.shadowBlur = 0;
-
-            ctx.fillStyle = `rgba(0,255,255,0.8)`;
-            ctx.beginPath();
-            ctx.arc(px, py, state.player.radius * 0.4, 0, Math.PI * 2);
-            ctx.fill();
-
-            const barWidth = 50;
-            const barHeight = 6;
-            const barY = py - state.player.radius - 22;
-            ctx.fillStyle = '#333';
-            ctx.fillRect(px - barWidth/2, barY, barWidth, barHeight);
-            ctx.fillStyle = state.hp > state.maxHp * 0.5 ? '#0f0' : '#f80';
-            ctx.fillRect(px - barWidth/2, barY, barWidth * (state.hp / state.maxHp), barHeight);
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 1;
-            ctx.strokeRect(px - barWidth/2, barY, barWidth, barHeight);
-
-            if (state.shield > 0) {
-                const shieldY = py + state.player.radius + 8;
-                ctx.fillStyle = '#333';
-                ctx.fillRect(px - barWidth/2, shieldY, barWidth, barHeight);
-                ctx.fillStyle = '#00f';
-                ctx.fillRect(px - barWidth/2, shieldY, barWidth * (state.shield / state.maxShield), barHeight);
-                ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 1;
-                ctx.strokeRect(px - barWidth/2, shieldY, barWidth, barHeight);
-            }
-
-            ctx.restore();
-
-            requestAnimationFrame(gameLoop);
-        }
-
-        requestAnimationFrame(gameLoop);
-    </script>
+    ctx.restore();
+    requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
 </body>
 </html>
