@@ -213,7 +213,7 @@
         let state = 'menu'; // menu, playing, gameover, yourchoice
         let world = 1;
         let stageIndex = 0;
-        let stageTimer = 20;
+        let stageTimer = 0;
         let stageStartTime = 0;
         let fade = 0;
         let fadeDir = 0;
@@ -271,14 +271,14 @@
 
         // Rarity weights for diggers (cumulative)
         const rarityTiers = [
-            {name: 'Common', color: '#888', hp: 100, regen: 5, bonus: 'none', cum: 0.6},
-            {name: 'Uncommon', color: '#00f', hp: 150, regen: 8, bonus: 'fast spin', cum: 0.8},
-            {name: 'Rare', color: '#0f0', hp: 200, regen: 10, bonus: 'AoE pulse', cum: 0.9},
-            {name: 'Epic', color: '#f0f', hp: 250, regen: 15, bonus: 'deflect', cum: 0.93},
-            {name: 'Legendary', color: '#ff0', hp: 300, regen: 20, bonus: 'ram boost', cum: 0.95},
-            {name: 'Legionary', color: '#f80', hp: 350, regen: 25, bonus: 'homing charge', cum: 0.965},
-            {name: 'Mythic', color: '#0ff', hp: 400, regen: 30, bonus: 'aura', cum: 0.975},
-            {name: 'Myth', color: '#fff', hp: 500, regen: 35, bonus: 'reflect + heal', cum: 1.0}
+            {name: 'Common', color: '#888', hp: 100, regen: 1, bonus: 'none', cum: 0.6},
+            {name: 'Uncommon', color: '#00f', hp: 150, regen: 2, bonus: 'fast spin', cum: 0.8},
+            {name: 'Rare', color: '#0f0', hp: 200, regen: 3, bonus: 'AoE pulse', cum: 0.9},
+            {name: 'Epic', color: '#f0f', hp: 250, regen: 5, bonus: 'deflect', cum: 0.93},
+            {name: 'Legendary', color: '#ff0', hp: 300, regen: 7, bonus: 'ram boost', cum: 0.95},
+            {name: 'Legionary', color: '#f80', hp: 350, regen: 10, bonus: 'homing charge', cum: 0.965},
+            {name: 'Mythic', color: '#0ff', hp: 400, regen: 15, bonus: 'aura', cum: 0.975},
+            {name: 'Myth', color: '#fff', hp: 500, regen: 20, bonus: 'reflect + heal', cum: 1.0}
         ];
 
         // Behaviors
@@ -663,15 +663,24 @@
             ctx.shadowColor = digger.color;
             ctx.shadowBlur = 15;
             ctx.fill();
-            // Spikes
+            // Spikes as triangles
             for (let i = 0; i < 8; i++) {
-                const ang = (i/8)*Math.PI*2;
+                const ang = (i / 8) * Math.PI * 2;
+                const baseAng1 = ang - 0.1;
+                const baseAng2 = ang + 0.1;
+                const baseX1 = Math.cos(baseAng1) * digger.r;
+                const baseY1 = Math.sin(baseAng1) * digger.r;
+                const baseX2 = Math.cos(baseAng2) * digger.r;
+                const baseY2 = Math.sin(baseAng2) * digger.r;
+                const tipX = Math.cos(ang) * (digger.r + 20);
+                const tipY = Math.sin(ang) * (digger.r + 20);
                 ctx.beginPath();
-                ctx.moveTo(0,0);
-                ctx.lineTo(Math.cos(ang)* (digger.r + 10), Math.sin(ang)*(digger.r + 10));
-                ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 2;
-                ctx.stroke();
+                ctx.moveTo(baseX1, baseY1);
+                ctx.lineTo(tipX, tipY);
+                ctx.lineTo(baseX2, baseY2);
+                ctx.closePath();
+                ctx.fillStyle = '#fff';
+                ctx.fill();
             }
             ctx.restore();
 
@@ -804,7 +813,7 @@
                 player.hp = Math.min(player.maxHp, player.hp + 25 * dt);
             }
             if (status.shieldRegen > 0) {
-                player.shield = Math.min(player.maxShield, player.shield + 30 * dt);
+                player.shield = Math.min(player.maxShield * 2, player.shield + 30 * dt); // Allow overshield up to 2x
             }
             if (status.poison > 0 && player.hp > 20) {
                 player.hp -= 7 * dt;
@@ -910,14 +919,14 @@
             ctx.save();
             ctx.translate(player.x + screenShake.x, player.y + screenShake.y);
             ctx.shadowColor = player.shield > 0 ? '#0ff' : '#fff';
-            ctx.shadowBlur = 20;
+            ctx.shadowBlur = player.shield > player.maxShield ? 30 : 20;
             ctx.beginPath();
             ctx.arc(0, 0, player.r, 0, Math.PI*2);
             ctx.fillStyle = player.shield > 0 ? '#0ff' : '#0f0';
             ctx.fill();
             if (player.shield > 0) {
                 ctx.beginPath();
-                ctx.arc(0, 0, player.r + 5, 0, Math.PI*2);
+                ctx.arc(0, 0, player.r + (player.shield / player.maxShield * 5), 0, Math.PI*2);
                 ctx.strokeStyle = '#fff';
                 ctx.lineWidth = 2;
                 ctx.stroke();
@@ -927,30 +936,47 @@
 
         // Update HUD
         function updateHud() {
-            document.getElementById('top-left').innerHTML = `HP: ${Math.round(player.hp)}/${player.maxHp}<br>Shield: ${Math.round(player.shield)}/${player.maxShield}<br>Stage: ${world === 1 ? keyboardKeys[stageIndex] : unicodeSymbols[stageIndex] || '???'}`;
+            document.getElementById('top-left').innerHTML = `HP: ${Math.round(player.hp)}/${player.maxHp}<br>Shield: ${Math.round(player.shield)}/${player.maxShield}${player.shield > player.maxShield ? ' (OS)' : ''}<br>Stage: ${world === 1 ? keyboardKeys[stageIndex] : unicodeSymbols[stageIndex] || '???'}`;
             document.getElementById('top-center').innerHTML = `Time: ${Math.max(0, Math.round(stageTimer))}`;
         }
 
         // Transition
-        function updateFade() {
+        function updateFade(time) {
             if (fadeDir !== 0) {
                 fade += fadeDir * dt * 2;
                 if (fade >= 1 || fade <= 0) {
                     fade = Math.max(0, Math.min(1, fade));
                     fadeDir = 0;
-                    if (fade === 0 && state === 'playing') {
+                    if (fade === 1 && state === 'playing') {
                         // End stage
                         player.hp = Math.min(player.maxHp, player.hp + 12);
+                        // Handle diggers
+                        diggers = diggers.filter(d => {
+                            const tierIndex = rarityTiers.findIndex(t => t.name === d.rarity);
+                            if (tierIndex < 3) { // Common, Uncommon, Rare < Epic (index 3)
+                                player.shield += d.hp / 2;
+                                popups.push({text: `+${Math.round(d.hp / 2)} Shield`, x: player.x, y: player.y - 20, life: 2, color: '#0ff'});
+                                return false;
+                            }
+                            return true;
+                        });
+                        projectiles = []; // Cleanup
                         stageIndex++;
+                        stageTimer = 5 + Math.random() * 7;
+                        stageStartTime = time;
                         if (stageIndex >= (world === 1 ? keyboardKeys.length : unicodeSymbols.length)) {
                             if (world === 1) progress.world1 = true;
-                            else progress.yourChoice = true; // After w2
+                            else {
+                                progress.world2 = true;
+                                progress.yourChoice = true;
+                            }
                             localStorage.setItem('keyboardDoomProgress', JSON.stringify(progress));
                             state = 'menu';
+                            document.body.style.cursor = 'default';
+                            menu.style.display = 'block';
+                            hud.style.display = 'none';
                             return;
                         }
-                        stageTimer = 20;
-                        stageStartTime = performance.now() / 1000;
                         fadeDir = -1; // Fade in
                     }
                 }
@@ -961,30 +987,28 @@
         function update(time) {
             dt = Math.min((time - lastTime) / 1000, 0.05); // Cap dt
             lastTime = time;
+            const currentTime = time / 1000;
 
             if (state === 'playing') {
                 stageTimer -= dt;
                 updatePlayer();
-                projectiles.forEach(updateProjectile);
-                diggers.forEach((d, i) => updateDigger(d, time / 1000));
+                projectiles.forEach(p => updateProjectile(p, currentTime));
+                diggers.forEach((d, i) => updateDigger(d, currentTime));
                 updateParticles();
                 updatePopups();
                 checkPlayerCollisions();
                 checkDiggerProjCollisions();
-                updateEvents(time / 1000);
-                updateStage(time / 1000);
-                updateDiggerSpawns(time / 1000);
+                updateEvents(currentTime);
+                updateStage(currentTime);
+                updateDiggerSpawns(currentTime);
                 updateShake();
                 updateHud();
                 if (stageTimer <= 0) {
                     fadeDir = 1; // Fade out
                 }
-                updateFade();
-                if (progress.world1 && progress.yourChoice && world === 2 && stageIndex >= unicodeSymbols.length - 1) {
-                    progress.yourChoice = true; // Ensure
-                }
+                updateFade(currentTime);
             } else if (state === 'gameover') {
-                updateFade();
+                updateFade(currentTime);
                 if (fade <= 0) gameover.style.opacity = 1;
             }
 
@@ -995,7 +1019,7 @@
                         resetGame();
                     }
                 }
-            });
+            }, {once: false});
         }
 
         // Render
@@ -1050,7 +1074,7 @@
             projectiles = [];
             particles = [];
             popups = [];
-            stageTimer = 20;
+            stageTimer = 0;
             stageIndex = 0;
             fade = 0;
             fadeDir = 0;
@@ -1062,6 +1086,7 @@
             hud.style.display = 'none';
             menu.style.display = 'block';
             choiceGrid.style.display = 'none';
+            document.body.style.cursor = 'default';
         }
 
         // Menu functions
@@ -1071,7 +1096,7 @@
             const ycBtn = document.getElementById('yourchoice-btn');
             const passSection = document.getElementById('passcode-section');
 
-            w1Btn.classList.toggle('locked', !progress.world1 && !true); // Always unlock w1
+            w1Btn.classList.toggle('locked', false); // Always unlock w1
             w2Btn.classList.toggle('locked', !progress.world2);
             ycBtn.classList.toggle('locked', !progress.world1 || !progress.world2);
 
@@ -1098,11 +1123,21 @@
         function startWorld(w) {
             if (w === 2 && !progress.world2) return;
             world = w;
-            resetGame();
+            stageTimer = 5 + Math.random() * 7;
+            stageIndex = 0;
+            stageStartTime = performance.now() / 1000;
+            resetGameVars();
             state = 'playing';
             menu.style.display = 'none';
             hud.style.display = 'block';
-            stageStartTime = performance.now() / 1000;
+            document.body.style.cursor = 'none';
+        }
+
+        function resetGameVars() {
+            player.x = width / 2;
+            player.y = height / 2;
+            projectiles = [];
+            diggers = []; // Reset diggers per world? Or persist? Brief: survives between stages, but new world reset
         }
 
         function startYourChoice() {
@@ -1138,12 +1173,13 @@
         function playChoiceStage(id, w) {
             world = w;
             stageIndex = w === 1 ? keyboardKeys.indexOf(id) : unicodeSymbols.indexOf(id);
+            stageTimer = 5 + Math.random() * 7;
+            stageStartTime = performance.now() / 1000;
+            resetGameVars();
             state = 'playing';
             choiceGrid.style.display = 'none';
             hud.style.display = 'block';
-            stageTimer = 20;
-            stageStartTime = performance.now() / 1000;
-            projectiles = []; // Cleanup
+            document.body.style.cursor = 'none';
         }
 
         // Mouse
