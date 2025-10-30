@@ -16,12 +16,14 @@
             justify-content: center;
             align-items: center;
             height: 100vh;
+            position: relative;
         }
         #game {
             border: 1px solid #fff;
             image-rendering: pixelated;
             image-rendering: -moz-crisp-edges;
             image-rendering: crisp-edges;
+            pointer-events: none;
         }
         #menu {
             position: absolute;
@@ -29,7 +31,8 @@
             left: 50%;
             transform: translate(-50%, -50%);
             text-align: center;
-            z-index: 10;
+            z-index: 20;
+            pointer-events: auto;
         }
         #menu button {
             width: 260px;
@@ -42,6 +45,7 @@
             margin: 10px 0;
             cursor: pointer;
             transition: background 0.2s;
+            pointer-events: auto;
         }
         #menu button:hover:not(.locked) {
             background: #444;
@@ -67,7 +71,7 @@
         }
         #passcode-section {
             margin-top: 20px;
-            display: none;
+            display: block;
         }
         #passcode {
             width: 150px;
@@ -176,12 +180,12 @@
         </button>
         <div id="passcode-section">
             <input type="password" id="passcode" placeholder="Enter code">
-            <button id="passcode-btn" onclick="checkPasscode()">Enter</button>
+            <button id="passcode-btn">Enter</button>
         </div>
         <p style="font-size: 12px; margin-top: 20px;">Hint: Type 'showcode' in console for secret.</p>
     </div>
     <div id="choice-grid">
-        <button id="back-choice" onclick="backToMenu()">Back</button>
+        <button id="back-choice">Back</button>
         <div id="key-grid" style="display: grid; grid-template-columns: repeat(10, 50px); gap: 2px; position: absolute; top: 60px; left: 50%; transform: translateX(-50%);"></div>
         <div id="uni-grid" style="display: grid; grid-template-columns: repeat(10, 50px); gap: 2px; position: absolute; top: 60px; left: 50%; transform: translateX(-50%); margin-top: 300px;"></div>
     </div>
@@ -1160,11 +1164,15 @@
             w2Btn.classList.toggle('locked', !progress.world2);
             ycBtn.classList.toggle('locked', !(progress.world1 && progress.world2));
 
-            passSection.style.display = progress.world1 ? 'block' : 'none';
+            passSection.style.display = 'block';
 
-            w1Btn.onclick = () => startWorld(1);
-            w2Btn.onclick = () => startWorld(2);
-            ycBtn.onclick = () => startYourChoice();
+            // Use addEventListener instead of onclick
+            w1Btn.addEventListener('click', () => startWorld(1));
+            w2Btn.addEventListener('click', () => startWorld(2));
+            ycBtn.addEventListener('click', () => startYourChoice());
+
+            const passcodeBtn = document.getElementById('passcode-btn');
+            passcodeBtn.addEventListener('click', checkPasscode);
         }
 
         function checkPasscode() {
@@ -1213,7 +1221,7 @@
                 const btn = document.createElement('button');
                 btn.className = 'choice-btn';
                 btn.textContent = key.length > 1 ? key.substring(0,3) : key;
-                btn.onclick = () => playChoiceStage(key, 1);
+                btn.addEventListener('click', () => playChoiceStage(key, 1));
                 keyGrid.appendChild(btn);
             });
             uniGrid.innerHTML = '';
@@ -1221,9 +1229,12 @@
                 const btn = document.createElement('button');
                 btn.className = 'choice-btn';
                 btn.textContent = sym;
-                btn.onclick = () => playChoiceStage(sym, 2);
+                btn.addEventListener('click', () => playChoiceStage(sym, 2));
                 uniGrid.appendChild(btn);
             });
+            // Back button
+            const backBtn = document.getElementById('back-choice');
+            backBtn.addEventListener('click', backToMenu);
         }
 
         function backToMenu() {
