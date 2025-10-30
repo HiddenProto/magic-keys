@@ -1,400 +1,1670 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>KEYBOARD DOOM – ALL KEYS WORK</title>
-<style>
-    *{margin:0;padding:0;box-sizing:border-box}
-    html,body{width:100%;height:100%;overflow:hidden;background:#000}
-    canvas{display:block;cursor:none}
-    #ui{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;font-family:'Courier New',monospace;color:#fff}
-    .hud{position:absolute;font-size:18px;font-weight:bold}
-    #hp{top:15px;left:20px}
-    #shield{top:40px;left:20px}
-    #stage{top:65px;left:20px}
-    #timer{top:15px;left:50%;transform:translateX(-50%)}
-    #instructions{bottom:20px;left:50%;transform:translateX(-50%);font-size:16px;opacity:.8}
-    #menu,#gameover{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.9);display:flex;flex-direction:column;justify-content:center;align-items:center;pointer-events:all}
-    button{margin:15px;padding:18px 36px;font-size:24px;font-family:'Courier New',monospace;background:#222;color:#0f0;border:2px solid #0f0;cursor:pointer;transition:.2s}
-    button:hover{background:#0f0;color:#000}
-    #gameover h1{font-size:48px;margin-bottom:20px;color:#f00;text-shadow:0 0 10px #f00}
-    .damage{position:absolute;font-weight:bold;pointer-events:none;user-select:none;animation:float 1s ease-out forwards}
-    @keyframes float{0%{transform:translateY(0);opacity:1}100%{transform:translateY(-60px);opacity:0}}
-    .red{color:#f00;text-shadow:0 0 5px #f00}
-    .green{color:#0f0;text-shadow:0 0 5px #0f0}
-    .blue{color:#00f;text-shadow:0 0 5px #00f}
-</style>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>KEYBOARD DOOM – FULLY WORKING, NO FREEZES</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; overflow: hidden; touch-action: none; background: #000; }
+        canvas { display: block; image-rendering: pixelated; cursor: none; }
+        #ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; font-family: 'Courier New', monospace; color: #fff; }
+        .hud { position: absolute; font-size: 18px; font-weight: bold; }
+        #hp { top: 15px; left: 20px; }
+        #shield { top: 40px; left: 20px; }
+        #stage { top: 65px; left: 20px; }
+        #timer { top: 15px; left: 50%; transform: translateX(-50%); }
+        #instructions { bottom: 20px; left: 50%; transform: translateX(-50%); font-size: 16px; opacity: 0.8; }
+        #menu, #gameover { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; flex-direction: column; justify-content: center; align-items: center; pointer-events: all; }
+        button { margin: 15px; padding: 18px 36px; font-size: 24px; font-family: 'Courier New', monospace; background: #222; color: #0f0; border: 2px solid #0f0; cursor: pointer; transition: all 0.2s; }
+        button:hover { background: #0f0; color: #000; }
+        #gameover h1 { font-size: 48px; margin-bottom: 20px; color: #f00; text-shadow: 0 0 10px #f00; }
+        .damage { position: absolute; font-weight: bold; pointer-events: none; user-select: none; animation: float 1s ease-out forwards; }
+        @keyframes float { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-60px); opacity: 0; } }
+        .red { color: #f00; text-shadow: 0 0 5px #f00; }
+        .green { color: #0f0; text-shadow: 0 0 5px #0f0; }
+        .blue { color: #00f; text-shadow: 0 0 5px #00f; }
+    </style>
 </head>
 <body>
-<canvas id="c"></canvas>
-<div id="ui">
-    <div id="hp" class="hud">HP: 100/100</div>
-    <div id="shield" class="hud">Shield: 0/50</div>
-    <div id="stage" class="hud">Stage: -</div>
-    <div id="timer" class="hud"></div>
-    <div id="instructions" class="hud">DODGE | UNICODE EVENTS | R = RESTART</div>
-</div>
-<div id="menu">
-    <h1 style="font-size:48px;margin-bottom:40px;color:#0f0;text-shadow:0 0 15px #0f0;">KEYBOARD DOOM</h1>
-    <button id="precoded">Precoded Order</button>
-    <button id="choice">Your Choice</button>
-</div>
-<div id="gameover" style="display:none;">
-    <h1>GAME OVER</h1>
-    <p style="margin-bottom:20px;font-size:20px;">Press R to Restart</p>
-</div>
+    <canvas id="game"></canvas>
+    <div id="ui">
+        <div id="hp" class="hud">HP: 100/100</div>
+        <div id="shield" class="hud">Shield: 0/50</div>
+        <div id="stage" class="hud">Stage: -</div>
+        <div id="timer" class="hud"></div>
+        <div id="instructions" class="hud">DODGE | UNICODE EVENTS | R = RESTART</div>
+    </div>
+    <div id="menu">
+        <h1 style="font-size:48px; margin-bottom:40px; color:#0f0; text-shadow:0 0 15px #0f0;">KEYBOARD DOOM</h1>
+        <button id="precodedBtn">Precoded Order</button>
+        <button id="choiceBtn">Your Choice</button>
+    </div>
+    <div id="gameover" style="display:none;">
+        <h1>GAME OVER</h1>
+        <p style="margin-bottom:20px; font-size:20px;">Press R to Restart</p>
+    </div>
 
-<script>
-/* ---------- STATE ---------- */
-const canvas = document.getElementById('c');
-const ctx = canvas.getContext('2d');
-const ui = {
-    hp: document.getElementById('hp'),
-    shield: document.getElementById('shield'),
-    stage: document.getElementById('stage'),
-    timer: document.getElementById('timer'),
-    menu: document.getElementById('menu'),
-    gameover: document.getElementById('gameover')
-};
-function resize(){canvas.width=innerWidth;canvas.height=innerHeight;}
-resize();addEventListener('resize',resize);
+    <script>
+        // ==============================================
+        // KEYBOARD DOOM - FULLY WORKING, NO FREEZES, NO SAME BALLS
+        // ALL KEYS HAVE UNIQUE ATTACKS
+        // NO SHORTENED CODE - FULLY EXPANDED
+        // ==============================================
 
-const state = {
-    mode:null, running:false,
-    player:{x:0,y:0,r:18},
-    realMouse:{x:0,y:0},
-    lastMove:0,
-    hp:100, maxHp:100,
-    shield:0, maxShield:50,
-    regenTimer:0,
-    keyIdx:0, stageTimer:0, stageDur:8,
-    unicodeTimer:0, unicodeInt:0,
-    rot:0, tx:0, ty:0, shake:0,
-    barrier:{l:60,t:60,r:0,b:0},
-    attacks:[], particles:[],
-    diff:{}, lastKey:null,
-    spawnInterval:null          // <-- cleared on stage change
-};
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+        const ui = {
+            hp: document.getElementById('hp'),
+            shield: document.getElementById('shield'),
+            stage: document.getElementById('stage'),
+            timer: document.getElementById('timer'),
+            menu: document.getElementById('menu'),
+            gameover: document.getElementById('gameover'),
+            precodedBtn: document.getElementById('precodedBtn'),
+            choiceBtn: document.getElementById('choiceBtn')
+        };
 
-/* ---------- KEYS ---------- */
-const keys = [
-    'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z',
-    '0','1','2','3','4','5','6','7','8','9',
-    '!','@','#','$','%','^','&','*','(',')','_','+',
-    '-','=','[',']','{','}','|',';','\'','"',',','.','<','>','?','/',
-    ' ','enter','backspace','tab','shift','ctrl','alt','capslock','escape',
-    'arrowup','arrowdown','arrowleft','arrowright'
-];
-
-/* ---------- ATTACK FACTORY ---------- */
-const attacks = {};                     // will be filled automatically
-const factory = {
-    // ---- a : homing lasers ----
-    a(){ const d=getDiff('a'); const n=Math.floor(3+d*1.5);
-        const b=[]; for(let i=0;i<n;i++){ const a=i*Math.PI*2/n;
-            b.push({x:canvas.width/2+Math.cos(a)*1000,y:canvas.height/2+Math.sin(a)*1000,
-                    ang:a+Math.PI,spd:0,tSpd:4+d*2,w:3+d*.8,col:`hsl(${i*90},100%,70%)`,trail:[],hit:0});
-        } return {beams:b};
-    },
-    // ---- b : bouncing bubbles ----
-    b(){ const d=getDiff('b'); const n=Math.floor(8+d*3);
-        const bub=[]; for(let i=0;i<n;i++){ const a=i*Math.PI*2/n+Math.random()*.5;
-            bub.push({x:canvas.width/2+Math.cos(a)*300,y:canvas.height/2+Math.sin(a)*300,
-                     vx:Math.cos(a)*(2+d),vy:Math.sin(a)*(2+d),r:15+d*8,col:`hsl(${i*40},100%,70%)`,hit:0});
-        } return {bubbles:bub};
-    },
-    // ---- c : shards + gray wall ----
-    c(){ const d=getDiff('c'); const n=Math.floor(6+d*3);
-        const s=[]; for(let i=0;i<n;i++){
-            let x,y; do{x=state.barrier.l+50+Math.random()*(state.barrier.r-state.barrier.l-100);
-                     y=state.barrier.t+50+Math.random()*(state.barrier.b-state.barrier.t-100);
-            }while(Math.hypot(x-state.player.x,y-state.player.y)<200);
-            s.push({x,y,vx:0,vy:0,tSpd:3+d*1.5,ang:Math.random()*Math.PI*2,spin:(Math.random()-.5)*.25,
-                    sz:12+d*7,col:`hsl(${160+i*30},100%,60%)`,hit:0});
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
         }
-        const w={x:canvas.width+200,spd:-(3+d*2),gap:150-d*20,osc:0,hit:0};
-        if(w.gap<80)w.gap=80; return {shards:s,wall:w};
-    },
-    // ---- generic placeholder for every other key ----
-    default(k){ return {
-        init:()=>{ const d=getDiff(k);
-            const objs=[]; for(let i=0;i<Math.floor(4+d*2);i++){
-                objs.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height,
-                           vx:(Math.random()-.5)*(3+d),vy:(Math.random()-.5)*(3+d),
-                           r:10+d*5,col:`hsl(${i*60},100%,70%)`,hit:0});
-            } return {objs};
-        },
-        update:(data,dt)=>{ data.objs.forEach(o=>{
-            o.x+=o.vx; o.y+=o.vy;
-            if(o.x<state.barrier.l+o.r||o.x>state.barrier.r-o.r)o.vx*=-1;
-            if(o.y<state.barrier.t+o.r||o.y>state.barrier.b-o.r)o.vy*=-1;
-            const dist=Math.hypot(o.x-state.player.x,o.y-state.player.y);
-            if(dist<state.player.r+o.r && Date.now()-o.hit>400){
-                damage(Math.floor(2+d*.8)); o.hit=Date.now();
-                particles(o.x,o.y,o.col,10);
+        resize();
+        window.addEventListener('resize', resize);
+
+        const state = {
+            mode: null,
+            running: false,
+            player: { x: 0, y: 0, radius: 18 },
+            realMouse: { x: 0, y: 0 },
+            lastMoveTime: 0,
+            hp: 100, maxHp: 100,
+            shield: 0, maxShield: 50,
+            hpRegenTimer: 0,
+            currentKey: '',
+            keyIndex: 0,
+            stageTimer: 0,
+            stageDuration: 8,
+            unicodeTimer: 0,
+            unicodeInterval: 0,
+            rotation: 0,
+            translateX: 0, translateY: 0,
+            shakeTime: 0,
+            barrier: { left: 0, top: 0, right: 0, bottom: 0 },
+            attacks: [],
+            particles: [],
+            stageDifficulty: {},
+            lastKey: null,
+            spawnInterval: null
+        };
+
+        // FULL 70+ KEY SEQUENCE
+        const keySequence = [
+            'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z',
+            '0','1','2','3','4','5','6','7','8','9',
+            '!','@','#','$','%','^','&','*','(',')','_','+',
+            '-','=','[',']','{','}','|',';','\'','"',',','.','<','>','?','/',
+            ' ','enter','backspace','tab','shift','ctrl','alt','capslock','escape',
+            'arrowup','arrowdown','arrowleft','arrowright'
+        ];
+
+        const attacks = {};
+
+        // ==============================================
+        // PER-STAGE DIFFICULTY SYSTEM
+        // ==============================================
+        function getStageDifficulty(key) {
+            if (!state.stageDifficulty[key]) state.stageDifficulty[key] = 1.0;
+            return state.stageDifficulty[key];
+        }
+
+        function increaseStageDifficulty(key) {
+            if (state.lastKey === key) {
+                state.stageDifficulty[key] = (state.stageDifficulty[key] || 1.0) * 1.25;
+                if (state.stageDifficulty[key] > 6) state.stageDifficulty[key] = 6;
+            } else {
+                state.stageDifficulty[key] = 1.0;
             }
-        });},
-        draw:(data)=>{ data.objs.forEach(o=>{
-            ctx.fillStyle=o.col; ctx.globalAlpha=.7;
-            ctx.beginPath(); ctx.arc(o.x,o.y,o.r,0,Math.PI*2); ctx.fill();
-            ctx.globalAlpha=1; ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke();
-        });}
-    };}
-};
-
-/* ---------- BUILD ALL ATTACKS ---------- */
-keys.forEach(k=>{
-    if(factory[k]) attacks[k]={
-        init:factory[k],
-        update:(d,dt)=>{ /* custom update will be added later for a,b,c */ },
-        draw:(d)=>{ /* custom draw will be added later for a,b,c */ }
-    };
-    else attacks[k]=factory.default(k);
-});
-
-/* ---- custom update / draw for a,b,c ---- */
-attacks.a.update = (data,dt)=>{ data.beams.forEach(b=>{
-    const dx=state.player.x-b.x, dy=state.player.y-b.y, dist=Math.hypot(dx,dy);
-    if(dist>0) b.ang=lerpAngle(b.ang,Math.atan2(dy,dx),.04);
-    b.spd=Math.min(b.spd+.3,b.tSpd);
-    b.x+=Math.cos(b.ang)*b.spd; b.y+=Math.sin(b.ang)*b.spd;
-    b.trail.push({x:b.x,y:b.y}); if(b.trail.length>20)b.trail.shift();
-    if(dist<b.r+b.w && Date.now()-b.hit>500){ damage(Math.floor(2+getDiff('a')*.6)); particles(b.x,b.y,b.col,8); b.hit=Date.now(); }
-});};
-attacks.a.draw = (data)=>{ data.beams.forEach(b=>{
-    ctx.strokeStyle=b.col; ctx.lineWidth=b.w; ctx.lineCap='round'; ctx.beginPath();
-    b.trail.forEach((p,i)=>{ ctx.globalAlpha=(i/b.trail.length)*.8;
-        i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y); }); ctx.globalAlpha=1; ctx.stroke();
-    ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(b.x,b.y,b.w*2,0,Math.PI*2); ctx.fill();
-});};
-
-attacks.b.update = (data,dt)=>{ data.bubbles.forEach(b=>{
-    b.x+=b.vx; b.y+=b.vy;
-    if(b.x<state.barrier.l+b.r||b.x>state.barrier.r-b.r)b.vx*=-1.1;
-    if(b.y<state.barrier.t+b.r||b.y>state.barrier.b-b.r)b.vy*=-1.1;
-    const dist=Math.hypot(b.x-state.player.x,b.y-state.player.y);
-    if(dist<state.player.r+b.r && Date.now()-b.hit>400){ damage(Math.floor(3+getDiff('b')*.5)); particles(b.x,b.y,b.col,12); b.hit=Date.now(); }
-});};
-attacks.b.draw = (data)=>{ data.bubbles.forEach(b=>{
-    const p=Math.sin(Date.now()*.01+b.x)*3;
-    ctx.fillStyle=b.col; ctx.globalAlpha=.7;
-    ctx.beginPath(); ctx.arc(b.x,b.y,b.r+p,0,Math.PI*2); ctx.fill();
-    ctx.globalAlpha=1; ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke();
-});};
-
-attacks.c.update = (data,dt)=>{ data.shards.forEach(s=>{
-    const dx=state.player.x-s.x, dy=state.player.y-s.y, dist=Math.hypot(dx,dy);
-    if(dist>0) s.ang=lerpAngle(s.ang,Math.atan2(dy,dx),.03);
-    const sp=Math.min(dist/80,s.tSpd);
-    s.vx=Math.cos(s.ang)*sp; s.vy=Math.sin(s.ang)*sp;
-    s.x+=s.vx; s.y+=s.vy; s.ang+=s.spin;
-    if(dist<s.r+s.sz/2 && Date.now()-s.hit>450){ damage(Math.floor(2+getDiff('c'))); particles(s.x,s.y,s.col,10); s.hit=Date.now(); }
-});
-data.wall.osc+=.04; data.wall.x+=data.wall.spd;
-if(data.wall.x<-300)data.wall.x=canvas.width+200;
-const wx=data.wall.x+60, gy=canvas.height/2-data.wall.gap/2+Math.sin(data.wall.osc)*80;
-if(wx>state.player.x-60 && wx<state.player.x+60 && Date.now()-data.wall.hit>600){
-    if(state.player.y<gy||state.player.y>gy+data.wall.gap){ damage(Math.floor(4+getDiff('c')*.5)); data.wall.hit=Date.now(); }
-}};
-attacks.c.draw = (data)=>{ data.shards.forEach(s=>{
-    ctx.save(); ctx.translate(s.x,s.y); ctx.rotate(s.ang);
-    ctx.fillStyle=s.col; ctx.beginPath();
-    for(let i=0;i<6;i++){ const a=i*Math.PI*2/6, r=s.sz*(i%2?.6:1);
-        const x=Math.cos(a)*r, y=Math.sin(a)*r;
-        i?ctx.lineTo(x,y):ctx.moveTo(x,y);
-    } ctx.closePath(); ctx.fill();
-    ctx.strokeStyle='#fff'; ctx.lineWidth=1.5; ctx.stroke(); ctx.restore();
-});
-const gy=canvas.height/2-data.wall.gap/2+Math.sin(data.wall.osc)*80;
-ctx.fillStyle='#555';
-ctx.fillRect(data.wall.x,0,120,gy);
-ctx.fillRect(data.wall.x,gy+data.wall.gap,120,canvas.height-(gy+data.wall.gap));
-ctx.strokeStyle='#fff'; ctx.lineWidth=3; ctx.strokeRect(data.wall.x,0,120,canvas.height);
-};
-
-/* ---------- HELPERS ---------- */
-function lerp(a,b,t){return a+(b-a)*t}
-function lerpAngle(a,b,t){let d=b-a; while(d>Math.PI)d-=Math.PI*2; while(d<-Math.PI)d+=Math.PI*2; return a+d*t}
-function getDiff(k){ if(!state.diff[k])state.diff[k]=1; return state.diff[k] }
-function incDiff(k){
-    if(state.lastKey===k){ state.diff[k]=(state.diff[k]||1)*1.25; if(state.diff[k]>6)state.diff[k]=6; }
-    else state.diff[k]=1;
-    state.lastKey=k;
-}
-function damage(n){
-    if(state.shield>0){ const a=Math.min(n,state.shield); state.shield-=a; popup(state.player.x,state.player.y-30,`S${a}`,'blue'); n-=a; }
-    if(n>0){ state.hp-=n; popup(state.player.x,state.player.y-30,`-${n}`,'red'); }
-    if(state.hp<=0){state.hp=0; gameOver();}
-}
-function popup(x,y,t,c){
-    const el=document.createElement('div'); el.className=`damage ${c}`;
-    el.textContent=t; el.style.left=(x-15)+'px'; el.style.top=(y-20)+'px'; el.style.fontSize='16px';
-    document.body.appendChild(el);
-    setTimeout(()=>{if(el.parentNode)el.parentNode.removeChild(el)},1000);
-}
-function particles(x,y,col,cnt){
-    for(let i=0;i<cnt;i++) state.particles.push({x,y,
-        vx:(Math.random()-.5)*10,vy:(Math.random()-.5)*10-2,life:1,col,size:2+Math.random()*3});
-}
-
-/* ---------- GAME FLOW ---------- */
-function start(mode){
-    state.mode=mode; state.running=true; state.hp=100; state.shield=0;
-    state.keyIdx=0; state.stageTimer=0; state.attacks=[]; state.particles=[];
-    state.diff={}; state.lastKey=null;
-    state.barrier={l:60,t:60,r:canvas.width-60,b:canvas.height-60};
-    state.rot=0; state.tx=0; state.ty=0;
-    ui.menu.style.display='none'; ui.gameover.style.display='none';
-    trigger(keys[0]); state.unicodeInt=4+Math.random()*3; state.unicodeTimer=0;
-    if(state.spawnInterval){clearInterval(state.spawnInterval);state.spawnInterval=null;}
-}
-function trigger(k){
-    if(!attacks[k])return;
-    incDiff(k); state.stageTimer=0;
-    const def=attacks[k];
-    state.attacks=[{key:k,data:def.init?def.init():def.init(),timer:0}];
-    ui.stage.textContent=`Stage: ${k.toUpperCase()} (${getDiff(k).toFixed(1)}x)`;
-}
-function next(){
-    if(state.mode!=='precoded')return;
-    if(state.hp>=state.maxHp){ state.shield=Math.min(state.shield+5,state.maxShield); popup(canvas.width/2,150,'+5 Shield','blue'); }
-    else{ state.hp=Math.min(state.hp+10,state.maxHp); popup(canvas.width/2,150,'+10 HP','green'); }
-    state.keyIdx=(state.keyIdx+1)%keys.length;
-    trigger(keys[state.keyIdx]);
-}
-function gameOver(){ state.running=false; ui.gameover.style.display='flex'; }
-function restart(){ if(state.hp>0 && state.mode==='choice')return; ui.menu.style.display='flex'; ui.gameover.style.display='none'; state.running=false; }
-
-/* ---------- INPUT ---------- */
-function norm(e){
-    if(e.key===' ')return ' ';
-    if(e.key==='Enter')return 'enter';
-    if(e.key==='Escape')return 'escape';
-    if(e.key==='ArrowUp')return 'arrowup';
-    if(e.key==='ArrowDown')return 'arrowdown';
-    if(e.key==='ArrowLeft')return 'arrowleft';
-    if(e.key==='ArrowRight')return 'arrowright';
-    return e.key.toLowerCase();
-}
-addEventListener('keydown',e=>{
-    if(e.key==='Escape'){restart();return;}
-    if(e.key.toLowerCase()==='r'){ if(state.hp<=0||state.mode==='precoded')restart(); return; }
-    if(state.mode==='choice'&&state.running&&state.hp>0){
-        const k=norm(e);
-        if(attacks[k])trigger(k);
-    }
-});
-function setMouse(e){
-    if(!state.running)return;
-    const r=canvas.getBoundingClientRect();
-    const x=(e.clientX||e.touches[0].clientX)-r.left;
-    const y=(e.clientY||e.touches[0].clientY)-r.top;
-    state.realMouse.x=state.player.x=x;
-    state.realMouse.y=state.player.y=y;
-    state.lastMove=Date.now();
-}
-canvas.addEventListener('mousemove',setMouse);
-canvas.addEventListener('touchmove',e=>{e.preventDefault();setMouse(e)},{passive:false});
-canvas.addEventListener('mousedown',setMouse);
-canvas.addEventListener('touchstart',e=>{e.preventDefault();setMouse(e)},{passive:false});
-
-document.getElementById('precoded').onclick=()=>start('precoded');
-document.getElementById('choice').onclick=()=>start('choice');
-
-/* ---------- UNICODE EVENTS ---------- */
-function unicode(){
-    const sym=['Right Arrow','Left Arrow','Up Arrow','Down Arrow','Black Square','Diamond'];
-    const c=sym[Math.floor(Math.random()*sym.length)];
-    ctx.save(); ctx.translate(canvas.width/2,canvas.height/2);
-    ctx.font='bold 140px Arial'; ctx.fillStyle='#ff0'; ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.shadowColor='#ff0'; ctx.shadowBlur=20; ctx.fillText(c,0,0); ctx.restore();
-    if(c==='Right Arrow')state.rot+=Math.PI/2;
-    else if(c==='Left Arrow')state.rot-=Math.PI/2;
-    else if(c==='Up Arrow')state.ty-=80;
-    else if(c==='Down Arrow')state.ty+=80;
-    else if(c==='Black Square'){
-        const s=25; state.barrier.l+=s; state.barrier.t+=s; state.barrier.r-=s; state.barrier.b-=s;
-    }
-    else if(c==='Diamond')state.shake=.4;
-    state.unicodeInt=3+Math.random()*4; state.unicodeTimer=0;
-}
-
-/* ---------- MAIN LOOP ---------- */
-let last=0;
-function loop(t){
-    const dt=Math.min((t-last)/1000,.016); last=t;
-    if(state.running){
-        // cursor return after 3 s
-        if(Date.now()-state.lastMove>3000){
-            state.player.x=state.realMouse.x;
-            state.player.y=state.realMouse.y;
+            state.lastKey = key;
         }
-        state.stageTimer+=dt; state.unicodeTimer+=dt; state.regenTimer+=dt;
-        if(state.hp<state.maxHp && state.regenTimer>1){ state.hp=Math.min(state.hp+1,state.maxHp); state.regenTimer=0; }
-        if(state.mode==='precoded'){
-            const rem=state.stageDur-state.stageTimer;
-            ui.timer.textContent=`${Math.max(0,rem.toFixed(1))}s`;
-            if(state.stageTimer>=state.stageDur)next();
-        }else ui.timer.textContent='';
-        if(state.unicodeTimer>=state.unicodeInt)unicode();
 
-        state.attacks.forEach(a=>{ a.timer+=dt;
-            if(attacks[a.key].update)attacks[a.key].update(a.data,dt);
-        });
-        state.particles.forEach(p=>{ p.x+=p.vx*dt*60; p.y+=p.vy*dt*60; p.vy+=200*dt; p.life-=dt*2; });
-        state.particles=state.particles.filter(p=>p.life>0);
-        if(state.shake>0){ state.tx=(Math.random()-.5)*30; state.ty=(Math.random()-.5)*30; state.shake-=dt; }
-        else{ state.tx*=.9; state.ty*=.9; }
+        // ==============================================
+        // FULLY UNIQUE ATTACKS FOR EVERY KEY
+        // ==============================================
 
-        state.player.x=Math.max(state.barrier.l+state.player.r,Math.min(state.barrier.r-state.player.r,state.player.x));
-        state.player.y=Math.max(state.barrier.t+state.player.r,Math.min(state.barrier.b-state.player.r,state.player.y));
+        // a: Homing lasers
+        attacks['a'] = {
+            init: function() {
+                const diff = getStageDifficulty('a');
+                const count = Math.floor(3 + diff * 1.5);
+                const beams = [];
+                for (let i = 0; i < count; i++) {
+                    const angle = i * Math.PI * 2 / count;
+                    beams.push({
+                        x: canvas.width / 2 + Math.cos(angle) * 1000,
+                        y: canvas.height / 2 + Math.sin(angle) * 1000,
+                        angle: angle + Math.PI,
+                        speed: 0,
+                        targetSpeed: 4 + diff * 2,
+                        width: 3 + diff * 0.8,
+                        color: `hsl(${i*90}, 100%, 70%)`,
+                        trail: [],
+                        lastHit: 0
+                    });
+                }
+                return { beams: beams };
+            },
+            update: function(data, dt) {
+                data.beams.forEach(function(beam) {
+                    const dx = state.player.x - beam.x;
+                    const dy = state.player.y - beam.y;
+                    const dist = Math.hypot(dx, dy);
+                    if (dist > 0) {
+                        const targetAngle = Math.atan2(dy, dx);
+                        beam.angle = lerpAngle(beam.angle, targetAngle, 0.04);
+                    }
+                    beam.speed = Math.min(beam.speed + 0.3, beam.targetSpeed);
+                    beam.x += Math.cos(beam.angle) * beam.speed;
+                    beam.y += Math.sin(beam.angle) * beam.speed;
+                    beam.trail.push({ x: beam.x, y: beam.y });
+                    if (beam.trail.length > 20) beam.trail.shift();
 
-        ui.hp.textContent=`HP: ${Math.floor(state.hp)}/${state.maxHp}`;
-        ui.shield.textContent=`Shield: ${Math.floor(state.shield)}/${state.maxShield}`;
-    }
+                    const now = Date.now();
+                    if (dist < state.player.radius + beam.width && now - beam.lastHit > 500) {
+                        damagePlayer(Math.floor(2 + getStageDifficulty('a') * 0.6));
+                        createParticles(beam.x, beam.y, beam.color, 8);
+                        beam.lastHit = now;
+                    }
+                });
+            },
+            draw: function(data) {
+                data.beams.forEach(function(beam) {
+                    ctx.strokeStyle = beam.color;
+                    ctx.lineWidth = beam.width;
+                    ctx.lineCap = 'round';
+                    ctx.beginPath();
+                    beam.trail.forEach(function(p, i) {
+                        ctx.globalAlpha = (i / beam.trail.length) * 0.8;
+                        if (i === 0) ctx.moveTo(p.x, p.y);
+                        else ctx.lineTo(p.x, p.y);
+                    });
+                    ctx.globalAlpha = 1;
+                    ctx.stroke();
+                    ctx.fillStyle = '#fff';
+                    ctx.beginPath();
+                    ctx.arc(beam.x, beam.y, beam.width * 2, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            }
+        };
 
-    ctx.fillStyle='#000'; ctx.fillRect(0,0,canvas.width,canvas.height);
-    ctx.save();
-    ctx.translate(canvas.width/2,canvas.height/2);
-    ctx.rotate(state.rot);
-    ctx.translate(state.tx-canvas.width/2,state.ty-canvas.height/2);
+        // b: Bouncing bubbles
+        attacks['b'] = {
+            init: function() {
+                const diff = getStageDifficulty('b');
+                const count = Math.floor(8 + diff * 3);
+                const bubbles = [];
+                for (let i = 0; i < count; i++) {
+                    const angle = i * Math.PI * 2 / count + Math.random() * 0.5;
+                    bubbles.push({
+                        x: canvas.width / 2 + Math.cos(angle) * 300,
+                        y: canvas.height / 2 + Math.sin(angle) * 300,
+                        vx: Math.cos(angle) * (2 + diff),
+                        vy: Math.sin(angle) * (2 + diff),
+                        radius: 15 + diff * 8,
+                        color: `hsl(${i*40}, 100%, 70%)`,
+                        lastHit: 0
+                    });
+                }
+                return { bubbles: bubbles };
+            },
+            update: function(data, dt) {
+                data.bubbles.forEach(function(b) {
+                    b.x += b.vx;
+                    b.y += b.vy;
+                    if (b.x < state.barrier.left + b.radius || b.x > state.barrier.right - b.radius) b.vx *= -1.1;
+                    if (b.y < state.barrier.top + b.radius || b.y > state.barrier.bottom - b.radius) b.vy *= -1.1;
+                    
+                    const dx = state.player.x - b.x;
+                    const dy = state.player.y - b.y;
+                    const now = Date.now();
+                    if (Math.hypot(dx, dy) < state.player.radius + b.radius && now - b.lastHit > 400) {
+                        damagePlayer(Math.floor(3 + getStageDifficulty('b') * 0.5));
+                        createParticles(b.x, b.y, b.color, 12);
+                        b.lastHit = now;
+                    }
+                });
+            },
+            draw: function(data) {
+                data.bubbles.forEach(function(b) {
+                    const pulse = Math.sin(Date.now() * 0.01 + b.x) * 3;
+                    ctx.fillStyle = b.color;
+                    ctx.globalAlpha = 0.7;
+                    ctx.beginPath();
+                    ctx.arc(b.x, b.y, b.radius + pulse, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.globalAlpha = 1;
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                });
+            }
+        };
 
-    ctx.strokeStyle='#0f0'; ctx.lineWidth=4;
-    ctx.strokeRect(state.barrier.l,state.barrier.t,state.barrier.r-state.barrier.l,state.barrier.b-state.barrier.t);
+        // c: Crystal shards + gray wall
+        attacks['c'] = {
+            init: function() {
+                const diff = getStageDifficulty('c');
+                const count = Math.floor(6 + diff * 3);
+                const shards = [];
+                for (let i = 0; i < count; i++) {
+                    let x, y;
+                    do {
+                        x = state.barrier.left + 50 + Math.random() * (state.barrier.right - state.barrier.left - 100);
+                        y = state.barrier.top + 50 + Math.random() * (state.barrier.bottom - state.barrier.top - 100);
+                    } while (Math.hypot(x - state.player.x, y - state.player.y) < 200);
+                    shards.push({
+                        x: x, y: y,
+                        vx: 0, vy: 0,
+                        targetSpeed: 3 + diff * 1.5,
+                        angle: Math.random() * Math.PI * 2,
+                        spin: (Math.random() - 0.5) * 0.25,
+                        size: 12 + diff * 7,
+                        color: `hsl(${160 + i*30}, 100%, 60%)`,
+                        lastHit: 0
+                    });
+                }
+                const wall = {
+                    x: canvas.width + 200,
+                    speed: -(3 + diff * 2),
+                    gap: 150 - diff * 20,
+                    oscillation: 0,
+                    lastHit: 0
+                };
+                if (wall.gap < 80) wall.gap = 80;
+                return { shards: shards, wall: wall };
+            },
+            update: function(data, dt) {
+                data.shards.forEach(function(s) {
+                    const dx = state.player.x - s.x;
+                    const dy = state.player.y - s.y;
+                    const dist = Math.hypot(dx, dy);
+                    if (dist > 0) {
+                        const targetAngle = Math.atan2(dy, dx);
+                        s.angle = lerpAngle(s.angle, targetAngle, 0.03);
+                    }
+                    const speed = Math.min(dist / 80, s.targetSpeed);
+                    s.vx = Math.cos(s.angle) * speed;
+                    s.vy = Math.sin(s.angle) * speed;
+                    s.x += s.vx;
+                    s.y += s.vy;
+                    s.angle += s.spin;
 
-    state.attacks.forEach(a=>{ if(attacks[a.key].draw)attacks[a.key].draw(a.data); });
+                    const now = Date.now();
+                    if (dist < state.player.radius + s.size / 2 && now - s.lastHit > 450) {
+                        damagePlayer(Math.floor(2 + getStageDifficulty('c')));
+                        createParticles(s.x, s.y, s.color, 10);
+                        s.lastHit = now;
+                    }
+                });
 
-    state.particles.forEach(p=>{ ctx.save(); ctx.globalAlpha=p.life; ctx.fillStyle=p.col;
-        ctx.beginPath(); ctx.arc(p.x,p.y,p.size*p.life,0,Math.PI*2); ctx.fill(); ctx.restore();
-    });
+                data.wall.oscillation += 0.04;
+                data.wall.x += data.wall.speed;
+                if (data.wall.x < -300) data.wall.x = canvas.width + 200;
 
-    // cursor + bars
-    const px=state.player.x, py=state.player.y;
-    const grad=ctx.createRadialGradient(px,py,0,px,py,state.player.r*2);
-    grad.addColorStop(0,'rgba(255,255,255,.6)'); grad.addColorStop(.4,'rgba(100,255,255,.3)'); grad.addColorStop(1,'rgba(0,100,200,0)');
-    ctx.fillStyle=grad; ctx.beginPath(); ctx.arc(px,py,state.player.r*2,0,Math.PI*2); ctx.fill();
+                const wx = data.wall.x + 60;
+                const gapY = canvas.height / 2 - data.wall.gap / 2 + Math.sin(data.wall.oscillation) * 80;
+                const now = Date.now();
+                if (wx > state.player.x - 60 && wx < state.player.x + 60 && now - data.wall.lastHit > 600) {
+                    if (state.player.y < gapY || state.player.y > gapY + data.wall.gap) {
+                        damagePlayer(Math.floor(4 + getStageDifficulty('c') * 0.5));
+                        data.wall.lastHit = now;
+                    }
+                }
+            },
+            draw: function(data) {
+                data.shards.forEach(function(s) {
+                    ctx.save();
+                    ctx.translate(s.x, s.y);
+                    ctx.rotate(s.angle);
+                    ctx.fillStyle = s.color;
+                    ctx.beginPath();
+                    for (let i = 0; i < 6; i++) {
+                        const a = i * Math.PI * 2 / 6;
+                        const r = s.size * (i % 2 ? 0.6 : 1);
+                        const x = Math.cos(a) * r;
+                        const y = Math.sin(a) * r;
+                        if (i === 0) ctx.moveTo(x, y);
+                        else ctx.lineTo(x, y);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+                    ctx.restore();
+                });
 
-    ctx.strokeStyle='#0ff'; ctx.lineWidth=4; ctx.shadowColor='#0ff'; ctx.shadowBlur=20;
-    ctx.beginPath(); ctx.arc(px,py,state.player.r,0,Math.PI*2); ctx.stroke(); ctx.shadowBlur=0;
-    ctx.fillStyle='rgba(0,255,255,.8)'; ctx.beginPath(); ctx.arc(px,py,state.player.r*.4,0,Math.PI*2); ctx.fill();
+                const gapY = canvas.height / 2 - data.wall.gap / 2 + Math.sin(data.wall.oscillation) * 80;
+                ctx.fillStyle = '#555';
+                ctx.fillRect(data.wall.x, 0, 120, gapY);
+                ctx.fillRect(data.wall.x, gapY + data.wall.gap, 120, canvas.height - (gapY + data.wall.gap));
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(data.wall.x, 0, 120, canvas.height);
+            }
+        };
 
-    const bw=50,bh=6,by=py-state.player.r-22;
-    ctx.fillStyle='#333'; ctx.fillRect(px-bw/2,by,bw,bh);
-    ctx.fillStyle=state.hp>state.maxHp*.5?'#0f0':'#f80';
-    ctx.fillRect(px-bw/2,by,bw*(state.hp/state.maxHp),bh);
-    ctx.strokeStyle='#fff'; ctx.lineWidth=1; ctx.strokeRect(px-bw/2,by,bw,bh);
+        // d: Diagonal death waves
+        attacks['d'] = {
+            init: function() {
+                const diff = getStageDifficulty('d');
+                const count = Math.floor(5 + diff * 3);
+                const waves = [];
+                for (let i = 0; i < count; i++) {
+                    waves.push({
+                        x: -300,
+                        y: (canvas.height / (count + 1)) * (i + 1),
+                        vx: 6 + diff * 3,
+                        vy: Math.sin(i * 0.8) * 2 * diff,
+                        width: 70 + diff * 30,
+                        height: 90 + diff * 40,
+                        color: `hsl(${i*45}, 100%, 50%)`,
+                        pulse: Math.random() * Math.PI * 2
+                    });
+                }
+                return { waves: waves };
+            },
+            update: function(data, dt) {
+                data.waves.forEach(function(w) {
+                    w.x += w.vx;
+                    w.y += w.vy;
+                    w.pulse += 0.12 * getStageDifficulty('d');
+                    if (w.x > canvas.width + 300) {
+                        w.x = -300;
+                        w.y = Math.random() * canvas.height;
+                    }
+                    const cx = w.x + w.width / 2;
+                    const cy = w.y + w.height / 2;
+                    const dx = state.player.x - cx;
+                    const dy = state.player.y - cy;
+                    if (Math.abs(dx) < state.player.radius + w.width / 2 && Math.abs(dy) < state.player.radius + w.height / 2) {
+                        damagePlayer(3 + Math.floor(getStageDifficulty('d')));
+                    }
+                });
+            },
+            draw: function(data) {
+                data.waves.forEach(function(w) {
+                    const pulse = Math.sin(w.pulse) * 15 * getStageDifficulty('d');
+                    ctx.fillStyle = w.color;
+                    ctx.globalAlpha = 0.75;
+                    ctx.fillRect(w.x, w.y, w.width + pulse, w.height + pulse);
+                    ctx.globalAlpha = 1;
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 3;
+                    ctx.strokeRect(w.x, w.y, w.width + pulse, w.height + pulse);
+                });
+            }
+        };
 
-    if(state.shield>0){
-        const sy=py+state.player.r+8;
-        ctx.fillStyle='#333'; ctx.fillRect(px-bw/2,sy,bw,bh);
-        ctx.fillStyle='#00f'; ctx.fillRect(px-bw/2,sy,bw*(state.shield/state.maxShield),bh);
-        ctx.strokeStyle='#fff'; ctx.lineWidth=1; ctx.strokeRect(px-bw/2,sy,bw,bh);
-    }
+        // e: Expanding rings
+        attacks['e'] = {
+            init: function() {
+                const diff = getStageDifficulty('e');
+                const rings = [];
+                const spawnRing = function(delay) {
+                    setTimeout(function() {
+                        rings.push({
+                            x: canvas.width / 2,
+                            y: canvas.height / 2,
+                            radius: 10,
+                            maxRadius: 800,
+                            speed: 5 + diff * 4,
+                            width: 4 + diff,
+                            color: `hsl(${rings.length*60}, 100%, 70%)`,
+                            alpha: 1
+                        });
+                    }, delay);
+                };
+                for (let i = 0; i < 4 + diff * 2; i++) {
+                    spawnRing(i * 400);
+                }
+                return { rings: rings };
+            },
+            update: function(data, dt) {
+                data.rings.forEach(function(r) {
+                    r.radius += r.speed;
+                    r.alpha = 1 - (r.radius / r.maxRadius);
+                    if (r.radius > r.maxRadius) r.alpha = 0;
+                    const dist = Math.hypot(r.x - state.player.x, r.y - state.player.y);
+                    if (dist < state.player.radius + r.width / 2 && r.alpha > 0.5) {
+                        damagePlayer(3 + Math.floor(getStageDifficulty('e')));
+                    }
+                });
+                data.rings = data.rings.filter(function(r) { return r.alpha > 0; });
+            },
+            draw: function(data) {
+                data.rings.forEach(function(r) {
+                    ctx.globalAlpha = r.alpha;
+                    ctx.strokeStyle = r.color;
+                    ctx.lineWidth = r.width;
+                    ctx.beginPath();
+                    ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.globalAlpha = 1;
+                });
+            }
+        };
 
-    ctx.restore();
-    requestAnimationFrame(loop);
-}
-requestAnimationFrame(loop);
-</script>
-</body>
-</html>
+        // f: Fireball storm
+        attacks['f'] = {
+            init: function() {
+                const diff = getStageDifficulty('f');
+                const fireballs = [];
+                const spawn = function() {
+                    const angle = Math.random() * Math.PI * 2;
+                    const dist = 400 + Math.random() * 300;
+                    fireballs.push({
+                        x: canvas.width / 2 + Math.cos(angle) * dist,
+                        y: canvas.height / 2 + Math.sin(angle) * dist,
+                        vx: -Math.cos(angle) * (4 + diff * 5),
+                        vy: -Math.sin(angle) * (4 + diff * 5),
+                        radius: 20 + diff * 20,
+                        trail: [],
+                        lastHit: 0
+                    });
+                };
+                for (let i = 0; i < 10 + diff * 10; i++) {
+                    setTimeout(spawn, i * 200);
+                }
+                return { fireballs: fireballs };
+            },
+            update: function(data, dt) {
+                data.fireballs.forEach(function(f) {
+                    f.x += f.vx;
+                    f.y += f.vy;
+                    f.trail.push({ x: f.x, y: f.y });
+                    if (f.trail.length > 15) f.trail.shift();
+                    const dist = Math.hypot(f.x - state.player.x, f.y - state.player.y);
+                    const now = Date.now();
+                    if (dist < state.player.radius + f.radius && now - f.lastHit > 300) {
+                        damagePlayer(4 + Math.floor(getStageDifficulty('f') * 0.8));
+                        createParticles(f.x, f.y, '#ff4500', 15);
+                        f.lastHit = now;
+                    }
+                    if (f.x < -200 || f.x > canvas.width + 200 || f.y < -200 || f.y > canvas.height + 200) {
+                        const angle = Math.random() * Math.PI * 2;
+                        const dist = 400 + Math.random() * 300;
+                        f.x = canvas.width / 2 + Math.cos(angle) * dist;
+                        f.y = canvas.height / 2 + Math.sin(angle) * dist;
+                        f.trail = [];
+                    }
+                });
+            },
+            draw: function(data) {
+                data.fireballs.forEach(function(f) {
+                    f.trail.forEach(function(p, i) {
+                        ctx.globalAlpha = i / f.trail.length * 0.8;
+                        ctx.fillStyle = '#ff8c00';
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, f.radius * 0.7, 0, Math.PI * 2);
+                        ctx.fill();
+                    });
+                    ctx.globalAlpha = 1;
+                    const grad = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, f.radius);
+                    grad.addColorStop(0, '#ffff00');
+                    grad.addColorStop(0.5, '#ff4500');
+                    grad.addColorStop(1, '#8b0000');
+                    ctx.fillStyle = grad;
+                    ctx.beginPath();
+                    ctx.arc(f.x, f.y, f.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            }
+        };
+
+        // g: Gravity wells
+        attacks['g'] = {
+            init: function() {
+                const diff = getStageDifficulty('g');
+                const wells = [];
+                for (let i = 0; i < 3 + diff * 2; i++) {
+                    wells.push({
+                        x: state.barrier.left + 100 + Math.random() * (state.barrier.right - state.barrier.left - 200),
+                        y: state.barrier.top + 100 + Math.random() * (state.barrier.bottom - state.barrier.top - 200),
+                        radius: 60 + diff * 40,
+                        strength: 300 + diff * 400,
+                        color: `hsl(${200 + i*40}, 100%, 50%)`
+                    });
+                }
+                return { wells: wells };
+            },
+            update: function(data, dt) {
+                data.wells.forEach(function(w) {
+                    const dx = state.player.x - w.x;
+                    const dy = state.player.y - w.y;
+                    const dist = Math.hypot(dx, dy);
+                    if (dist < w.radius + state.player.radius) {
+                        damagePlayer(Math.floor(2 + getStageDifficulty('g') * 0.5));
+                    }
+                    if (dist > 0 && dist < 300) {
+                        const force = w.strength / (dist * dist);
+                        state.player.x -= (dx / dist) * force * dt;
+                        state.player.y -= (dy / dist) * force * dt;
+                    }
+                });
+            },
+            draw: function(data) {
+                data.wells.forEach(function(w) {
+                    const pulse = Math.sin(Date.now() * 0.005) * 10;
+                    ctx.strokeStyle = w.color;
+                    ctx.lineWidth = 3;
+                    for (let i = 1; i <= 5; i++) {
+                        ctx.globalAlpha = 1 / i;
+                        ctx.beginPath();
+                        ctx.arc(w.x, w.y, w.radius * i + pulse, 0, Math.PI * 2);
+                        ctx.stroke();
+                    }
+                    ctx.globalAlpha = 1;
+                    ctx.fillStyle = w.color;
+                    ctx.beginPath();
+                    ctx.arc(w.x, w.y, 15, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            }
+        };
+
+        // h: Horizontal laser grid
+        attacks['h'] = {
+            init: function() {
+                const diff = getStageDifficulty('h');
+                const lasers = [];
+                const spacing = 80 - diff * 15;
+                for (let y = state.barrier.top + 100; y < state.barrier.bottom - 100; y += spacing) {
+                    lasers.push({
+                        y: y,
+                        x1: -200,
+                        x2: canvas.width + 200,
+                        speed: 8 + diff * 6,
+                        direction: Math.random() < 0.5 ? 1 : -1,
+                        color: `hsl(${Math.random()*360}, 100%, 70%)`,
+                        lastHit: 0
+                    });
+                }
+                return { lasers: lasers };
+            },
+            update: function(data, dt) {
+                data.lasers.forEach(function(l) {
+                    l.x1 += l.speed * l.direction;
+                    l.x2 += l.speed * l.direction;
+                    if (l.x1 > canvas.width + 200) { l.x1 = -200; l.x2 = canvas.width + 200; }
+                    if (l.x2 < -200) { l.x2 = canvas.width + 200; l.x1 = -200; }
+                    if (state.player.y > l.y - 20 && state.player.y < l.y + 20) {
+                        if (state.player.x > l.x1 && state.player.x < l.x2) {
+                            const now = Date.now();
+                            if (now - l.lastHit > 300) {
+                                damagePlayer(5 + Math.floor(getStageDifficulty('h')));
+                                l.lastHit = now;
+                            }
+                        }
+                    }
+                });
+            },
+            draw: function(data) {
+                data.lasers.forEach(function(l) {
+                    ctx.strokeStyle = l.color;
+                    ctx.lineWidth = 4;
+                    ctx.beginPath();
+                    ctx.moveTo(l.x1, l.y);
+                    ctx.lineTo(l.x2, l.y);
+                    ctx.stroke();
+                });
+            }
+        };
+
+        // i: Ice shards
+        attacks['i'] = {
+            init: function() {
+                const diff = getStageDifficulty('i');
+                const shards = [];
+                for (let i = 0; i < 12 + diff * 8; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    shards.push({
+                        x: canvas.width / 2 + Math.cos(angle) * 300,
+                        y: canvas.height / 2 + Math.sin(angle) * 300,
+                        vx: Math.cos(angle) * (3 + diff * 4),
+                        vy: Math.sin(angle) * (3 + diff * 4),
+                        size: 15 + diff * 10,
+                        rotation: Math.random() * Math.PI * 2,
+                        spin: (Math.random() - 0.5) * 0.3,
+                        lastHit: 0
+                    });
+                }
+                return { shards: shards };
+            },
+            update: function(data, dt) {
+                data.shards.forEach(function(s) {
+                    s.x += s.vx;
+                    s.y += s.vy;
+                    s.rotation += s.spin;
+                    if (s.x < state.barrier.left || s.x > state.barrier.right) s.vx *= -1;
+                    if (s.y < state.barrier.top || s.y > state.barrier.bottom) s.vy *= -1;
+                    const dist = Math.hypot(s.x - state.player.x, s.y - state.player.y);
+                    const now = Date.now();
+                    if (dist < state.player.radius + s.size && now - s.lastHit > 500) {
+                        damagePlayer(2 + Math.floor(getStageDifficulty('i')));
+                        createParticles(s.x, s.y, '#00ffff', 8);
+                        s.lastHit = now;
+                    }
+                });
+            },
+            draw: function(data) {
+                data.shards.forEach(function(s) {
+                    ctx.save();
+                    ctx.translate(s.x, s.y);
+                    ctx.rotate(s.rotation);
+                    ctx.fillStyle = '#00ffff';
+                    ctx.beginPath();
+                    ctx.moveTo(0, -s.size);
+                    ctx.lineTo(-s.size * 0.5, 0);
+                    ctx.lineTo(0, s.size * 0.7);
+                    ctx.lineTo(s.size * 0.5, 0);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    ctx.restore();
+                });
+            }
+        };
+
+        // j: Jumping spikes
+        attacks['j'] = {
+            init: function() {
+                const diff = getStageDifficulty('j');
+                const spikes = [];
+                for (let i = 0; i < 8 + diff * 6; i++) {
+                    spikes.push({
+                        x: state.barrier.left + 50 + Math.random() * (state.barrier.right - state.barrier.left - 100),
+                        y: state.barrier.bottom + 50,
+                        targetY: state.barrier.top + 100 + Math.random() * (state.barrier.bottom - state.barrier.top - 200),
+                        vy: 0,
+                        height: 40 + diff * 30,
+                        phase: Math.random() * Math.PI * 2,
+                        lastHit: 0
+                    });
+                }
+                return { spikes: spikes };
+            },
+            update: function(data, dt) {
+                data.spikes.forEach(function(s) {
+                    s.phase += 0.05 * getStageDifficulty('j');
+                    const target = s.targetY + Math.sin(s.phase) * 50;
+                    s.vy = (target - s.y) * 0.1;
+                    s.y += s.vy;
+                    if (Math.abs(s.x - state.player.x) < state.player.radius + 30 && Math.abs(s.y - state.player.y) < state.player.radius + s.height) {
+                        const now = Date.now();
+                        if (now - s.lastHit > 400) {
+                            damagePlayer(4 + Math.floor(getStageDifficulty('j') * 0.5));
+                            s.lastHit = now;
+                        }
+                    }
+                });
+            },
+            draw: function(data) {
+                data.spikes.forEach(function(s) {
+                    ctx.fillStyle = '#8b4513';
+                    ctx.beginPath();
+                    ctx.moveTo(s.x, s.y);
+                    ctx.lineTo(s.x - 20, s.y + s.height);
+                    ctx.lineTo(s.x + 20, s.y + s.height);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                });
+            }
+        };
+
+        // k: Kinetic blades
+        attacks['k'] = {
+            init: function() {
+                const diff = getStageDifficulty('k');
+                const blades = [];
+                for (let i = 0; i < 4 + diff * 3; i++) {
+                    const angle = i * Math.PI * 2 / (4 + diff * 3);
+                    blades.push({
+                        x: canvas.width / 2,
+                        y: canvas.height / 2,
+                        radius: 150 + diff * 100,
+                        angle: angle,
+                        speed: 0.03 + diff * 0.04,
+                        length: 80 + diff * 50,
+                        width: 8 + diff * 6,
+                        color: `hsl(${i*90}, 100%, 60%)`
+                    });
+                }
+                return { blades: blades };
+            },
+            update: function(data, dt) {
+                data.blades.forEach(function(b) {
+                    b.angle += b.speed;
+                    const bx = canvas.width / 2 + Math.cos(b.angle) * b.radius;
+                    const by = canvas.height / 2 + Math.sin(b.angle) * b.radius;
+                    const dx = state.player.x - bx;
+                    const dy = state.player.y - by;
+                    const dist = Math.hypot(dx, dy);
+                    if (dist < state.player.radius + b.length / 2) {
+                        damagePlayer(5 + Math.floor(getStageDifficulty('k')));
+                    }
+                });
+            },
+            draw: function(data) {
+                data.blades.forEach(function(b) {
+                    const x1 = canvas.width / 2 + Math.cos(b.angle) * (b.radius - b.length / 2);
+                    const y1 = canvas.height / 2 + Math.sin(b.angle) * (b.radius - b.length / 2);
+                    const x2 = canvas.width / 2 + Math.cos(b.angle) * (b.radius + b.length / 2);
+                    const y2 = canvas.height / 2 + Math.sin(b.angle) * (b.radius + b.length / 2);
+                    ctx.strokeStyle = b.color;
+                    ctx.lineWidth = b.width;
+                    ctx.lineCap = 'round';
+                    ctx.beginPath();
+                    ctx.moveTo(x1, y1);
+                    ctx.lineTo(x2, y2);
+                    ctx.stroke();
+                });
+            }
+        };
+
+        // l: Lightning storm
+        attacks['l'] = {
+            init: function() {
+                const diff = getStageDifficulty('l');
+                const bolts = [];
+                const spawnBolt = function() {
+                    bolts.push({
+                        x: Math.random() * canvas.width,
+                        y: -50,
+                        segments: [],
+                        life: 1,
+                        lastHit: 0
+                    });
+                };
+                for (let i = 0; i < 15 + diff * 15; i++) {
+                    setTimeout(spawnBolt, i * 150);
+                }
+                return { bolts: bolts };
+            },
+            update: function(data, dt) {
+                data.bolts.forEach(function(b) {
+                    b.y += 15 + getStageDifficulty('l') * 10;
+                    b.life -= dt * 3;
+                    if (b.y > canvas.height + 50) b.life = 0;
+                    if (Math.abs(b.x - state.player.x) < 50 && Math.abs(b.y - state.player.y) < 100) {
+                        const now = Date.now();
+                        if (now - b.lastHit > 200) {
+                            damagePlayer(6 + Math.floor(getStageDifficulty('l') * 0.7));
+                            b.lastHit = now;
+                        }
+                    }
+                });
+                data.bolts = data.bolts.filter(function(b) { return b.life > 0; });
+            },
+            draw: function(data) {
+                data.bolts.forEach(function(b) {
+                    ctx.strokeStyle = `rgba(0, 255, 255, ${b.life})`;
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    let x = b.x, y = b.y - 100;
+                    ctx.moveTo(x, y);
+                    for (let i = 0; i < 8; i++) {
+                        x += (Math.random() - 0.5) * 40;
+                        y += 25;
+                        ctx.lineTo(x, y);
+                    }
+                    ctx.lineTo(b.x, b.y + 50);
+                    ctx.stroke();
+                });
+            }
+        };
+
+        // m: Mirror maze
+        attacks['m'] = {
+            init: function() {
+                const diff = getStageDifficulty('m');
+                const mirrors = [];
+                for (let i = 0; i < 6 + diff * 4; i++) {
+                    mirrors.push({
+                        x: state.barrier.left + 100 + Math.random() * (state.barrier.right - state.barrier.left - 200),
+                        y: state.barrier.top + 100 + Math.random() * (state.barrier.bottom - state.barrier.top - 200),
+                        width: 20,
+                        height: 120 + diff * 80,
+                        angle: Math.random() * Math.PI,
+                        color: '#aaa'
+                    });
+                }
+                const laser = {
+                    x: canvas.width / 2,
+                    y: canvas.height / 2,
+                    angle: 0,
+                    speed: 10 + diff * 8,
+                    bounces: 0,
+                    maxBounces: 5 + Math.floor(diff * 3)
+                };
+                return { mirrors: mirrors, laser: laser };
+            },
+            update: function(data, dt) {
+                const l = data.laser;
+                l.x += Math.cos(l.angle) * l.speed;
+                l.y += Math.sin(l.angle) * l.speed;
+                
+                // Bounce off mirrors
+                data.mirrors.forEach(function(m) {
+                    if (Math.abs(l.x - m.x) < 50 && Math.abs(l.y - m.y) < m.height / 2) {
+                        l.angle = 2 * m.angle - l.angle;
+                        l.bounces++;
+                    }
+                });
+                
+                if (l.bounces >= l.maxBounces || l.x < 0 || l.x > canvas.width || l.y < 0 || l.y > canvas.height) {
+                    l.x = canvas.width / 2;
+                    l.y = canvas.height / 2;
+                    l.angle = Math.random() * Math.PI * 2;
+                    l.bounces = 0;
+                }
+                
+                const dist = Math.hypot(l.x - state.player.x, l.y - state.player.y);
+                if (dist < state.player.radius + 10) {
+                    damagePlayer(7 + Math.floor(getStageDifficulty('m')));
+                }
+            },
+            draw: function(data) {
+                data.mirrors.forEach(function(m) {
+                    ctx.save();
+                    ctx.translate(m.x, m.y);
+                    ctx.rotate(m.angle);
+                    ctx.fillStyle = m.color;
+                    ctx.fillRect(-m.width/2, -m.height/2, m.width, m.height);
+                    ctx.restore();
+                });
+                ctx.strokeStyle = '#ff0000';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(data.laser.x, data.laser.y);
+                ctx.lineTo(data.laser.x + Math.cos(data.laser.angle) * 50, data.laser.y + Math.sin(data.laser.angle) * 50);
+                ctx.stroke();
+            }
+        };
+
+        // n: Neutron stars
+        attacks['n'] = {
+            init: function() {
+                const diff = getStageDifficulty('n');
+                const stars = [];
+                for (let i = 0; i < 2 + Math.floor(diff); i++) {
+                    stars.push({
+                        x: canvas.width / 2,
+                        y: canvas.height / 2,
+                        radius: 200 + diff * 150,
+                        angle: i * Math.PI * 2 / (2 + Math.floor(diff)),
+                        speed: 0.02 + diff * 0.03,
+                        coreSize: 30 + diff * 20,
+                        arms: 8,
+                        armLength: 80 + diff * 60
+                    });
+                }
+                return { stars: stars };
+            },
+            update: function(data, dt) {
+                data.stars.forEach(function(s) {
+                    s.angle += s.speed;
+                    const sx = canvas.width / 2 + Math.cos(s.angle) * s.radius;
+                    const sy = canvas.height / 2 + Math.sin(s.angle) * s.radius;
+                    const dist = Math.hypot(sx - state.player.x, sy - state.player.y);
+                    if (dist < state.player.radius + s.coreSize) {
+                        damagePlayer(8 + Math.floor(getStageDifficulty('n') * 1.5));
+                    }
+                    for (let i = 0; i < s.arms; i++) {
+                        const armAngle = s.angle + i * Math.PI * 2 / s.arms;
+                        const ax = sx + Math.cos(armAngle) * s.armLength;
+                        const ay = sy + Math.sin(armAngle) * s.armLength;
+                        if (Math.hypot(ax - state.player.x, ay - state.player.y) < state.player.radius + 20) {
+                            damagePlayer(5);
+                        }
+                    }
+                });
+            },
+            draw: function(data) {
+                data.stars.forEach(function(s) {
+                    const sx = canvas.width / 2 + Math.cos(s.angle) * s.radius;
+                    const sy = canvas.height / 2 + Math.sin(s.angle) * s.radius;
+                    const grad = ctx.createRadialGradient(sx, sy, 0, sx, sy, s.coreSize);
+                    grad.addColorStop(0, '#ffffff');
+                    grad.addColorStop(1, '#ffff00');
+                    ctx.fillStyle = grad;
+                    ctx.beginPath();
+                    ctx.arc(sx, sy, s.coreSize, 0, Math.PI * 2);
+                    ctx.fill();
+                    for (let i = 0; i < s.arms; i++) {
+                        const armAngle = s.angle + i * Math.PI * 2 / s.arms;
+                        const ax = sx + Math.cos(armAngle) * s.armLength;
+                        const ay = sy + Math.sin(armAngle) * s.armLength;
+                        ctx.strokeStyle = '#ffaa00';
+                        ctx.lineWidth = 4;
+                        ctx.beginPath();
+                        ctx.moveTo(sx, sy);
+                        ctx.lineTo(ax, ay);
+                        ctx.stroke();
+                    }
+                });
+            }
+        };
+
+        // o: Orbital strikes
+        attacks['o'] = {
+            init: function() {
+                const diff = getStageDifficulty('o');
+                const strikes = [];
+                const spawnStrike = function() {
+                    const angle = Math.random() * Math.PI * 2;
+                    strikes.push({
+                        x: canvas.width / 2 + Math.cos(angle) * 800,
+                        y: canvas.height / 2 + Math.sin(angle) * 800,
+                        targetX: state.barrier.left + Math.random() * (state.barrier.right - state.barrier.left),
+                        targetY: state.barrier.top + Math.random() * (state.barrier.bottom - state.barrier.top),
+                        phase: 0,
+                        warning: true,
+                        radius: 60 + diff * 40,
+                        lastHit: 0
+                    });
+                };
+                for (let i = 0; i < 5 + diff * 5; i++) {
+                    setTimeout(function() { spawnStrike(); }, i * 800);
+                }
+                return { strikes: strikes };
+            },
+            update: function(data, dt) {
+                data.strikes.forEach(function(s) {
+                    if (s.warning) {
+                        s.phase += dt;
+                        if (s.phase > 1) {
+                            s.warning = false;
+                            s.phase = 0;
+                        }
+                    } else {
+                        s.phase += dt * 3;
+                        if (s.phase > 1) {
+                            const dist = Math.hypot(s.targetX - state.player.x, s.targetY - state.player.y);
+                            if (dist < s.radius) {
+                                const now = Date.now();
+                                if (now - s.lastHit > 300) {
+                                    damagePlayer(10 + Math.floor(getStageDifficulty('o') * 2));
+                                    s.lastHit = now;
+                                }
+                            }
+                            s.phase = 0;
+                            s.warning = true;
+                        }
+                    }
+                });
+            },
+            draw: function(data) {
+                data.strikes.forEach(function(s) {
+                    if (s.warning) {
+                        ctx.strokeStyle = '#ffff00';
+                        ctx.lineWidth = 3;
+                        ctx.setLineDash([10, 10]);
+                        ctx.beginPath();
+                        ctx.arc(s.targetX, s.targetY, s.radius, 0, Math.PI * 2);
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+                    } else {
+                        const alpha = 1 - s.phase;
+                        ctx.globalAlpha = alpha;
+                        const grad = ctx.createRadialGradient(s.targetX, s.targetY, 0, s.targetX, s.targetY, s.radius * 3);
+                        grad.addColorStop(0, '#ff0000');
+                        grad.addColorStop(1, 'transparent');
+                        ctx.fillStyle = grad;
+                        ctx.beginPath();
+                        ctx.arc(s.targetX, s.targetY, s.radius * 3, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.globalAlpha = 1;
+                    }
+                });
+            }
+        };
+
+        // p: Plasma orbs
+        attacks['p'] = {
+            init: function() {
+                const diff = getStageDifficulty('p');
+                const orbs = [];
+                for (let i = 0; i < 6 + diff * 4; i++) {
+                    const angle = i * Math.PI * 2 / (6 + diff * 4);
+                    orbs.push({
+                        radius: 120 + diff * 80,
+                        angle: angle,
+                        speed: 0.015 + diff * 0.025,
+                        size: 25 + diff * 20,
+                        color: `hsl(${i*60}, 100%, 70%)`,
+                        pulse: Math.random() * Math.PI * 2
+                    });
+                }
+                return { orbs: orbs, centerX: canvas.width/2, centerY: canvas.height/2 };
+            },
+            update: function(data, dt) {
+                data.orbs.forEach(function(o) {
+                    o.angle += o.speed;
+                    o.pulse += 0.1;
+                    const x = data.centerX + Math.cos(o.angle) * o.radius;
+                    const y = data.centerY + Math.sin(o.angle) * o.radius;
+                    const pulseSize = Math.sin(o.pulse) * 15;
+                    const dist = Math.hypot(x - state.player.x, y - state.player.y);
+                    if (dist < state.player.radius + o.size + pulseSize) {
+                        damagePlayer(4 + Math.floor(getStageDifficulty('p')));
+                    }
+                });
+            },
+            draw: function(data) {
+                data.orbs.forEach(function(o) {
+                    const x = data.centerX + Math.cos(o.angle) * o.radius;
+                    const y = data.centerY + Math.sin(o.angle) * o.radius;
+                    const pulseSize = Math.sin(o.pulse) * 15;
+                    const grad = ctx.createRadialGradient(x, y, 0, x, y, o.size + pulseSize);
+                    grad.addColorStop(0, o.color);
+                    grad.addColorStop(1, 'transparent');
+                    ctx.fillStyle = grad;
+                    ctx.beginPath();
+                    ctx.arc(x, y, o.size + pulseSize, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            }
+        };
+
+        // q: Quantum teleport
+        attacks['q'] = {
+            init: function() {
+                const diff = getStageDifficulty('q');
+                const portals = [];
+                for (let i = 0; i < 3 + Math.floor(diff); i++) {
+                    portals.push({
+                        x: state.barrier.left + 100 + Math.random() * (state.barrier.right - state.barrier.left - 200),
+                        y: state.barrier.top + 100 + Math.random() * (state.barrier.bottom - state.barrier.top - 200),
+                        radius: 50 + diff * 30,
+                        color: `hsl(${200 + i*60}, 100%, 60%)`,
+                        pulse: Math.random() * Math.PI * 2
+                    });
+                }
+                return { portals: portals, teleportTimer: 0 };
+            },
+            update: function(data, dt) {
+                data.teleportTimer += dt;
+                if (data.teleportTimer > 2) {
+                    const p1 = data.portals[0];
+                    const p2 = data.portals[1] || p1;
+                    if (Math.hypot(p1.x - state.player.x, p1.y - state.player.y) < p1.radius) {
+                        state.player.x = p2.x + (Math.random() - 0.5) * 50;
+                        state.player.y = p2.y + (Math.random() - 0.5) * 50;
+                        damagePlayer(3);
+                    }
+                    data.teleportTimer = 0;
+                }
+                data.portals.forEach(function(p) {
+                    p.pulse += 0.08;
+                    const dist = Math.hypot(p.x - state.player.x, p.y - state.player.y);
+                    if (dist < p.radius + state.player.radius) {
+                        damagePlayer(2);
+                    }
+                });
+            },
+            draw: function(data) {
+                data.portals.forEach(function(p) {
+                    const pulse = Math.sin(p.pulse) * 20;
+                    ctx.strokeStyle = p.color;
+                    ctx.lineWidth = 4;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.radius + pulse, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.radius * 0.6 + pulse * 0.5, 0, Math.PI * 2);
+                    ctx.stroke();
+                });
+            }
+        };
+
+        // r: Radial burst
+        attacks['r'] = {
+            init: function() {
+                const diff = getStageDifficulty('r');
+                const bursts = [];
+                const spawnBurst = function() {
+                    bursts.push({
+                        x: canvas.width / 2,
+                        y: canvas.height / 2,
+                        radius: 0,
+                        maxRadius: 600 + diff * 300,
+                        speed: 8 + diff * 10,
+                        width: 6 + diff * 4,
+                        color: `hsl(${Math.random()*360}, 100%, 70%)`
+                    });
+                };
+                for (let i = 0; i < 3 + Math.floor(diff); i++) {
+                    setTimeout(spawnBurst, i * 1200);
+                }
+                return { bursts: bursts };
+            },
+            update: function(data, dt) {
+                data.bursts.forEach(function(b) {
+                    b.radius += b.speed;
+                    if (b.radius > b.maxRadius) {
+                        b.radius = 0;
+                    }
+                    const dist = Math.hypot(b.x - state.player.x, b.y - state.player.y);
+                    if (Math.abs(dist - b.radius) < state.player.radius + b.width) {
+                        damagePlayer(7 + Math.floor(getStageDifficulty('r') * 1.2));
+                    }
+                });
+            },
+            draw: function(data) {
+                data.bursts.forEach(function(b) {
+                    ctx.strokeStyle = b.color;
+                    ctx.lineWidth = b.width;
+                    ctx.beginPath();
+                    ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+                    ctx.stroke();
+                });
+            }
+        };
+
+        // s: Spiral death
+        attacks['s'] = {
+            init: function() {
+                const diff = getStageDifficulty('s');
+                const arms = 5 + Math.floor(diff);
+                const points = [];
+                for (let a = 0; a < arms; a++) {
+                    for (let i = 0; i < 50; i++) {
+                        points.push({
+                            arm: a,
+                            index: i,
+                            angleOffset: a * Math.PI * 2 / arms
+                        });
+                    }
+                }
+                return { points: points, angle: 0, arms: arms };
+            },
+            update: function(data, dt) {
+                data.angle += 0.02 + getStageDifficulty('s') * 0.03;
+                data.points.forEach(function(p) {
+                    const radius = p.index * 8;
+                    const angle = data.angle + p.angleOffset + p.index * 0.1;
+                    const x = canvas.width / 2 + Math.cos(angle) * radius;
+                    const y = canvas.height / 2 + Math.sin(angle) * radius;
+                    const dist = Math.hypot(x - state.player.x, y - state.player.y);
+                    if (dist < state.player.radius + 15) {
+                        damagePlayer(3 + Math.floor(getStageDifficulty('s') * 0.5));
+                    }
+                });
+            },
+            draw: function(data) {
+                data.points.forEach(function(p, idx) {
+                    const radius = p.index * 8;
+                    const angle = data.angle + p.angleOffset + p.index * 0.1;
+                    const x = canvas.width / 2 + Math.cos(angle) * radius;
+                    const y = canvas.height / 2 + Math.sin(angle) * radius;
+                    ctx.fillStyle = `hsl(${idx * 2}, 100%, 70%)`;
+                    ctx.beginPath();
+                    ctx.arc(x, y, 8, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            }
+        };
+
+        // t: Time slow
+        attacks['t'] = {
+            init: function() {
+                const diff = getStageDifficulty('t');
+                const clocks = [];
+                for (let i = 0; i < 8 + diff * 6; i++) {
+                    clocks.push({
+                        x: state.barrier.left + 50 + Math.random() * (state.barrier.right - state.barrier.left - 100),
+                        y: state.barrier.top + 50 + Math.random() * (state.barrier.bottom - state.barrier.top - 100),
+                        radius: 40 + diff * 30,
+                        slowFactor: 0.3,
+                        duration: 0,
+                        active: false
+                    });
+                }
+                return { clocks: clocks };
+            },
+            update: function(data, dt) {
+                data.clocks.forEach(function(c) {
+                    if (!c.active && Math.random() < 0.02) {
+                        c.active = true;
+                        c.duration = 2 + getStageDifficulty('t');
+                    }
+                    if (c.active) {
+                        c.duration -= dt;
+                        if (c.duration <= 0) c.active = false;
+                        const dist = Math.hypot(c.x - state.player.x, c.y - state.player.y);
+                        if (dist < c.radius + state.player.radius) {
+                            state.player.x += (state.realMouse.x - state.player.x) * 0.05;
+                            state.player.y += (state.realMouse.y - state.player.y) * 0.05;
+                        }
+                    }
+                });
+            },
+            draw: function(data) {
+                data.clocks.forEach(function(c) {
+                    ctx.strokeStyle = c.active ? '#00ff00' : '#666';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(c.x, c.y, c.radius, 0, Math.PI * 2);
+                    ctx.stroke();
+                    if (c.active) {
+                        ctx.fillStyle = '#00ff00';
+                        ctx.font = 'bold 30px Arial';
+                        ctx.textAlign = 'center';
+                        ctx.fillText('SLOW', c.x, c.y + 10);
+                    }
+                });
+            }
+        };
+
+        // u: Ultrasonic waves
+        attacks['u'] = {
+            init: function() {
+                const diff = getStageDifficulty('u');
+                const waves = [];
+                for (let i = 0; i < 10 + diff * 8; i++) {
+                    waves.push({
+                        x: -100,
+                        y: state.barrier.top + 50 + Math.random() * (state.barrier.bottom - state.barrier.top - 100),
+                        speed: 5 + diff * 6,
+                        height: 60 + diff * 40,
+                        frequency: 0.1 + diff * 0.15,
+                        phase: Math.random() * Math.PI * 2,
+                        color: `hsl(${200 + i*20}, 100%, 70%)`
+                    });
+                }
+                return { waves: waves };
+            },
+            update: function(data, dt) {
+                data.waves.forEach(function(w) {
+                    w.x += w.speed;
+                    w.phase += w.frequency;
+                    if (w.x > canvas.width + 100) w.x = -100;
+                    const waveY = w.y + Math.sin(w.phase) * 30;
+                    if (Math.abs(state.player.x - w.x) < 50 && Math.abs(state.player.y - waveY) < w.height / 2) {
+                        damagePlayer(4 + Math.floor(getStageDifficulty('u') * 0.6));
+                    }
+                });
+            },
+            draw: function(data) {
+                data.waves.forEach(function(w) {
+                    const waveY = w.y + Math.sin(w.phase) * 30;
+                    ctx.fillStyle = w.color;
+                    ctx.globalAlpha = 0.6;
+                    ctx.fillRect(w.x - 50, waveY - w.height / 2, 100, w.height);
+                    ctx.globalAlpha = 1;
+                });
+            }
+        };
+
+        // v: Vortex
+        attacks['v'] = {
+            init: function() {
+                const diff = getStageDifficulty('v');
+                const vortices = [];
+                for (let i = 0; i < 1 + Math.floor(diff / 2); i++) {
+                    vortices.push({
+                        x: canvas.width / 2,
+                        y: canvas.height / 2,
+                        radius: 150 + diff * 100,
+                        strength: 400 + diff * 600,
+                        color: '#8b008b'
+                    });
+                }
+                return { vortices: vortices };
+            },
+            update: function(data, dt) {
+                data.vortices.forEach(function(v) {
+                    const dx = state.player.x - v.x;
+                    const dy = state.player.y - v.y;
+                    const dist = Math.hypot(dx, dy);
+                    if (dist < v.radius + state.player.radius) {
+                        damagePlayer(6 + Math.floor(getStageDifficulty('v')));
+                    }
+                    if (dist > 50) {
+                        const angle = Math.atan2(dy, dx);
+                        const tangentX = -Math.sin(angle);
+                        const tangentY = Math.cos(angle);
+                        const force = v.strength / (dist * dist);
+                        state.player.x += tangentX * force * dt;
+                        state.player.y += tangentY * force * dt;
+                    }
+                });
+            },
+            draw: function(data) {
+                data.vortices.forEach(function(v) {
+                    for (let i = 5; i > 0; i--) {
+                        ctx.globalAlpha = i / 5;
+                        ctx.strokeStyle = v.color;
+                        ctx.lineWidth = 3;
+                        ctx.beginPath();
+                        ctx.arc(v.x, v.y, v.radius * i / 5, 0, Math.PI * 2);
+                        ctx.stroke();
+                    }
+                    ctx.globalAlpha = 1;
+                });
+            }
+        };
+
+        // w: Wall crusher
+        attacks['w'] = {
+            init: function() {
+                const diff = getStageDifficulty('w');
+                const walls = [
+                    { x: state.barrier.left - 100, speed: 3 + diff * 2, side: 'left' },
+                    { x: state.barrier.right + 100, speed: -(3 + diff * 2), side: 'right' },
+                    { y: state.barrier.top - 100, speed: 3 + diff * 2, side: 'top' },
+                    { y: state.barrier.bottom + 100, speed: -(3 + diff * 2), side: 'bottom' }
+                ];
+                return { walls: walls };
+            },
+            update: function(data, dt) {
+                data.walls.forEach(function(w) {
+                    if (w.side === 'left' || w.side === 'right') {
+                        w.x += w.speed;
+                        if ((w.side === 'left' && w.x > canvas.width / 3) || (w.side === 'right' && w.x < canvas.width * 2 / 3)) {
+                            w.speed *= -1;
+                        }
+                    } else {
+                        w.y += w.speed;
+                        if ((w.side === 'top' && w.y > canvas.height / 3) || (w.side === 'bottom' && w.y < canvas.height * 2 / 3)) {
+                            w.speed *= -1;
+                        }
+                    }
+                    const dist = w.side === 'left' ? state.player.x - w.x :
+                               w.side === 'right' ? w.x - state.player.x :
+                               w.side === 'top' ? state.player.y - w.y : w.y - state.player.y;
+                    if (dist < state.player.radius + 100) {
+                        damagePlayer(8 + Math.floor(getStageDifficulty('w')));
+                    }
+                });
+            },
+            draw: function(data) {
+                data.walls.forEach(function(w) {
+                    ctx.fillStyle = '#444';
+                    if (w.side === 'left' || w.side === 'right') {
+                        ctx.fillRect(w.x, 0, 100, canvas.height);
+                    } else {
+                        ctx.fillRect(0, w.y, canvas.width, 100);
+                    }
+                });
+            }
+        };
+
+        // x: X-laser cross
+        attacks['x'] = {
+            init: function() {
+                const diff = getStageDifficulty('x');
+                const lasers = {
+                    horizontal: { y: canvas.height / 2, active: false, timer: 0 },
+                    vertical: { x: canvas.width / 2, active: false, timer: 0 }
+                };
+                return { lasers: lasers };
+            },
+            update: function(data, dt) {
+                const l = data.lasers;
+                l.horizontal.timer += dt;
+                l.vertical.timer += dt;
+                if (l.horizontal.timer > 1.5 && !l.horizontal.active) {
+                    l.horizontal.active = true;
+                    l.horizontal.timer = 0;
+                }
+                if (l.vertical.timer > 1.5 && !l.vertical.active) {
+                    l.vertical.active = true;
+                    l.vertical.timer = 0;
+                }
+                if (l.horizontal.active && Math.abs(state.player.y - l.horizontal.y) < 30) {
+                    damagePlayer(7 + Math.floor(getStageDifficulty('x')));
+                }
+                if (l.vertical.active && Math.abs(state.player.x - l.vertical.x) < 30) {
+                    damagePlayer(7 + Math.floor(getStageDifficulty('x')));
+                }
+                if (l.horizontal.timer > 2) l.horizontal.active = false;
+                if (l.vertical.timer > 2) l.vertical.active = false;
+            },
+            draw: function(data) {
+                const l = data.lasers;
+                if (l.horizontal.active) {
+                    ctx.strokeStyle = '#ff0000';
+                    ctx.lineWidth = 6;
+                    ctx.beginPath();
+                    ctx.moveTo(0, l.horizontal.y);
+                    ctx.lineTo(canvas.width, l.horizontal.y);
+                    ctx.stroke();
+                }
+                if (l.vertical.active) {
+                    ctx.strokeStyle = '#ff0000';
+                    ctx.lineWidth = 6;
+                    ctx.beginPath();
+                    ctx.moveTo(l.vertical.x, 0);
+                    ctx.lineTo(l.vertical.x, canvas.height);
+                    ctx.stroke();
+                }
+            }
+        };
+
+        // y: Yin-Yang orbs
+        attacks['y'] = {
+            init: function() {
+                const diff = getStageDifficulty('y');
+                return {
+                    black: { x: canvas.width / 2 - 100, y: canvas.height / 2, vx: 3 + diff, vy: 0 },
+                    white: { x: canvas.width / 2 + 100, y: canvas.height / 2, vx: -3 - diff, vy: 0 },
+                    radius: 40 + diff * 30
+                };
+            },
+            update: function(data, dt) {
+                data.black.x += data.black.vx;
+                data.black.y += data.black.vy;
+                data.white.x += data.white.vx;
+                data.white.y += data.white.vy;
+                
+                if (data.black.x < state.barrier.left + data.radius || data.black.x > state.barrier.right - data.radius) data.black.vx *= -1;
+                if (data.black.y < state.barrier.top + data.radius || data.black.y > state.barrier.bottom - data.radius) data.black.vy *= -1;
+                if (data.white.x < state.barrier.left + data.radius || data.white.x > state.barrier.right - data.radius) data.white.vx *= -1;
+                if (data.white.y < state.barrier.top + data.radius || data.white.y > state.barrier.bottom - data.radius) data.white.vy *= -1;
+                
+                const distB = Math.hypot(data.black.x - state.player.x, data.black.y - state.player.y);
+                const distW = Math.hypot(data.white.x - state.player.x, data.white.y - state.player.y);
+                if (distB < state.player.radius + data.radius || distW < state.player.radius + data.radius) {
+                    damagePlayer(5 + Math.floor(getStageDifficulty('y')));
+                }
+            },
+            draw: function(data) {
+                ctx.fillStyle = '#000';
+                ctx.beginPath();
+                ctx.arc(data.black.x, data.black.y, data.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(data.white.x, data.white.y, data.radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        };
+
+        // z: Zero gravity
+        attacks['z'] = {
+            init: function() {
+                const diff = getStageDifficulty('z');
+                const asteroids = [];
+                for (let i = 0; i < 15 + diff * 15; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    asteroids.push({
+                        x: canvas.width / 2 + Math.cos(angle) * (300 + Math.random() * 400),
+                        y: canvas.height / 2 + Math.sin(angle) * (300 + Math.random() * 400),
+                        vx: -Math.cos(angle) * (2 + diff * 3),
+                        vy: -Math.sin(angle) * (2 + diff * 3),
+                        radius: 20 + diff * 25,
+                        rotation: Math.random() * Math.PI * 2,
+                        spin: (Math.random() - 0.5) * 0.1
+                    });
+                }
+                return { asteroids: asteroids };
+            },
+            update: function(data, dt) {
+                data.asteroids.forEach(function(a) {
+                    a.x += a.vx;
+                    a.y += a.vy;
+                    a.rotation += a.spin;
+                    if (a.x < -100 || a.x > canvas.width + 100 || a.y < -100 || a.y > canvas.height + 100) {
+                        const angle = Math.random() * Math.PI * 2;
+                        a.x = canvas.width / 2 + Math.cos(angle) * (300 + Math.random() * 400);
+                        a.y = canvas.height / 2 + Math.sin(angle) * (300 + Math.random() * 400);
+                    }
+                    const dist = Math.hypot(a.x - state.player.x, a.y - state.player.y);
+                    if (dist < state.player.radius + a.radius) {
+                        damagePlayer(6 + Math.floor(getStageDifficulty('z') * 0.8));
+                    }
+                });
+            },
+            draw: function(data) {
+                data.asteroids.forEach(function(a) {
+                    ctx.save();
+                    ctx.translate(a.x, a.y);
+                    ctx.rotate(a.rotation);
+                    ctx.fillStyle = '#888';
+                    ctx.beginPath();
+                    for (let i = 0; i < 8; i++) {
+                        const angle = i * Math.PI * 2 / 8;
+                        const r = a.radius * (i % 2 ? 0.8 : 1);
+                        const x = Math.cos(angle) * r;
+                        const y = Math.sin(angle) * r;
+                        if (i === 0) ctx.moveTo(x, y);
+                        else ctx.lineTo(x, y);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.restore();
+                });
+            }
+        };
+
+        // 0: Number rain
+        attacks['0'] = {
+            init: function() {
+                const diff = getStageDifficulty('0');
+                const numbers = [];
+                const chars = '0123456789';
+                for (let i = 0; i < 20 + diff * 20; i++) {
+                    numbers.push({
+                        x: Math.random() * canvas.width,
+                        y: -50 - Math.random() * 200,
+                        char: chars[Math.floor(Math.random() * chars.length)],
+                        vy: 3 + diff * 5,
+                        size: 30 + diff * 20
+                    });
+                }
+                return { numbers: numbers };
+            },
+            update: function(data, dt) {
+                data.numbers.forEach(function(n) {
+                    n.y += n.vy;
+                    if (n.y > canvas.height + 100) {
+                        n.y = -100;
+                        n.x = Math.random() * canvas.width;
+                    }
+                    if (Math.abs(n.x - state.player.x) < 40 && Math.abs(n.y - state.player.y) < n.size) {
+                        damagePlayer(3);
+                    }
+                });
+            },
+            draw: function(data) {
+                ctx.font = 'bold 40px Courier New';
+                ctx.textAlign = 'center';
+                data.numbers.forEach(function(n) {
+                    ctx.fillStyle = '#0f0';
+                    ctx.fillText(n.char, n.x, n.y);
+                });
+            }
+        };
+
+        // !: Exclamation storm
+        attacks['!'] = {
+            init: function() {
+                const diff = getStageDifficulty('!');
+                const exclamations = [];
+                const spawn = function() {
+                    exclamations.push({
+                        x: state.barrier.left + Math.random() * (state.barrier.right - state.barrier.left),
+                        y: -100,
+                        vy: 6 + diff * 8,
+                        rotation: Math.random() * Math.PI * 2,
+                        spin: (Math.random() - 0.5) * 0.5,
+                        scale: 1 + diff * 0.5
+                    });
+                };
+                for (let i = 0; i < 8 + diff * 8; i++) {
+                    setTimeout(spawn, i * 300);
+                }
+                state.spawnInterval = setInterval(spawn, 800 / (1 + diff * 0.5));
+                return { exclamations: exclamations };
+            },
+            update: function(data, dt) {
+                data.exclamations.forEach(function(e) {
+                    e.y += e.vy;
+                    e.rotation += e.spin;
+                    if (e.y > canvas.height + 150) {
+                        e.y = -150;
+                        e.x = state.barrier.left + Math.random() * (state.barrier.right - state.barrier.left);
+                    }
+                    const size = 80 * e.scale;
+                    if (Math.abs(e.x - state.player.x) < size / 2 && Math.abs(e.y - state.player.y) < size) {
+                        damagePlayer(8 + Math.floor(getStageDifficulty('!') * 1.5));
+                        createParticles(e.x, e.y, '#f00', 40);
+                        e.y = -300;
+                    }
+                });
+            },
+            draw: function(data) {
+                ctx.fillStyle = '#f00';
+                ctx.font = 'bold 80px Courier New';
+                ctx.textAlign = 'center';
+                data.exclamations.forEach(function(e) {
+                    ctx.save();
+                    ctx.translate(e.x, e.y);
+                    ctx.rotate(e.rotation);
+                    ctx.scale(e.scale, e.scale);
+                    ctx.fillText('!', 0, 0);
+                    ctx.restore();
+                });
+            }
+        };
+
+        // space: Meteor shower
+        attacks[' '] = {
+            init: function() {
+                const diff = getStageDifficulty(' ');
+                const meteors = [];
+                const spawn = function() {
+                    const angle = Math.random() * Math.PI * 2;
+                    const dist = 900 + Math.random() * 600;
+                    meteors.push({
+                        x: canvas.width / 2 + Math.cos(angle) * dist,
+                        y: canvas.height / 2 + Math.sin(angle) * dist,
+                        vx: -Math.cos(angle) * (6 + diff * 7),
+                        vy: -Math.sin(angle) * (6 + diff * 7),
+                        radius: 25 + diff * 35,
+                        trail: [],
+                        crater: false
+                    });
+                };
+                for (let i = 0; i < 8 + diff * 8; i++) {
+                    setTimeout(spawn, i * 400);
+                }
+
