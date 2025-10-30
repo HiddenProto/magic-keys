@@ -12,324 +12,1172 @@
             color: #fff;
             font-family: monospace;
             overflow: hidden;
-            cursor: default;
+            cursor: none;
         }
         #game {
             display: block;
-            background: #000;
             image-rendering: pixelated;
+            background: #000;
         }
-        #menu, #yourchoice, #passcode {
+        #ui {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: #000;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
+            pointer-events: none;
             z-index: 10;
         }
-        #menu button, #yourchoice button {
+        .hidden {
+            display: none !important;
+        }
+        #lobby {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            pointer-events: all;
+        }
+        #title {
+            font-size: 48px;
+            margin-bottom: 40px;
+            text-shadow: 0 0 20px #0ff;
+        }
+        .btn {
             width: 260px;
             height: 60px;
-            margin: 10px;
+            margin: 10px auto;
             background: #111;
             border: 2px solid #fff;
             color: #fff;
-            font-family: monospace;
             font-size: 20px;
+            font-family: monospace;
             cursor: pointer;
+            display: block;
             transition: all 0.2s;
+            pointer-events: all;
         }
-        #menu button:hover, #yourchoice button:hover {
+        .btn:hover {
             background: #444;
+            box-shadow: 0 0 10px #0ff;
         }
-        .locked {
+        .btn.locked {
             background: #111;
-            border: 2px solid #666;
+            border-color: #666;
             opacity: 0.5;
             position: relative;
         }
-        .locked::after {
+        .btn.locked::after {
             content: 'X';
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            color: red;
+            color: #f00;
             font-size: 24px;
             font-weight: bold;
         }
-        #title {
-            font-size: 48px;
-            margin-bottom: 40px;
-            text-shadow: 0 0 10px #0ff;
+        #passcode-section {
+            margin: 20px 0;
         }
-        #passcode {
-            display: block;
-        }
-        #passcode input {
+        #passcode-input {
             width: 200px;
-            height: 40px;
-            margin: 10px;
+            padding: 10px;
             background: #111;
             border: 2px solid #fff;
             color: #fff;
             font-family: monospace;
-            font-size: 16px;
-            text-align: center;
         }
-        #passcode button {
-            width: 100px;
-            height: 40px;
-            margin: 10px;
-            background: #111;
-            border: 2px solid #fff;
-            color: #fff;
-            font-family: monospace;
-            font-size: 16px;
-            cursor: pointer;
+        #passcode-btn {
+            width: auto;
+            padding: 10px 20px;
+            margin-left: 10px;
         }
         #hint {
             font-size: 12px;
-            margin-top: 20px;
             opacity: 0.7;
+            margin-top: 20px;
         }
-        #grid {
+        #yourchoice {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: all;
+            text-align: center;
+        }
+        .grid {
             display: grid;
             grid-template-columns: repeat(10, 50px);
             gap: 2px;
-            margin: 20px;
+            margin: 20px auto;
+            justify-content: center;
         }
-        #grid button {
+        .grid-btn {
             width: 50px;
             height: 50px;
             background: #111;
             border: 2px solid #fff;
             color: #fff;
-            font-family: monospace;
-            font-size: 18px;
+            font-size: 20px;
             cursor: pointer;
             transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
-        #grid button:hover {
+        .grid-btn:hover {
             background: #444;
             transform: scale(1.1);
         }
-        .hidden {
-            display: none !important;
+        #back-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: auto;
+            padding: 10px 20px;
+        }
+        #hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            font-size: 18px;
+            font-family: monospace;
+        }
+        #top-left {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            text-align: left;
+        }
+        #top-center {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+        }
+        #bottom-center {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+        }
+        #event-warning {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s;
+        }
+        #gameover {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            opacity: 0;
+            pointer-events: all;
+        }
+        #gameover h1 {
+            font-size: 48px;
+            color: #f00;
+            margin: 0;
+        }
+        #gameover p {
+            font-size: 24px;
         }
     </style>
 </head>
 <body>
     <canvas id="game"></canvas>
-    <div id="menu">
-        <div id="title">KEYBOARD DOOM</div>
-        <button id="startWorld1">WORLD 1: Keyboard Trials</button>
-        <button id="startWorld2" class="locked">WORLD 2: Unicode Nexus</button>
-        <button id="startYourChoice" class="locked">YOUR CHOICE</button>
-        <div id="passcode">
-            <input type="text" id="codeInput" placeholder="Enter Passcode" maxlength="10">
-            <button id="submitCode">ENTER</button>
+    <div id="ui">
+        <div id="lobby">
+            <div id="title">KEYBOARD DOOM</div>
+            <button id="world1-btn" class="btn">WORLD 1: KEYBOARD TRIALS</button>
+            <button id="world2-btn" class="btn locked">WORLD 2: UNICODE NEXUS</button>
+            <button id="yourchoice-btn" class="btn locked">YOUR CHOICE</button>
+            <div id="passcode-section">
+                <input type="password" id="passcode-input" placeholder="Enter Passcode">
+                <button id="passcode-btn" class="btn">ENTER</button>
+            </div>
+            <p id="hint">Hint: Check console for codes.</p>
         </div>
-        <p id="hint">Hint: Check console for codes.</p>
-    </div>
-    <div id="yourchoice" class="hidden">
-        <div id="backBtn">Back</div>
-        <h2>Keyboard Grid</h2>
-        <div id="keyGrid" class="grid"></div>
-        <h2>Unicode Grid</h2>
-        <div id="uniGrid" class="grid"></div>
+        <div id="yourchoice" class="hidden">
+            <h2>YOUR CHOICE</h2>
+            <div class="grid" id="keyboard-grid"></div>
+            <div class="grid" id="unicode-grid"></div>
+            <button id="back-btn" class="btn">BACK</button>
+        </div>
+        <div id="hud" class="hidden">
+            <div id="top-left">
+                <div>HP: 100/100</div>
+                <div>Shield: 0/50</div>
+                <div id="stage-name"></div>
+            </div>
+            <div id="top-center">
+                <div id="timer">Time: 10s</div>
+            </div>
+            <div id="bottom-center">DODGE | UNICODE BUFFS | R = RESTART</div>
+        </div>
+        <div id="event-warning"></div>
+        <div id="gameover" class="hidden">
+            <h1>GAME OVER</h1>
+            <p>Press R to Restart</p>
+        </div>
     </div>
     <script>
-        // Global state and constants
+        // Global state
         const canvas = document.getElementById('game');
         const ctx = canvas.getContext('2d');
-        const menu = document.getElementById('menu');
-        const yourchoice = document.getElementById('yourchoice');
-        const codeInput = document.getElementById('codeInput');
-        const submitCode = document.getElementById('submitCode');
-        const keyGrid = document.getElementById('keyGrid');
-        const uniGrid = document.getElementById('uniGrid');
-        const backBtn = document.getElementById('backBtn');
-
-        let state = 'menu'; // 'menu', 'playing', 'gameover', 'yourchoice'
-        let progress = JSON.parse(localStorage.getItem('keyboardDoomProgress')) || {world1: false, world2: false, yourChoice: false};
-        let currentWorld = 1; // 1 or 2
-        let currentStage = 0;
-        let stageStartTime = 0;
-        let timeLeft = 0;
-        let fadeAlpha = 0;
-        let fadeOut = false;
-        let shakeIntensity = 0;
-        let mouseX = 0, mouseY = 0;
+        const ui = document.getElementById('ui');
+        let width, height;
         let lastTime = 0;
         let dt = 0;
+        let state = 'menu'; // menu, playing, gameover, yourchoice
+        let progress = JSON.parse(localStorage.getItem('keyboardDoomProgress')) || {world1: false, world2: false, yourChoice: false};
 
-        // Player object
+        // Player
         const player = {
-            x: 0, y: 0,
-            hp: 100, maxHp: 100,
-            shield: 0, maxShield: 50,
-            speed: 8,
-            r: 10,
-            effects: [], // {type: 'slow', duration: 5, etc.}
-            overshield: false
+            x: 0, y: 0, r: 10, color: '#0f0',
+            hp: 100, maxHp: 100, shield: 0, maxShield: 50,
+            speed: 8, vx: 0, vy: 0,
+            protection: false, protectionTimer: 0,
+            speedBoost: 1, speedBoostTimer: 0,
+            regen: 0, regenTimer: 0,
+            shieldRegen: 0, shieldRegenTimer: 0,
+            slow: 1, slowTimer: 0,
+            poison: 0, poisonTimer: 0,
+            shake: 0
         };
 
-        // Projectiles pool
-        const projPool = [];
-        const maxProjs = 500;
-        for (let i = 0; i < maxProjs; i++) {
-            projPool.push({x:0,y:0,vx:0,vy:0,r:3,type:'bullet',life:1,angle:0});
-        }
-        let activeProjs = [];
-
-        // Particles pool
-        const partPool = [];
-        const maxParts = 1000;
-        for (let i = 0; i < maxParts; i++) {
-            partPool.push({x:0,y:0,vx:0,vy:0,life:1,dec:0.98,size:2,color:'#f00'});
-        }
-        let activeParts = [];
-
-        // Diggers
+        // Stage system
+        let currentWorld = 1;
+        let currentStage = 0;
+        let stageTimer = 0;
+        let stageDuration = 0;
+        let projectiles = [];
+        let particles = [];
         let diggers = [];
-        const maxDiggers = 3;
+        let popups = [];
+        let events = []; // for status icons
 
-        // Unicode list
-        const unicodeList = ['★','☠','❄','♠','♥','♦','♣','☀','☁','☂','☃','☆','♀','♂','◈','◉','◎','●','○','■','□','▲','△','▶','▷','▼','▽','◀','◁','☎','☏','⌛','⏰','✈','☄','💧','💨','🔥','⚡','🌙','⭐','🌟','💫','✨'];
+        // Pools
+        const projPool = [];
+        const partPool = [];
+        const popupPool = [];
 
-        // Keyboard keys list
-        const keyList = [
+        // Keys list for World 1
+        const keys = [
             'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z',
             '0','1','2','3','4','5','6','7','8','9',
-            '!','@','#','$','%','^','&','*','(',')','-','=','+','[','{','}',']','|',';','-',':','"','<','.',',','>','?','/'
+            '!','@','#','$','%','^','&','*','(',')','-','=','+','[',']','{','}','|',';','\'','"',',','.','<','>','?','/',
+            'Space','Enter','Backspace','Tab','Shift','Ctrl','Alt','CapsLock','Escape','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'
         ];
-        // Specials
-        const specialKeys = ['Space','Enter','Backspace','Tab','Shift','Ctrl','Alt','CapsLock','Escape','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'];
-        keyList.push(...specialKeys.map(k => k.toUpperCase().replace(/ARROW/,'').replace(/SHIFT/,'SH').replace(/CTRL/,'C').replace(/ALT/,'A').slice(0,3)));
+        const keyNames = keys.map(k => k.length > 1 ? k : k.toUpperCase());
 
-        // Wait, keyList needs full names for display, but for mapping use lowercase or something. Adjust.
-
-        // Pattern types for world1
-        const world1Patterns = {}; // key -> {type: 'radial', count:8, speed:200, interval:0.5, etc.}
-        // Initialize all patterns - this will add lines
-        function initPatterns() {
-            // a-z patterns
-            world1Patterns['a'] = {type:'radial', count:8, speed:150, interval:0.3, life:2};
-            world1Patterns['b'] = {type:'burst', count:12, speed:180, angleSpread: Math.PI*2, interval:0.4};
-            world1Patterns['c'] = {type:'circle', radius:100, count:16, speed:120, dir:1};
-            world1Patterns['d'] = {type:'line', dir:'h', count:5, speed:200, spacing:80};
-            world1Patterns['e'] = {type:'spiral', arms:2, speed:100, tighten:0.01};
-            world1Patterns['f'] = {type:'zigzag', waves:3, amp:60, freq:0.1, speed:150};
-            world1Patterns['g'] = {type:'ring', rings:3, expandSpeed:200, thickness:5};
-            world1Patterns['h'] = {type:'wall', w:300, h:20, speed:100, dir:'v'};
-            world1Patterns['i'] = {type:'beam', length:400, sweepSpeed:0.02, thickness:3};
-            world1Patterns['j'] = {type:'homing', count:6, speed:80, turnRate:0.05};
-            world1Patterns['k'] = {type:'cross', arms:4, length:200, speed:180};
-            world1Patterns['l'] = {type:'bounce', count:10, speed:160, bounceCount:3};
-            world1Patterns['m'] = {type:'arc', arc: Math.PI, count:10, speed:140};
-            world1Patterns['n'] = {type:'cluster', clusters:4, projsPer:5, spread:0.5, speed:120};
-            world1Patterns['o'] = {type:'orbit', radius:150, count:8, orbitSpeed:0.03};
-            world1Patterns['p'] = {type:'pulse', pulses:5, radius:50, expand:300};
-            world1Patterns['q'] = {type:'diagonal', dir:1, count:7, speed:170};
-            world1Patterns['r'] = {type:'random', count:15, speed:100, life:3};
-            world1Patterns['s'] = {type:'sweep', angle: Math.PI*1.5, speed:200, thickness:4};
-            world1Patterns['t'] = {type:'tunnel', length:500, width:10, speed:250};
-            world1Patterns['u'] = {type:'u-turn', count:8, speed:130, turnRadius:80};
-            world1Patterns['v'] = {type:'v-shape', arms:2, angle:1, speed:160};
-            world1Patterns['w'] = {type:'wave', freq:0.08, amp:40, speed:180};
-            world1Patterns['x'] = {type:'x-cross', arms:2, length:250, speed:190};
-            world1Patterns['y'] = {type:'y-split', branches:3, splitDist:100, speed:140};
-            world1Patterns['z'] = {type:'zigzag', waves:4, amp:80, freq:0.12, speed:160};
-
-            // 0-9
-            for (let i = 0; i < 10; i++) {
-                const digit = i.toString();
-                world1Patterns[digit] = {type:'numericBurst', count:i*2+4, speed:100 + i*20, angle: i * Math.PI / 5};
-            }
-
-            // Symbols - assign varied types
-            const symbolTypes = ['radial','burst','circle','line','spiral','zigzag','ring','wall','beam','homing','cross','bounce','arc','cluster','orbit','pulse','diagonal','random','sweep','tunnel'];
-            const symbols = '!@#$%^&*()-_=+[]{}|;:\'",.<>?/'.split('');
-            symbols.forEach((sym, idx) => {
-                const type = symbolTypes[idx % symbolTypes.length];
-                world1Patterns[sym] = {type, count:4 + idx%8, speed:120 + idx*10, interval:0.2 + idx*0.05};
-            });
-
-            // Specials
-            world1Patterns['SPC'] = {type:'ring', rings:4, expandSpeed:250, thickness:8}; // Space
-            world1Patterns['ENT'] = {type:'beam', length:500, sweepSpeed:0.03, thickness:5}; // Enter
-            world1Patterns['BCK'] = {type:'backwards', count:10, speed:200, dir:-1}; // Backspace
-            world1Patterns['TAB'] = {type:'tabLine', spacing:100, count:6, speed:150}; // Tab
-            world1Patterns['SHF'] = {type:'wall', w:400, h:30, speed:120, dir:'v'}; // Shift
-            world1Patterns['CTL'] = {type:'slicing', slices:8, length:300, speed:220}; // Ctrl
-            world1Patterns['ALT'] = {type:'altBurst', count:16, speed:90, spread:0.3}; // Alt
-            world1Patterns['CAP'] = {type:'capsWave', freq:0.06, amp:50, speed:170}; // Caps
-            world1Patterns['ESC'] = {type:'escapeSpiral', arms:1, speed:110, tighten:0.02}; // Escape
-            world1Patterns['UP '] = {type:'upwards', count:12, speed:180, dir:0}; // Up
-            world1Patterns['DN '] = {type:'downwards', count:12, speed:180, dir:Math.PI}; // Down
-            world1Patterns['LF '] = {type:'leftwards', count:12, speed:180, dir:Math.PI*1.5}; // Left
-            world1Patterns['RT '] = {type:'rightwards', count:12, speed:180, dir:Math.PI*0.5}; // Right
-
-            // For world2, similar but more complex - index based
-            // We'll handle in spawn logic with variations
-        }
-
-        // Buff/Debuff types
-        const buffs = [
-            {type:'protection', effect:'damage reduction 50%', duration:5, icon:'🛡️'},
-            {type:'shieldRegen', effect:'+30 shield/sec', duration:6, icon:'🔄'},
-            {type:'speedBoost', effect:'x1.5 speed', duration:5, icon:'⚡'},
-            {type:'regen', effect:'+25 HP/sec', duration:5, icon:'❤️'}
+        // Unicode list for World 2
+        const unicodeSymbols = [
+            '★','☠','❄','♠','♥','♦','♣','☀','☁','☂','☃','☆','♀','♂','◈','◉','◎','●','○','■','□','▲','△','▶','▷','▼','▽','◀','◁','☎','☏','⌛','⏰','✈','☄','💧','💨','🔥','⚡','🌙','⭐','🌟','💫','✨'
         ];
-        const debuffs = [
-            {type:'slow', effect:'x0.6 speed', duration:4, icon:'🐌'},
-            {type:'poison', effect:'-7 HP/sec', duration:4, icon:'☠'}
+        const unicodeNames = unicodeSymbols;
+
+        // Pattern types
+        const patternTypes = [
+            {type: 'radial', arms: 8, speed: 200, interval: 0.2}, // 0
+            {type: 'zigzag', waves: 4, amp: 60, speed: 150}, // 1
+            {type: 'rings', count: 3, speed: 200, radius: 50}, // 2
+            {type: 'wall', width: 300, height: 20, speed: 100}, // 3
+            {type: 'beams', length: 400, sweep: 0.02, speed: 300}, // 4
+            {type: 'spiral', arms: 3, speed: 150, tighten: 0.01}, // 5
+            {type: 'homing', count: 6, speed: 120, turn: 0.1}, // 6
+            {type: 'wave', freq: 0.05, amp: 40, speed: 180}, // 7
+            {type: 'burst', count: 12, speed: 250, spread: Math.PI/6}, // 8
+            {type: 'orbit', radius: 150, speed: 0.5, count: 5}, // 9
+            {type: 'laser', length: 500, thickness: 4, sweep: 0.03}, // 10
+            {type: 'bounce', count: 10, speed: 180, bounce: true}, // 11
+            {type: 'cluster', count: 4, subcount: 5, speed: 100}, // 12
+            {type: 'sine', freq: 0.1, amp: 50, speed: 160}, // 13
+            {type: 'cross', arms: 4, length: 300, speed: 200}, // 14
+            {type: 'pentagon', sides: 5, radius: 100, speed: 120}, // 15
+            {type: 'hexagon', sides: 6, radius: 120, speed: 130}, // 16
+            {type: 'spikes', count: 16, length: 80, speed: 220}, // 17
+            {type: 'vortex', arms: 2, speed: 180, rotate: 0.05}, // 18
+            {type: 'rain', count: 20, speed: 250, width: 4} // 19
         ];
 
         // Digger tiers
         const diggerTiers = [
-            {name:'Common', color:'#888', hp:100, regen:1, size:12, bonus:'none', prob:0.6},
-            {name:'Uncommon', color:'#00f', hp:150, regen:2, size:14, bonus:'spin2x', prob:0.8},
-            {name:'Rare', color:'#0f0', hp:200, regen:3, size:16, bonus:'aoe', prob:0.9},
-            {name:'Epic', color:'#f0f', hp:250, regen:5, size:18, bonus:'deflect', prob:0.93},
-            {name:'Legendary', color:'#ff0', hp:300, regen:7, size:20, bonus:'ram', prob:0.95},
-            {name:'Legionary', color:'#f80', hp:350, regen:10, size:22, bonus:'homing', prob:0.965},
-            {name:'Mythic', color:'#0ff', hp:400, regen:15, size:24, bonus:'aura', prob:0.975},
-            {name:'Myth', color:'#fff', hp:500, regen:20, size:26, bonus:'reflect', prob:1.0}
+            {name: 'Common', color: '#888', hp: 100, regen: 1, size: 12, bonus: 'none', prob: 0.6},
+            {name: 'Uncommon', color: '#00f', hp: 150, regen: 2, size: 14, bonus: 'spin2x', prob: 0.8},
+            {name: 'Rare', color: '#0f0', hp: 200, regen: 3, size: 16, bonus: 'aoe', prob: 0.9},
+            {name: 'Epic', color: '#f0f', hp: 250, regen: 5, size: 18, bonus: 'deflect', prob: 0.93},
+            {name: 'Legendary', color: '#ff0', hp: 300, regen: 7, size: 20, bonus: 'ram50', prob: 0.95},
+            {name: 'Legionary', color: '#f80', hp: 350, regen: 10, size: 22, bonus: 'homing', prob: 0.965},
+            {name: 'Mythic', color: '#0ff', hp: 400, regen: 15, size: 24, bonus: 'aura', prob: 0.975},
+            {name: 'Myth', color: '#fff', hp: 500, regen: 20, size: 26, bonus: 'reflect', prob: 1.0}
         ];
 
         // Behaviors
-        const behaviors = [
-            {type:'sentinel', desc:'Stationary defender'},
-            {type:'rammer', desc:'Charges projectiles'},
-            {type:'guardian', desc:'Orbits player'}
+        const behaviors = ['sentinel', 'rammer', 'guardian'];
+
+        // Buffs/Debuffs
+        const buffs = [
+            {name: 'Protection', effect: () => player.protection = true, duration: 5, icon: '🛡️', chance: 0.2},
+            {name: 'Shield Regen', effect: () => {player.shieldRegen = 30; player.shieldRegenTimer = 6;}, duration: 6, icon: '🔄', chance: 0.2},
+            {name: 'Speed Boost', effect: () => {player.speedBoost = 1.5; player.speedBoostTimer = 5;}, duration: 5, icon: '⚡', chance: 0.2},
+            {name: 'Regen', effect: () => {player.regen = 25; player.regenTimer = 5;}, duration: 5, icon: '❤️', chance: 0.2}
+        ];
+        const debuffs = [
+            {name: 'Slow', effect: () => {player.slow = 0.6; player.slowTimer = 4;}, duration: 4, icon: '🐌', chance: 0.4},
+            {name: 'Poison', effect: () => {player.poison = 7; player.poisonTimer = 4;}, duration: 4, icon: '☠', chance: 0.6}
         ];
 
-        // Event timer for world2
+        // Event timer for World 2
         let eventTimer = 0;
-        let eventWarning = {active:false, symbol:'', start:0};
+        let eventWarning = false;
+        let eventSymbol = '';
 
-        // Popup texts
-        let popups = [];
+        // Mouse
+        let mouseX = 0, mouseY = 0;
+
+        // Shake offset
+        let shakeX = 0, shakeY = 0;
 
         // Fade for transitions
-        let transitionTimer = 0;
+        let fadeAlpha = 0;
+        let fading = false;
 
-        // Console hints
-        console.log('showcode -> nexus7, toasty');
+        // Passcode encoded
+        const nexus7Code = String.fromCharCode(110,101,120,117,115,55); // nexus7
+        const toastyCode = atob('VG9hc3R5'); // Toasty
 
-        // Collision functions - exactly as specified
+        // Console hint
+        console.log('showcode -> nexus7 (World 2), toasty (Your Choice)');
+
+        // Init
+        function init() {
+            resize();
+            window.addEventListener('resize', resize);
+            canvas.addEventListener('mousemove', (e) => {
+                if (state === 'playing') {
+                    const rect = canvas.getBoundingClientRect();
+                    mouseX = e.clientX - rect.left;
+                    mouseY = e.clientY - rect.top;
+                }
+            });
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'r' || e.key === 'R') {
+                    if (state === 'gameover' || state === 'playing') {
+                        restart();
+                    }
+                }
+                if (state === 'menu' && e.key === 'Enter') {
+                    checkPasscode();
+                }
+            });
+
+            // UI events
+            document.getElementById('world1-btn').addEventListener('click', () => startWorld(1));
+            document.getElementById('world2-btn').addEventListener('click', () => startWorld(2));
+            document.getElementById('yourchoice-btn').addEventListener('click', () => enterYourChoice());
+            document.getElementById('passcode-btn').addEventListener('click', checkPasscode);
+            document.getElementById('back-btn').addEventListener('click', () => {
+                document.getElementById('yourchoice').classList.add('hidden');
+                state = 'menu';
+                updateMenu();
+            });
+
+            // Init grids for your choice
+            initGrids();
+
+            updateMenu();
+            requestAnimationFrame(loop);
+        }
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            player.x = width / 2;
+            player.y = height / 2;
+        }
+
+        function updateMenu() {
+            const w2btn = document.getElementById('world2-btn');
+            const ycbtn = document.getElementById('yourchoice-btn');
+            if (progress.world1) w2btn.classList.remove('locked');
+            if (progress.yourChoice) ycbtn.classList.remove('locked');
+        }
+
+        function checkPasscode() {
+            const input = document.getElementById('passcode-input').value.trim();
+            if (input === nexus7Code) {
+                progress.world2 = true;
+                alert('ACCESS GRANTED: World 2 Unlocked');
+            } else if (input === toastyCode) {
+                progress.yourChoice = true;
+                alert('ACCESS GRANTED: Your Choice Unlocked');
+            }
+            localStorage.setItem('keyboardDoomProgress', JSON.stringify(progress));
+            updateMenu();
+            document.getElementById('passcode-input').value = '';
+        }
+
+        function initGrids() {
+            const kgrid = document.getElementById('keyboard-grid');
+            keys.forEach((key, i) => {
+                const btn = document.createElement('button');
+                btn.className = 'grid-btn';
+                btn.textContent = keyNames[i];
+                btn.addEventListener('click', () => loadStage(1, i));
+                kgrid.appendChild(btn);
+            });
+
+            const ugrid = document.getElementById('unicode-grid');
+            unicodeSymbols.forEach((sym, i) => {
+                const btn = document.createElement('button');
+                btn.className = 'grid-btn';
+                btn.textContent = sym;
+                btn.addEventListener('click', () => loadStage(2, i));
+                ugrid.appendChild(btn);
+            });
+        }
+
+        function startWorld(world) {
+            if (world === 2 && !progress.world1 && !progress.world2) return;
+            currentWorld = world;
+            currentStage = 0;
+            state = 'playing';
+            document.getElementById('lobby').classList.add('hidden');
+            document.getElementById('hud').classList.remove('hidden');
+            document.body.style.cursor = 'none';
+            loadStage(world, 0);
+            player.hp = 100;
+            player.shield = 0;
+            clearArrays();
+        }
+
+        function enterYourChoice() {
+            if (!progress.yourChoice) return;
+            state = 'yourchoice';
+            document.getElementById('lobby').classList.add('hidden');
+            document.getElementById('yourchoice').classList.remove('hidden');
+        }
+
+        function loadStage(world, idx, fixedTime = false) {
+            currentStage = idx;
+            const stages = world === 1 ? keys.length : unicodeSymbols.length;
+            const name = world === 1 ? keyNames[idx] : unicodeNames[idx];
+            document.getElementById('stage-name').textContent = `Stage: ${name}`;
+            stageDuration = fixedTime ? 20 : 5 + Math.random() * 7;
+            stageTimer = stageDuration;
+            eventTimer = 0;
+            eventWarning = false;
+
+            // Clear old projs
+            clearArrays();
+
+            // Spawn initial pattern based on index
+            const patIdx = idx % patternTypes.length;
+            const pat = {...patternTypes[patIdx]};
+            // Vary params for uniqueness
+            if (world === 2) {
+                pat.speed *= 1.2; // Faster in world 2
+                pat.amp = (pat.amp || 0) + idx * 3;
+                pat.count = (pat.count || 0) + (idx % 8) * 2;
+            }
+            spawnPattern(pat, world === 2 ? unicodeSymbols[idx] : keyNames[idx]);
+        }
+
+        function spawnPattern(pat, symbol) {
+            switch (pat.type) {
+                case 'radial':
+                    for (let i = 0; i < pat.arms; i++) {
+                        spawnProjectile(width/2, height/2, Math.cos(i*2*Math.PI/pat.arms)*pat.speed, Math.sin(i*2*Math.PI/pat.arms)*pat.speed, '#0ff', 4, symbol);
+                    }
+                    break;
+                case 'zigzag':
+                    // Implement zigzag waves
+                    for (let w = 0; w < pat.waves; w++) {
+                        for (let i = 0; i < 10; i++) {
+                            const x = i * 80;
+                            const y = height * (w / pat.waves) + Math.sin(i * 0.5) * pat.amp;
+                            spawnProjectile(x, y, 0, pat.speed, '#f0f', 3, symbol);
+                        }
+                    }
+                    break;
+                case 'rings':
+                    for (let i = 0; i < pat.count; i++) {
+                        spawnRing(width/2, height/2, pat.radius + i*50, pat.speed, '#ff0', 5, symbol);
+                    }
+                    break;
+                case 'wall':
+                    spawnWall(pat.width, pat.height, pat.speed, '#fff', symbol);
+                    break;
+                case 'beams':
+                    // Sweeping beams
+                    for (let i = 0; i < 3; i++) {
+                        const angle = i * Math.PI / 3;
+                        spawnBeam(width/2, height/2, pat.length, angle, pat.sweep, '#f00', symbol);
+                    }
+                    break;
+                case 'spiral':
+                    spawnSpiral(width/2, height/2, pat.arms, pat.speed, pat.tighten, '#0f0', symbol);
+                    break;
+                case 'homing':
+                    for (let i = 0; i < pat.count; i++) {
+                        const angle = i * 2 * Math.PI / pat.count;
+                        spawnProjectile(width/2 + Math.cos(angle)*100, height/2 + Math.sin(angle)*100, Math.cos(angle)*pat.speed, Math.sin(angle)*pat.speed, '#ff0', 6, symbol, {homing: pat.turn});
+                    }
+                    break;
+                case 'wave':
+                    spawnWave(pat.freq, pat.amp, pat.speed, '#0ff', symbol);
+                    break;
+                case 'burst':
+                    spawnBurst(width/2, height/2, pat.count, pat.spread, pat.speed, '#f0f', symbol);
+                    break;
+                case 'orbit':
+                    spawnOrbit(width/2, height/2, pat.radius, pat.speed, pat.count, '#fff', symbol);
+                    break;
+                case 'laser':
+                    spawnLaser(width/2, height/2, pat.length, pat.thickness, pat.sweep, '#f00', symbol);
+                    break;
+                case 'bounce':
+                    spawnBounce(pat.count, pat.speed, pat.bounce, '#0f0', symbol);
+                    break;
+                case 'cluster':
+                    for (let i = 0; i < pat.count; i++) {
+                        spawnCluster(width/2 + (i- pat.count/2)*50, height/2, pat.subcount, pat.speed, '#ff0', symbol);
+                    }
+                    break;
+                case 'sine':
+                    spawnSine(pat.freq, pat.amp, pat.speed, '#0ff', symbol);
+                    break;
+                case 'cross':
+                    spawnCross(width/2, height/2, pat.arms, pat.length, pat.speed, '#fff', symbol);
+                    break;
+                case 'pentagon':
+                    spawnPolygon(width/2, height/2, pat.sides, pat.radius, pat.speed, '#f0f', symbol);
+                    break;
+                case 'hexagon':
+                    spawnPolygon(width/2, height/2, pat.sides, pat.radius, pat.speed, '#0f0', symbol);
+                    break;
+                case 'spikes':
+                    spawnSpikes(width/2, height/2, pat.count, pat.length, pat.speed, '#ff0', symbol);
+                    break;
+                case 'vortex':
+                    spawnVortex(width/2, height/2, pat.arms, pat.speed, pat.rotate, '#f00', symbol);
+                    break;
+                case 'rain':
+                    spawnRain(pat.count, pat.speed, pat.width, '#0ff', symbol);
+                    break;
+                default:
+                    // Fallback radial
+                    spawnRadialFallback(pat, symbol);
+            }
+        }
+
+        // Implement all spawn functions with detailed logic
+        function spawnProjectile(x, y, vx, vy, color, size, symbol, extra = {}) {
+            let proj = projPool.pop() || {};
+            proj.x = x; proj.y = y; proj.vx = vx; proj.vy = vy; proj.color = color; proj.size = size;
+            proj.symbol = symbol; proj.life = 5; proj.maxLife = 5; proj.extra = extra;
+            proj.type = 'projectile';
+            projectiles.push(proj);
+        }
+
+        function spawnRing(cx, cy, radius, speed, color, size, symbol) {
+            const points = 32;
+            for (let i = 0; i < points; i++) {
+                const angle = i * 2 * Math.PI / points;
+                spawnProjectile(cx + Math.cos(angle) * radius, cy + Math.sin(angle) * radius,
+                                -Math.cos(angle) * speed, -Math.sin(angle) * speed, color, size, symbol);
+            }
+        }
+
+        function spawnWall(w, h, speed, color, symbol) {
+            let wall = projPool.pop() || {};
+            wall.x = 0; wall.y = -h; wall.vx = 0; wall.vy = speed; wall.w = w; wall.h = h;
+            wall.color = color; wall.symbol = symbol; wall.life = height / speed + 1; wall.maxLife = wall.life;
+            wall.type = 'wall';
+            projectiles.push(wall);
+        }
+
+        function spawnBeam(cx, cy, length, angle, sweep, color, symbol) {
+            let beam = projPool.pop() || {};
+            beam.cx = cx; beam.cy = cy; beam.length = length; beam.angle = angle; beam.sweep = sweep;
+            beam.color = color; beam.symbol = symbol; beam.life = 3; beam.maxLife = 3;
+            beam.type = 'beam';
+            projectiles.push(beam);
+        }
+
+        function spawnSpiral(cx, cy, arms, speed, tighten, color, symbol) {
+            for (let a = 0; a < arms; a++) {
+                let proj = projPool.pop() || {};
+                proj.cx = cx; proj.cy = cy; proj.arm = a; proj.t = 0; proj.speed = speed; proj.tighten = tighten;
+                proj.color = color; proj.symbol = symbol; proj.life = 4; proj.maxLife = 4;
+                proj.type = 'spiral';
+                projectiles.push(proj);
+            }
+            // Update in loop
+        }
+
+        function spawnWave(freq, amp, speed, color, symbol) {
+            for (let i = 0; i < 20; i++) {
+                const x = i * width / 20;
+                spawnProjectile(x, 0, 0, speed, color, 3, symbol);
+                // Will wave in update
+            }
+        }
+
+        function spawnBurst(cx, cy, count, spread, speed, color, symbol) {
+            for (let i = 0; i < count; i++) {
+                const angle = (i / count) * 2 * Math.PI + Math.random() * spread - spread/2;
+                spawnProjectile(cx, cy, Math.cos(angle)*speed, Math.sin(angle)*speed, color, 4, symbol);
+            }
+        }
+
+        function spawnOrbit(cx, cy, radius, orbspeed, count, color, symbol) {
+            for (let i = 0; i < count; i++) {
+                let orb = projPool.pop() || {};
+                orb.cx = cx; orb.cy = cy; orb.radius = radius; orb.angle = i * 2 * Math.PI / count;
+                orb.orbspeed = orbspeed; orb.color = color; orb.symbol = symbol; orb.size = 5;
+                orb.type = 'orbit';
+                orb.t = 0;
+                projectiles.push(orb);
+            }
+        }
+
+        function spawnLaser(cx, cy, length, thickness, sweep, color, symbol) {
+            let laser = projPool.pop() || {};
+            laser.cx = cx; laser.cy = cy; laser.length = length; laser.thickness = thickness;
+            laser.angle = 0; laser.sweep = sweep; laser.color = color; laser.symbol = symbol;
+            laser.life = 4; laser.maxLife = 4; laser.type = 'laser';
+            projectiles.push(laser);
+        }
+
+        function spawnBounce(count, speed, bounce, color, symbol) {
+            for (let i = 0; i < count; i++) {
+                const x = Math.random() * width;
+                spawnProjectile(x, 0, (Math.random()-0.5)*50, speed + (Math.random()-0.5)*20, color, 4, symbol, {bounce});
+            }
+        }
+
+        function spawnCluster(x, y, subcount, speed, color, symbol) {
+            for (let i = 0; i < subcount; i++) {
+                const angle = i * 2 * Math.PI / subcount;
+                spawnProjectile(x, y, Math.cos(angle)*speed, Math.sin(angle)*speed, color, 3, symbol);
+            }
+        }
+
+        function spawnSine(freq, amp, speed, color, symbol) {
+            for (let i = 0; i < 15; i++) {
+                const x = i * width / 15;
+                spawnProjectile(x, height/2 + Math.sin(i * freq) * amp, 0, speed, color, 4, symbol);
+            }
+        }
+
+        function spawnCross(cx, cy, arms, length, speed, color, symbol) {
+            const angles = [0, Math.PI/2, Math.PI, 3*Math.PI/2];
+            for (let a = 0; a < arms; a++) {
+                for (let j = 0; j < 5; j++) {
+                    const dist = j * length / 5;
+                    spawnProjectile(cx + Math.cos(angles[a]) * dist, cy + Math.sin(angles[a]) * dist,
+                                    Math.cos(angles[a]) * speed, Math.sin(angles[a]) * speed, color, 3, symbol);
+                }
+            }
+        }
+
+        function spawnPolygon(cx, cy, sides, radius, speed, color, symbol) {
+            for (let i = 0; i < sides; i++) {
+                const angle = i * 2 * Math.PI / sides;
+                spawnProjectile(cx + Math.cos(angle) * radius, cy + Math.sin(angle) * radius,
+                                -Math.cos(angle) * speed, -Math.sin(angle) * speed, color, 5, symbol);
+            }
+        }
+
+        function spawnSpikes(cx, cy, count, length, speed, color, symbol) {
+            for (let i = 0; i < count; i++) {
+                const angle = i * 2 * Math.PI / count;
+                spawnProjectile(cx, cy, Math.cos(angle) * speed, Math.sin(angle) * speed, color, 2, symbol, {spikeLength: length});
+            }
+        }
+
+        function spawnVortex(cx, cy, arms, speed, rotate, color, symbol) {
+            for (let a = 0; a < arms; a++) {
+                let proj = projPool.pop() || {};
+                proj.cx = cx; proj.cy = cy; proj.arm = a; proj.t = 0; proj.speed = speed; proj.rotate = rotate;
+                proj.color = color; proj.symbol = symbol; proj.life = 5; proj.maxLife = 5; proj.type = 'vortex';
+                projectiles.push(proj);
+            }
+        }
+
+        function spawnRain(count, speed, width, color, symbol) {
+            for (let i = 0; i < count; i++) {
+                const x = i * width / count;
+                spawnProjectile(x, 0, 0, speed, color, 2, symbol, {rain: true, w: width});
+            }
+        }
+
+        function spawnRadialFallback(pat, symbol) {
+            // Simple radial for any missed
+            for (let i = 0; i < 8; i++) {
+                const angle = i * Math.PI / 4;
+                spawnProjectile(width/2, height/2, Math.cos(angle)*pat.speed, Math.sin(angle)*pat.speed, '#0ff', 4, symbol);
+            }
+        }
+
+        // Update functions
+        function update(dt) {
+            if (state !== 'playing') return;
+
+            // Player movement
+            const targetSpeed = player.speed * player.speedBoost * player.slow;
+            const dx = mouseX - player.x;
+            const dy = mouseY - player.y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            if (dist > 0) {
+                player.vx = (dx / dist) * targetSpeed;
+                player.vy = (dy / dist) * targetSpeed;
+            }
+            player.x += player.vx * dt;
+            player.y += player.vy * dt;
+            player.x = Math.max(player.r, Math.min(width - player.r, player.x));
+            player.y = Math.max(player.r, Math.min(height - player.r, player.y));
+
+            // Status effects decay
+            if (player.protectionTimer > 0) player.protectionTimer -= dt; else player.protection = false;
+            if (player.speedBoostTimer > 0) player.speedBoostTimer -= dt; else player.speedBoost = 1;
+            if (player.regenTimer > 0) { player.regenTimer -= dt; player.hp = Math.min(player.maxHp, player.hp + player.regen * dt); } else player.regen = 0;
+            if (player.shieldRegenTimer > 0) { player.shieldRegenTimer -= dt; player.shield = Math.min(player.maxShield * 2, player.shield + player.shieldRegen * dt); } else player.shieldRegen = 0;
+            if (player.slowTimer > 0) player.slowTimer -= dt; else player.slow = 1;
+            if (player.poisonTimer > 0) { player.poisonTimer -= dt; if (player.hp > 20) player.hp -= player.poison * dt; } else player.poison = 0;
+
+            // Stage timer
+            stageTimer -= dt;
+            document.getElementById('timer').textContent = `Time: ${Math.ceil(stageTimer)}s`;
+            if (stageTimer <= 0) {
+                transitionNext();
+                return;
+            }
+
+            // World 2 events
+            if (currentWorld === 2) {
+                eventTimer += dt;
+                if (eventTimer > 4 + Math.random() * 3 && !eventWarning) {
+                    eventWarning = true;
+                    eventSymbol = unicodeSymbols[Math.floor(Math.random() * unicodeSymbols.length)];
+                    document.getElementById('event-warning').textContent = eventSymbol;
+                    document.getElementById('event-warning').style.opacity = 1;
+                    setTimeout(() => {
+                        document.getElementById('event-warning').style.opacity = 0;
+                        resolveEvent();
+                        eventWarning = false;
+                        eventTimer = 0;
+                    }, 1500);
+                }
+            }
+
+            // Digger spawn
+            if (Math.random() < 0.005 * dt * 60 && diggers.length < 3) { // Approx 1 per stage
+                spawnDigger();
+            }
+
+            // Update diggers
+            diggers.forEach(d => updateDigger(d, dt));
+
+            // Update projectiles
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                const p = projectiles[i];
+                updateProjectile(p, dt);
+                // Check digger collisions
+                for (let j = diggers.length - 1; j >= 0; j--) {
+                    const d = diggers[j];
+                    if (collide(p, d)) {
+                        handleProjDiggerCollision(p, d);
+                        projectiles.splice(i, 1);
+                        if (p.type !== 'wall' && p.type !== 'beam') projPool.push(p);
+                        break;
+                    }
+                }
+                // Check player collision
+                if (!eventWarning && collide(p, player)) {
+                    handleDamage(p.damage || 10);
+                    projectiles.splice(i, 1);
+                    if (p.type !== 'wall' && p.type !== 'beam') projPool.push(p);
+                    spawnParticles(p.x, p.y, 15, p.color, 'hit');
+                }
+                // Life check
+                if (p.life <= 0) {
+                    projectiles.splice(i, 1);
+                    if (p.type !== 'wall' && p.type !== 'beam') projPool.push(p);
+                }
+            }
+
+            // Update particles
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const part = particles[i];
+                part.x += part.vx * dt;
+                part.y += part.vy * dt;
+                part.vx *= 0.98;
+                part.vy *= 0.98;
+                part.life -= dt;
+                if (part.life <= 0) {
+                    particles.splice(i, 1);
+                    partPool.push(part);
+                }
+            }
+
+            // Update popups
+            for (let i = popups.length - 1; i >= 0; i--) {
+                const pop = popups[i];
+                pop.y += pop.vy * dt;
+                pop.vy *= 0.95;
+                pop.life -= dt;
+                if (pop.life <= 0) {
+                    popups.splice(i, 1);
+                    popupPool.push(pop);
+                }
+            }
+
+            // Screen shake
+            if (player.shake > 0) {
+                player.shake *= 0.9;
+                shakeX = (Math.random() - 0.5) * player.shake;
+                shakeY = (Math.random() - 0.5) * player.shake;
+            } else {
+                shakeX = shakeY = 0;
+            }
+
+            // Update HUD
+            document.getElementById('top-left').innerHTML = `
+                HP: ${Math.floor(player.hp)}/100<br>
+                Shield: ${Math.floor(player.shield)}/50${player.shield > 50 ? ' (OS)' : ''}<br>
+                Stage: ${document.getElementById('stage-name').textContent}
+            `;
+
+            // Check death
+            if (player.hp <= 0) {
+                gameOver();
+            }
+        }
+
+        function updateProjectile(p, dt) {
+            p.life -= dt;
+            switch (p.type) {
+                case 'projectile':
+                    p.x += p.vx * dt;
+                    p.y += p.vy * dt;
+                    if (p.extra.homing) {
+                        const dx = player.x - p.x;
+                        const dy = player.y - p.y;
+                        const dist = Math.sqrt(dx*dx + dy*dy);
+                        if (dist > 0) {
+                            p.vx += (dx / dist) * p.extra.homing * dt * 60;
+                            p.vy += (dy / dist) * p.extra.homing * dt * 60;
+                        }
+                    }
+                    if (p.extra.bounce) {
+                        if (p.x < 0 || p.x > width) p.vx *= -1;
+                        if (p.y < 0 || p.y > height) p.vy *= -1;
+                    }
+                    if (p.extra.spikeLength) {
+                        // Extend spike
+                        p.size = p.extra.spikeLength * (p.life / p.maxLife);
+                    }
+                    break;
+                case 'spiral':
+                    p.t += dt;
+                    const r = p.t * p.speed;
+                    const theta = p.arm * 2 * Math.PI / p.arms + p.t * 10;
+                    p.x = p.cx + Math.cos(theta) * r;
+                    p.y = p.cy + Math.sin(theta) * r;
+                    if (p.tighten) r -= p.tighten * p.t;
+                    break;
+                case 'wall':
+                    p.y += p.vy * dt;
+                    break;
+                case 'beam':
+                    p.angle += p.sweep * dt * 60;
+                    p.life -= dt;
+                    break;
+                case 'orbit':
+                    p.t += dt;
+                    p.angle += p.orbspeed * dt * 60;
+                    p.x = p.cx + Math.cos(p.angle) * p.radius;
+                    p.y = p.cy + Math.sin(p.angle) * p.radius;
+                    break;
+                case 'laser':
+                    p.angle += p.sweep * dt * 60;
+                    break;
+                case 'vortex':
+                    p.t += dt;
+                    const vr = p.t * p.speed;
+                    const vtheta = p.arm * 2 * Math.PI / p.arms + p.t * p.rotate * 60;
+                    p.x = p.cx + Math.cos(vtheta) * vr;
+                    p.y = p.cy + Math.sin(vtheta) * vr;
+                    break;
+                case 'rain':
+                    p.y += p.vx * dt; // vx is speed here
+                    if (p.extra.rain) p.w = p.extra.w;
+                    break;
+                // Add more detailed updates for other types...
+                default:
+                    p.x += p.vx * dt;
+                    p.y += p.vy * dt;
+            }
+        }
+
+        function spawnDigger() {
+            const rand = Math.random();
+            let tier = diggerTiers[0];
+            for (let t of diggerTiers) {
+                if (rand < t.prob) {
+                    tier = t;
+                    break;
+                }
+            }
+            let digger = {
+                x: Math.random() * width, y: Math.random() * height,
+                hp: tier.hp, maxHp: tier.hp, color: tier.color, size: tier.size,
+                regen: tier.regen, bonus: tier.bonus,
+                behavior: behaviors[Math.floor(Math.random() * behaviors.length)],
+                spin: 0, // for visuals
+                type: 'digger'
+            };
+            diggers.push(digger);
+            spawnPopup(digger.x, digger.y, `⚙ Digger Spawned: ${tier.name} ${digger.behavior}`, '#0ff');
+        }
+
+        function updateDigger(d, dt) {
+            d.hp = Math.min(d.maxHp, d.hp + d.regen * dt);
+            d.spin += dt * 10; // Base spin, *2 if uncommon+
+
+            switch (d.behavior) {
+                case 'sentinel':
+                    // Stationary
+                    break;
+                case 'rammer':
+                    // Seek nearest proj
+                    let nearest = null;
+                    let minDist = Infinity;
+                    projectiles.forEach(p => {
+                        const dist = Math.hypot(p.x - d.x, p.y - d.y);
+                        if (dist < minDist) {
+                            minDist = dist;
+                            nearest = p;
+                        }
+                    });
+                    if (nearest) {
+                        const dx = nearest.x - d.x;
+                        const dy = nearest.y - d.y;
+                        const dist = Math.hypot(dx, dy);
+                        if (dist > 0) {
+                            d.vx = (dx / dist) * 100 * dt * 60; // Cap speed
+                            d.vy = (dy / dist) * 100 * dt * 60;
+                        }
+                        d.x += d.vx;
+                        d.y += d.vy;
+                    }
+                    break;
+                case 'guardian':
+                    // Orbit player
+                    const angle = d.angle || 0;
+                    d.angle = angle + 0.5 * dt * 60;
+                    const orbitR = 100 + d.size;
+                    d.x = player.x + Math.cos(d.angle) * orbitR;
+                    d.y = player.y + Math.sin(d.angle) * orbitR;
+                    break;
+            }
+
+            // Bonus effects
+            if (d.bonus === 'aoe' && Math.random() < 0.01 * dt * 60) {
+                // AoE pulse
+                for (let i = projectiles.length - 1; i >= 0; i--) {
+                    const p = projectiles[i];
+                    if (Math.hypot(p.x - d.x, p.y - d.y) < 50) {
+                        projectiles.splice(i, 1);
+                        if (p.type !== 'wall') projPool.push(p);
+                    }
+                }
+            }
+            if (d.bonus === 'aura' && Math.hypot(player.x - d.x, player.y - d.y) < 50) {
+                player.shield += 0.2 * dt; // Extra regen
+            }
+            // Other bonuses in collision handling
+        }
+
+        function resolveEvent() {
+            const isBuff = Math.random() < 0.6;
+            const list = isBuff ? buffs : debuffs;
+            const ev = list[Math.floor(Math.random() * list.length)];
+            ev.effect();
+            spawnPopup(width/2, height/2 - 50, `+ ${ev.name}`, isBuff ? '#0f0' : '#f00', ev.icon);
+            // Add to events for HUD icons if needed
+        }
+
+        function collide(a, b) {
+            if (a.type === 'projectile' && b.type === 'projectile') return false; // Skip
+            switch (a.type) {
+                case 'projectile':
+                    return circleCircle(a.x, a.y, a.size, b.x, b.y, b.r || b.size || 0);
+                case 'wall':
+                    return rectCircle(a.x, a.y, a.w, a.h, b.x, b.y, b.r || b.size);
+                case 'beam':
+                case 'laser':
+                    return lineCircle(a.cx + Math.cos(a.angle) * a.length/2, a.cy + Math.sin(a.angle) * a.length/2,
+                                      a.cx - Math.cos(a.angle) * a.length/2, a.cy - Math.sin(a.angle) * a.length/2,
+                                      b.x, b.y, b.r || b.size);
+                default:
+                    return circleCircle(a.x, a.y, a.size, b.x, b.y, b.r || b.size);
+            }
+        }
+
+        function handleProjDiggerCollision(p, d) {
+            d.hp -= p.damage || 5;
+            if (d.bonus === 'deflect' && Math.random() < 0.3) {
+                // Deflect: reverse proj
+                p.vx *= -1;
+                p.vy *= -1;
+                return;
+            }
+            if (d.bonus === 'reflect') {
+                // Reflect: reverse *1.5
+                p.vx *= -1.5;
+                p.vy *= -1.5;
+            }
+            if (d.bonus === 'ram50') {
+                // Extra damage? Or ram handled in update
+            }
+            if (d.hp <= 0) {
+                spawnParticles(d.x, d.y, 50, d.color, 'death');
+                player.hp = Math.min(player.maxHp, player.hp + 10); // Myth bonus
+                const idx = diggers.indexOf(d);
+                diggers.splice(idx, 1);
+                player.shake = 10;
+            }
+            spawnParticles(p.x, p.y, 10, p.color, 'hit');
+        }
+
+        function handleDamage(dmg) {
+            if (player.protection) dmg *= 0.5;
+            if (player.shield > 0) {
+                player.shield -= dmg;
+                if (player.shield < 0) {
+                    player.hp += player.shield;
+                    player.shield = 0;
+                }
+            } else {
+                player.hp -= dmg;
+            }
+            player.shake = Math.max(5, dmg);
+            spawnPopup(player.x, player.y, `-${Math.floor(dmg)}`, '#f00');
+            // Flash screen? Implement if time
+        }
+
+        function transitionNext() {
+            player.hp = Math.min(player.maxHp, player.hp + 12);
+            fading = true;
+            fadeAlpha = 0;
+            setTimeout(() => {
+                clearArrays();
+                currentStage = (currentStage + 1) % (currentWorld === 1 ? keys.length : unicodeSymbols.length);
+                if (currentStage === 0) {
+                    // World complete
+                    if (currentWorld === 1) progress.world1 = true;
+                    else if (currentWorld === 2) progress.world2 = true;
+                    localStorage.setItem('keyboardDoomProgress', JSON.stringify(progress));
+                    backToMenu();
+                    return;
+                }
+                loadStage(currentWorld, currentStage);
+                fading = false;
+                fadeAlpha = 0;
+            }, 2000);
+        }
+
+        function clearArrays() {
+            projectiles.forEach(p => { if (p.type === 'projectile' || p.type === 'spiral' || p.type === 'orbit' || p.type === 'vortex') projPool.push(p); });
+            particles.forEach(p => partPool.push(p));
+            popups.forEach(p => popupPool.push(p));
+            projectiles = [];
+            particles = [];
+            popups = [];
+            // Diggers persist if epic+
+            diggers = diggers.filter(d => diggerTiers.findIndex(t => t.name === d.tier?.name || diggerTiers[0]) >= 3); // Epic+
+            // Donate low tiers
+            diggers.forEach(d => {
+                if (d.hp > 0 && diggerTiers.findIndex(t => t.name === d.tier?.name || 0) < 3) {
+                    const donate = Math.floor(d.hp / 10);
+                    player.shield = Math.min(player.maxShield * 2, player.shield + donate);
+                    spawnPopup(width/2, height/2, `+${donate} Shield`, '#0ff');
+                }
+            });
+            diggers = diggers.filter(d => diggerTiers.findIndex(t => t.name === d.tier?.name || 0) >= 3);
+        }
+
+        function backToMenu() {
+            state = 'menu';
+            document.getElementById('lobby').classList.remove('hidden');
+            document.getElementById('hud').classList.add('hidden');
+            document.body.style.cursor = 'default';
+            updateMenu();
+            clearArrays();
+        }
+
+        function gameOver() {
+            state = 'gameover';
+            document.getElementById('gameover').classList.remove('hidden');
+            document.getElementById('gameover').style.opacity = 1;
+            document.body.style.cursor = 'default';
+        }
+
+        function restart() {
+            state = 'playing';
+            document.getElementById('gameover').classList.add('hidden');
+            document.getElementById('hud').classList.remove('hidden');
+            document.body.style.cursor = 'none';
+            currentStage = 0;
+            loadStage(currentWorld, 0);
+            player.hp = 100;
+            player.shield = 0;
+            clearArrays();
+        }
+
+        function spawnParticles(x, y, count, color, type) {
+            for (let i = 0; i < count; i++) {
+                let part = partPool.pop() || {};
+                part.x = x; part.y = y;
+                part.vx = (Math.random() - 0.5) * 200;
+                part.vy = (Math.random() - 0.5) * 200;
+                part.color = color; part.life = 1; part.maxLife = 1;
+                part.size = Math.random() * 4 + 1;
+                part.type = type;
+                particles.push(part);
+            }
+        }
+
+        function spawnPopup(x, y, text, color, icon = '') {
+            let pop = popupPool.pop() || {};
+            pop.x = x; pop.y = y; pop.text = text; pop.color = color;
+            pop.vy = -50; pop.life = 2; pop.maxLife = 2;
+            pop.icon = icon;
+            popups.push(pop);
+        }
+
+        // Collision functions as specified
         function circleCircle(x1, y1, r1, x2, y2, r2) {
             const dx = x1 - x2;
             const dy = y1 - y2;
-            const dist = Math.sqrt(dx*dx + dy*dy);
-            return dist < r1 + r2;
+            return Math.sqrt(dx*dx + dy*dy) < r1 + r2;
         }
 
         function rectCircle(rx, ry, rw, rh, cx, cy, cr) {
@@ -343,703 +1191,85 @@
         function lineCircle(x1, y1, x2, y2, cx, cy, cr) {
             const dx = x2 - x1;
             const dy = y2 - y1;
-            const length = Math.sqrt(dx*dx + dy*dy);
-            if (length === 0) return circleCircle(x1,y1,cr,cx,cy,0);
-            const t = Math.max(0, Math.min(1, ((cx - x1)*dx + (cy - y1)*dy) / (length * length)));
+            const len = Math.sqrt(dx*dx + dy*dy);
+            if (len === 0) return circleCircle(x1, y1, cr, cx, cy, 0);
+            const t = Math.max(0, Math.min(1, ((cx - x1)*dx + (cy - y1)*dy) / (len*len)));
             const projX = x1 + t * dx;
             const projY = y1 + t * dy;
-            const pdx = cx - projX;
-            const pdy = cy - projY;
-            return pdx*pdx + pdy*pdy < cr*cr;
+            return circleCircle(projX, projY, cr, cx, cy, 0);
         }
 
-        function rotatedRectCircle(x, y, w, h, angle, cx, cy, cr) {
+        function rotatedRectCircle(rx, ry, rw, rh, angle, cx, cy, cr) {
             // Rotate point relative to rect center
-            const cos = Math.cos(angle);
-            const sin = Math.sin(angle);
-            const rx = x + w/2;
-            const ry = y + h/2;
-            const px = cx - rx;
-            const py = cy - ry;
-            const rotX = px * cos - py * sin + rx;
-            const rotY = px * sin + py * cos + ry;
-            return rectCircle(x, y, w, h, rotX, rotY, cr);
+            const cos = Math.cos(-angle);
+            const sin = Math.sin(-angle);
+            const dx = cx - rx - rw/2;
+            const dy = cy - ry - rh/2;
+            const rotX = cos * dx - sin * dy;
+            const rotY = sin * dx + cos * dy;
+            return rectCircle(rx + rw/2, ry + rh/2, rw, rh, rotX + rx + rw/2, rotY + ry + rh/2, cr);
         }
 
-        // Initialize
-        function init() {
-            resize();
-            canvas.addEventListener('mousemove', handleMouse);
-            window.addEventListener('keydown', handleKey);
-            window.addEventListener('resize', resize);
-            document.getElementById('startWorld1').addEventListener('click', () => startWorld(1));
-            document.getElementById('startWorld2').addEventListener('click', () => startWorld(2));
-            document.getElementById('startYourChoice').addEventListener('click', () => enterYourChoice());
-            submitCode.addEventListener('click', checkCode);
-            codeInput.addEventListener('keypress', (e) => {if (e.key === 'Enter') checkCode();});
-            backBtn.addEventListener('click', () => { yourchoice.classList.add('hidden'); menu.classList.remove('hidden'); state = 'menu'; });
-            initPatterns();
-            updateMenuButtons();
-            player.x = canvas.width / 2;
-            player.y = canvas.height / 2;
-            requestAnimationFrame(loop);
-        }
-
-        function resize() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            player.x = canvas.width / 2;
-            player.y = canvas.height / 2;
-        }
-
-        function handleMouse(e) {
-            if (state !== 'playing') return;
-            const rect = canvas.getBoundingClientRect();
-            mouseX = e.clientX - rect.left;
-            mouseY = e.clientY - rect.top;
-        }
-
-        function handleKey(e) {
-            if (e.key === 'r' || e.key === 'R') {
-                if (state === 'gameover') {
-                    resetStage();
-                }
-            }
-        }
-
-        function checkCode() {
-            let code = codeInput.value.toLowerCase().trim();
-            if (code === 'nexus7' || code === String.fromCharCode(110,101,120,117,115,55)) {
-                progress.world2 = true;
-                alert('ACCESS GRANTED: World 2 Unlocked');
-            } else if (code === 'toasty' || atob('VG9hc3R5') === code) {
-                progress.yourChoice = true;
-                alert('ACCESS GRANTED: Your Choice Unlocked');
-            }
-            saveProgress();
-            updateMenuButtons();
-            codeInput.value = '';
-        }
-
-        function saveProgress() {
-            localStorage.setItem('keyboardDoomProgress', JSON.stringify(progress));
-        }
-
-        function updateMenuButtons() {
-            const w2Btn = document.getElementById('startWorld2');
-            const ycBtn = document.getElementById('startYourChoice');
-            w2Btn.classList.toggle('locked', !progress.world1 && !progress.world2);
-            ycBtn.classList.toggle('locked', !progress.yourChoice && !(progress.world1 && progress.world2));
-        }
-
-        function startWorld(world) {
-            if (world === 2 && !progress.world1 && !progress.world2) return;
-            currentWorld = world;
-            state = 'playing';
-            menu.classList.add('hidden');
-            canvas.style.cursor = 'none';
-            resetGame();
-            nextStage();
-        }
-
-        function enterYourChoice() {
-            if (!progress.yourChoice && !(progress.world1 && progress.world2)) return;
-            state = 'yourchoice';
-            menu.classList.add('hidden');
-            yourchoice.classList.remove('hidden');
-            // Populate grids
-            keyGrid.innerHTML = '';
-            // Simplified - use keyList slice for 10x? but spec 10 col, so approx
-            keyList.slice(0,100).forEach(key => { // dummy for length
-                const btn = document.createElement('button');
-                btn.textContent = key;
-                btn.onclick = () => startCustomStage(key, 1);
-                keyGrid.appendChild(btn);
-            });
-            uniGrid.innerHTML = '';
-            unicodeList.forEach(sym => {
-                const btn = document.createElement('button');
-                btn.textContent = sym;
-                btn.onclick = () => startCustomStage(sym, 2);
-                uniGrid.appendChild(btn);
-            });
-        }
-
-        function startCustomStage(id, world) {
-            currentWorld = world;
-            currentStage = id;
-            state = 'playing';
-            yourchoice.classList.add('hidden');
-            canvas.style.cursor = 'none';
-            timeLeft = 20;
-            stageStartTime = performance.now() / 1000;
-            resetEffects();
-            // Spawn pattern based on id
-        }
-
-        function resetGame() {
-            player.hp = 100;
-            player.shield = 0;
-            activeProjs = [];
-            activeParts = [];
-            diggers = [];
-            eventTimer = 0;
-            eventWarning.active = false;
-            popups = [];
-            shakeIntensity = 0;
-            fadeAlpha = 0;
-            currentStage = 0;
-            if (currentWorld === 1) progress.world1 = true;
-            else if (currentWorld === 2) progress.world2 = true;
-            if (progress.world1 && progress.world2) progress.yourChoice = true;
-            saveProgress();
-        }
-
-        function nextStage() {
-            currentStage = (currentStage + 1) % (currentWorld === 1 ? keyList.length : unicodeList.length);
-            const stages = currentWorld === 1 ? keyList : unicodeList;
-            // Display stage name - but in HUD
-            timeLeft = 5 + Math.random() * 7;
-            stageStartTime = performance.now() / 1000;
-            fadeOut = false;
-            fadeAlpha = 0;
-            transitionTimer = 0;
-            resetEffects();
-            // Heal
-            player.hp = Math.min(100, player.hp + 12);
-            // Donate diggers
-            diggers.forEach(d => {
-                if (d.tier < 3 && d.hp > 0) { // Common/Uncommon/Rare
-                    const donate = Math.floor(d.hp / 10);
-                    player.shield = Math.min(player.maxShield * 2, player.shield + donate);
-                    popups.push({text:`+${donate} Shield`, x:canvas.width/2, y:canvas.height/2 - 50, vy:-50, life:2, color:'#0f0'});
-                    d.hp = 0; // Delete after
-                }
-            });
-            diggers = diggers.filter(d => d.tier >= 3 || d.hp <= 0);
-            // Clear projs/parts
-            activeProjs = [];
-            activeParts = [];
-            // Start spawning for this stage
-        }
-
-        function resetStage() {
-            state = 'playing';
-            resetGame();
-            nextStage();
-        }
-
-        function resetEffects() {
-            player.effects = [];
-        }
-
-        // Update effects
-        function updateEffects(dt) {
-            player.effects = player.effects.filter(e => {
-                e.duration -= dt;
-                if (e.duration <= 0) return false;
-                // Apply
-                if (e.type === 'slow') player.speed = 8 * 0.6;
-                else if (e.type === 'speedBoost') player.speed = 8 * 1.5;
-                else if (e.type === 'protection') {} // Applied in damage
-                else if (e.type === 'shieldRegen') player.shield += 30 * dt;
-                else if (e.type === 'regen') player.hp += 25 * dt;
-                else if (e.type === 'poison') {
-                    if (player.hp > 20) player.hp -= 7 * dt;
-                }
-                return true;
-            });
-            // Default speed
-            let slowCount = player.effects.filter(e => e.type === 'slow').length;
-            let boostCount = player.effects.filter(e => e.type === 'speedBoost').length;
-            player.speed = 8 * (boostCount > 0 ? 1.5 : (slowCount > 0 ? 0.6 : 1));
-            player.overshield = player.shield > player.maxShield;
-        }
-
-        // Damage function
-        function takeDamage(dmg, posX, posY) {
-            let finalDmg = dmg;
-            // Protection
-            if (player.effects.some(e => e.type === 'protection')) finalDmg *= 0.5;
-            // Shield
-            if (player.shield > 0) {
-                player.shield -= finalDmg;
-                if (player.shield < 0) {
-                    player.hp += player.shield; // Transfer overflow
-                    player.shield = 0;
-                }
-            } else {
-                player.hp -= finalDmg;
-            }
-            player.hp = Math.max(0, player.hp);
-            player.shield = Math.max(0, player.shield);
-            // Effects
-            popups.push({text:`-${Math.round(finalDmg)}`, x:posX, y:posY, vy:-30, life:1.5, color:'#f00'});
-            shakeIntensity = Math.max(shakeIntensity, 10);
-            // Flash
-            // We'll render a flash overlay
-            if (player.hp <= 0) {
-                state = 'gameover';
-                canvas.style.cursor = 'default';
-            }
-        }
-
-        // Spawn projectile
-        function spawnProj(type, params) {
-            if (activeProjs.length >= maxProjs) return;
-            const proj = projPool.pop() || {x:0,y:0,vx:0,vy:0,r:3,type,life:1,angle:0};
-            proj.x = params.x || canvas.width / 2;
-            proj.y = params.y || canvas.height / 2;
-            proj.vx = params.vx || 0;
-            proj.vy = params.vy || 0;
-            proj.r = params.r || 3;
-            proj.life = params.life || 2;
-            proj.angle = params.angle || 0;
-            proj.color = params.color || '#f00';
-            proj.extra = params.extra || {};
-            activeProjs.push(proj);
-        }
-
-        // Update projectiles
-        function updateProjectiles(dt) {
-            // Stage-specific spawning
-            const stages = currentWorld === 1 ? keyList : unicodeList;
-            const stageId = stages[currentStage];
-            let pattern;
-            if (currentWorld === 1) {
-                pattern = world1Patterns[stageId.toLowerCase()] || world1Patterns['a'];
-            } else {
-                // For unicode, cycle types with index
-                const idx = currentStage % unicodeList.length;
-                const types = ['spiral','homing','wave','aoe','reflectSim','charge','orbitTight','pulseWide','sweepFast','tunnelLong'];
-                pattern = {type: types[idx % types.length], arms:1 + idx%4, speed:120 + idx*3, count:5 + idx%8*2, interval:0.3 - idx*0.02, amp:20 + idx*2, freq:0.05 + idx*0.01};
-            }
-            // Spawn logic based on type - this is where lines add up
-            if (currentWorld === 1) {
-                switch (pattern.type) {
-                    case 'radial':
-                        if (Math.random() < dt / pattern.interval) {
-                            for (let i = 0; i < pattern.count; i++) {
-                                const angle = (i / pattern.count) * Math.PI * 2;
-                                spawnProj('bullet', {vx: Math.cos(angle) * pattern.speed, vy: Math.sin(angle) * pattern.speed, life: pattern.life});
-                            }
-                        }
-                        break;
-                    case 'burst':
-                        if (Math.random() < dt / pattern.interval) {
-                            for (let i = 0; i < pattern.count; i++) {
-                                const angle = pattern.angleSpread * i / pattern.count - pattern.angleSpread / 2;
-                                spawnProj('bullet', {vx: Math.cos(angle) * pattern.speed, vy: Math.sin(angle) * pattern.speed});
-                            }
-                        }
-                        break;
-                    case 'circle':
-                        if (Math.random() < dt / pattern.interval) {
-                            for (let i = 0; i < pattern.count; i++) {
-                                const angle = (i / pattern.count) * Math.PI * 2;
-                                const rad = pattern.radius;
-                                spawnProj('bullet', {x: canvas.width/2 + Math.cos(angle) * rad, y: canvas.height/2 + Math.sin(angle) * rad, vx: Math.cos(angle + Math.PI/2 * pattern.dir) * pattern.speed, vy: Math.sin(angle + Math.PI/2 * pattern.dir) * pattern.speed});
-                            }
-                        }
-                        break;
-                    case 'line':
-                        if (Math.random() < dt / pattern.interval) {
-                            const dirAngle = pattern.dir === 'h' ? 0 : Math.PI/2;
-                            for (let i = 0; i < pattern.count; i++) {
-                                const offset = (i - pattern.count/2) * pattern.spacing;
-                                const startX = canvas.width/2 + offset * Math.cos(dirAngle + Math.PI/2);
-                                const startY = canvas.height/2 + offset * Math.sin(dirAngle + Math.PI/2);
-                                spawnProj('bullet', {x:startX, y:startY, vx: Math.cos(dirAngle) * pattern.speed, vy: Math.sin(dirAngle) * pattern.speed});
-                            }
-                        }
-                        break;
-                    case 'spiral':
-                        // Continuous spiral - use time
-                        const t = (performance.now() / 1000 - stageStartTime) * pattern.speed;
-                        for (let arm = 0; arm < pattern.arms; arm++) {
-                            const angle = t + arm * (Math.PI * 2 / pattern.arms);
-                            const rad = t * pattern.tighten;
-                            const x = canvas.width/2 + Math.cos(angle) * rad;
-                            const y = canvas.height/2 + Math.sin(angle) * rad;
-                            if (circleCircle(x,y,3, player.x,player.y,player.r + 5)) continue; // Avoid spawn on player
-                            spawnProj('bullet', {x, y, vx: Math.cos(angle + Math.PI/2) * pattern.speed, vy: Math.sin(angle + Math.PI/2) * pattern.speed, life:3});
-                        }
-                        break;
-                    // Add more cases for all types - this expands lines
-                    case 'zigzag':
-                        // Implement zigzag path - complex, use sin wave
-                        const waveT = (performance.now() / 1000 - stageStartTime) * pattern.speed;
-                        for (let wave = 0; wave < pattern.waves; wave++) {
-                            const baseAngle = (wave / pattern.waves) * Math.PI * 2;
-                            const pos = waveT * pattern.speed;
-                            const zigX = pos * Math.cos(baseAngle);
-                            const zigY = pos * Math.sin(baseAngle) + Math.sin(waveT * pattern.freq + baseAngle) * pattern.amp;
-                            spawnProj('bullet', {x: canvas.width/2 + zigX, y: canvas.height/2 + zigY, vx: Math.cos(baseAngle) * pattern.speed, vy: Math.sin(baseAngle) * pattern.speed});
-                        }
-                        break;
-                    case 'ring':
-                        // Expanding rings
-                        const ringT = (performance.now() / 1000 - stageStartTime);
-                        for (let ring = 0; ring < pattern.rings; ring++) {
-                            const rad = (ringT + ring) * pattern.expandSpeed;
-                            if (rad > Math.max(canvas.width, canvas.height)) continue;
-                            // Spawn points on ring
-                            for (let i = 0; i < 20; i++) {
-                                const angle = (i / 20) * Math.PI * 2;
-                                const px = canvas.width/2 + Math.cos(angle) * rad;
-                                const py = canvas.height/2 + Math.sin(angle) * rad;
-                                spawnProj('ring', {x:px, y:py, r: pattern.thickness / 2, life:1, angle:angle});
-                            }
-                        }
-                        break;
-                    // Continue for all 20+ types, each with 10-20 lines of logic for spawning/updating
-                    // For brevity in this response, assume implemented similarly with variations
-                    // In full code, this would add 400+ lines
-                    default:
-                        // Fallback radial
-                        if (Math.random() < dt / 0.5) {
-                            spawnProj('bullet', {vx: (Math.random()-0.5)*400, vy: (Math.random()-0.5)*400});
-                        }
-                }
-            } else {
-                // World 2 similar but faster, more count
-                pattern.speed *= 1.2; // Scaling
-                // Similar switch with more params
-                // Omitted for length, but implement analogously
-            }
-
-            // Update active projs
-            for (let i = activeProjs.length - 1; i >= 0; i--) {
-                const p = activeProjs[i];
-                p.x += p.vx * dt;
-                p.y += p.vy * dt;
-                p.life -= dt;
-                p.angle += 0.1; // For rotation if needed
-                // Homing
-                if (p.extra.homing) {
-                    const dx = player.x - p.x;
-                    const dy = player.y - p.y;
-                    const dist = Math.sqrt(dx*dx + dy*dy);
-                    if (dist > 0) {
-                        p.vx += (dx / dist) * p.extra.turnRate * dt;
-                        p.vy += (dy / dist) * p.extra.turnRate * dt;
-                    }
-                }
-                // Bounce for bounce type
-                if (p.extra.bounce && (p.extra.bounceCount > 0)) {
-                    if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
-                    if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
-                    p.extra.bounceCount--;
-                }
-                // Out of bounds
-                if (p.x < -50 || p.x > canvas.width + 50 || p.y < -50 || p.y > canvas.height + 50 || p.life <= 0) {
-                    activeProjs.splice(i, 1);
-                    projPool.push(p);
-                    continue;
-                }
-                // Collide with player
-                if (circleCircle(p.x, p.y, p.r, player.x, player.y, player.r)) {
-                    takeDamage(10 + Math.random()*10, p.x, p.y); // Base dmg
-                    // Particles
-                    for (let j = 0; j < 15; j++) {
-                        spawnParticle(p.x, p.y, '#f00');
-                    }
-                    activeProjs.splice(i, 1);
-                    projPool.push(p);
-                }
-                // Collide with diggers
-                diggers.forEach(d => {
-                    if (circleCircle(p.x, p.y, p.r, d.x, d.y, d.size)) {
-                        // Apply bonus
-                        if (d.bonus === 'reflect') {
-                            // Reverse vel *1.5
-                            p.vx *= -1.5;
-                            p.vy *= -1.5;
-                            player.hp = Math.min(100, player.hp + 10);
-                            popups.push({text:'+10 HP', x:player.x, y:player.y, vy:-40, life:1.5, color:'#0f0'});
-                        } else if (d.bonus === 'deflect' && Math.random() < 0.3) {
-                            activeProjs.splice(i, 1);
-                            projPool.push(p);
-                            return;
-                        } else if (d.bonus === 'aoe') {
-                            // Clear nearby
-                            for (let k = activeProjs.length - 1; k >= 0; k--) {
-                                if (k !== i && circleCircle(activeProjs[k].x, activeProjs[k].y, activeProjs[k].r, d.x, d.y, 50)) {
-                                    activeProjs.splice(k, 1);
-                                    projPool.push(activeProjs[k]);
-                                }
-                            }
-                        }
-                        // Damage digger
-                        d.hp -= 10;
-                        // Particles
-                        spawnParticle(p.x, p.y, d.color);
-                        if (d.hp <= 0) {
-                            diggers.splice(diggers.indexOf(d), 1);
-                            for (let j = 0; j < 50; j++) {
-                                spawnParticle(d.x, d.y, d.color, 5);
-                            }
-                            shakeIntensity = 10;
-                        }
-                        activeProjs.splice(i, 1);
-                        projPool.push(p);
-                    }
-                });
-            }
-        }
-
-        function spawnParticle(x, y, color, speed = 100) {
-            if (activeParts.length >= maxParts) return;
-            const part = partPool.pop() || {x,y,vx:0,vy:0,life:1,dec:0.98,size:2,color};
-            part.x = x;
-            part.y = y;
-            part.vx = (Math.random() - 0.5) * speed;
-            part.vy = (Math.random() - 0.5) * speed;
-            part.life = 1;
-            part.color = color;
-            activeParts.push(part);
-        }
-
-        function updateParticles(dt) {
-            for (let i = activeParts.length - 1; i >= 0; i--) {
-                const p = activeParts[i];
-                p.x += p.vx * dt;
-                p.y += p.vy * dt;
-                p.vx *= p.dec;
-                p.vy *= p.dec;
-                p.life -= dt;
-                if (p.life <= 0) {
-                    activeParts.splice(i, 1);
-                    partPool.push(p);
-                }
-            }
-        }
-
-        // Digger spawn
-        function updateDiggers(dt) {
-            // Regen
-            diggers.forEach(d => {
-                d.hp = Math.min(d.tier.hp, d.hp + d.tier.regen * dt);
-            });
-            // Spawn chance
-            if (diggers.length < maxDiggers && Math.random() < 0.005 * dt) {
-                let rand = Math.random();
-                let tier = diggerTiers.find(t => rand <= t.prob) || diggerTiers[0];
-                const behavior = behaviors[Math.floor(Math.random() * behaviors.length)];
-                const digger = {
-                    x: Math.random() * canvas.width,
-                    y: Math.random() * canvas.height,
-                    hp: tier.hp,
-                    tier: tier,
-                    behavior: behavior.type,
-                    spin: 0,
-                    color: tier.color,
-                    size: tier.size
-                };
-                diggers.push(digger);
-                popups.push({text:`⚙ Digger Spawned: ${tier.name} ${behavior.desc}`, x:canvas.width/2, y:canvas.height/2 + 100, vy:0, life:3, color:'#fff'});
-            }
-            // Update positions
-            diggers.forEach(d => {
-                d.spin += (d.tier.bonus === 'spin2x' ? 0.2 : 0.1) * dt;
-                switch (d.behavior) {
-                    case 'sentinel':
-                        // Stationary
-                        break;
-                    case 'rammer':
-                        // Seek nearest proj
-                        if (activeProjs.length > 0) {
-                            const nearest = activeProjs.reduce((min, p) => {
-                                const dist = (p.x - d.x)**2 + (p.y - d.y)**2;
-                                return dist < min.dist ? {p, dist} : min;
-                            }, {dist: Infinity});
-                            if (nearest.dist < Infinity) {
-                                const dx = nearest.p.x - d.x;
-                                const dy = nearest.p.y - d.y;
-                                const dist = Math.sqrt(dx*dx + dy*dy);
-                                if (dist > 0) {
-                                    d.vx = (dx / dist) * 100;
-                                    d.vy = (dy / dist) * 100;
-                                }
-                            }
-                        }
-                        d.x += (d.vx || 0) * dt;
-                        d.y += (d.vy || 0) * dt;
-                        break;
-                    case 'guardian':
-                        // Orbit
-                        const orbitRad = 100 + d.size;
-                        const orbitAngle = d.spin * 0.5;
-                        d.x = player.x + Math.cos(orbitAngle) * orbitRad;
-                        d.y = player.y + Math.sin(orbitAngle) * orbitRad;
-                        break;
-                    case 'homing': // For legionary bonus
-                        // Similar to rammer but always
-                        // ...
-                        break;
-                }
-                // Aura for mythic
-                if (d.tier.bonus === 'aura' && circleCircle(d.x, d.y, 50, player.x, player.y, player.r)) {
-                    player.shield += 0.2 * dt; // +20% regen, assume base 1/sec
-                }
-            });
-        }
-
-        // Events for world2
-        function updateEvents(dt) {
-            if (currentWorld !== 2) return;
-            eventTimer += dt;
-            if (eventTimer > 4 + Math.random() * 3) {
-                eventTimer = 0;
-                eventWarning.active = true;
-                eventWarning.symbol = unicodeList[Math.floor(Math.random() * unicodeList.length)];
-                eventWarning.start = performance.now() / 1000;
-                // Flash 1.5s
-                setTimeout(() => { eventWarning.active = false; resolveEvent(); }, 1500);
-            }
-            if (eventWarning.active) {
-                // Pulse opacity
-            }
-        }
-
-        function resolveEvent() {
-            const isBuff = Math.random() < 0.6;
-            const list = isBuff ? buffs : debuffs;
-            const effect = list[Math.floor(Math.random() * list.length)];
-            player.effects.push({...effect, duration: effect.duration});
-            popups.push({text: isBuff ? `+ ${effect.effect}` : effect.effect, x:canvas.width/2, y:canvas.height/2, vy:-20, life:2, color: isBuff ? '#0f0' : '#f00', icon: effect.icon});
-        }
-
-        // Update popups
-        function updatePopups(dt) {
-            popups = popups.filter(p => {
-                p.y += p.vy * dt;
-                p.vy *= 0.95;
-                p.life -= dt;
-                return p.life > 0;
-            });
-        }
-
-        // Player update
-        function updatePlayer(dt) {
-            const dx = mouseX - player.x;
-            const dy = mouseY - player.y;
-            const dist = Math.sqrt(dx*dx + dy*dy);
-            if (dist > 0) {
-                player.x += (dx / dist) * player.speed * dt * 60; // Approx pixels per sec
-                player.y += (dy / dist) * player.speed * dt * 60;
-            }
-            // Bounds
-            player.x = Math.max(player.r, Math.min(canvas.width - player.r, player.x));
-            player.y = Math.max(player.r, Math.min(canvas.height - player.r, player.y));
-            updateEffects(dt);
-        }
-
-        // Transitions
-        function updateTransition(dt) {
-            if (fadeOut) {
-                fadeAlpha += dt * 0.5;
-                if (fadeAlpha >= 1) {
-                    nextStage();
-                    fadeOut = false;
-                    fadeAlpha = 1;
-                    transitionTimer = 2; // Fade in time
-                }
-            } else if (transitionTimer > 0) {
-                transitionTimer -= dt;
-                fadeAlpha -= dt * 0.5;
-                if (transitionTimer <= 0) fadeAlpha = 0;
-            } else {
-                timeLeft -= dt;
-                if (timeLeft <= 0) {
-                    fadeOut = true;
-                }
-            }
-        }
-
-        function update(dt) {
-            if (state !== 'playing') return;
-            updatePlayer(dt);
-            updateProjectiles(dt);
-            updateParticles(dt);
-            updateDiggers(dt);
-            updateEvents(dt);
-            updatePopups(dt);
-            updateTransition(dt);
-            shakeIntensity *= 0.9;
-        }
-
-        // Render functions
+        // Render
         function render() {
             ctx.fillStyle = '#000';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillRect(0, 0, width, height);
 
             // Shake
-            const shakeX = (Math.random() - 0.5) * shakeIntensity;
-            const shakeY = (Math.random() - 0.5) * shakeIntensity;
             ctx.save();
             ctx.translate(shakeX, shakeY);
 
-            if (state === 'playing') {
-                // Background void
+            if (state === 'playing' || fading) {
+                // Render player
+                ctx.fillStyle = player.color;
+                ctx.shadowColor = '#0f0';
+                ctx.shadowBlur = 10;
+                ctx.beginPath();
+                ctx.arc(player.x, player.y, player.r, 0, 2 * Math.PI);
+                ctx.fill();
+                ctx.shadowBlur = 0;
 
-                // Projectiles
-                activeProjs.forEach(p => {
-                    ctx.shadowBlur = 10;
-                    ctx.shadowColor = p.color;
-                    ctx.fillStyle = p.color;
+                // Shield ring
+                if (player.shield > 0) {
+                    const shieldR = player.r + player.shield / 2;
+                    ctx.strokeStyle = '#0ff';
+                    ctx.lineWidth = 2;
+                    ctx.shadowColor = '#0ff';
+                    ctx.shadowBlur = player.shield > 50 ? 30 : 10;
                     ctx.beginPath();
-                    ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
-                    ctx.fill();
-                    // Trail for some
-                    if (p.extra.trail) {
-                        ctx.strokeStyle = p.color;
-                        ctx.lineWidth = 2;
-                        ctx.beginPath();
-                        ctx.moveTo(p.x - p.vx*0.1, p.y - p.vy*0.1);
-                        ctx.lineTo(p.x, p.y);
-                        ctx.stroke();
-                    }
-                });
+                    ctx.arc(player.x, player.y, shieldR, 0, 2 * Math.PI);
+                    ctx.stroke();
+                    ctx.shadowBlur = 0;
+                }
 
-                // Particles
-                activeParts.forEach(p => {
-                    ctx.globalAlpha = p.life;
-                    ctx.fillStyle = p.color;
-                    ctx.beginPath();
-                    ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI*2);
-                    ctx.fill();
-                });
-                ctx.globalAlpha = 1;
-
-                // Diggers
+                // Render diggers
                 diggers.forEach(d => {
                     // Core
-                    ctx.shadowBlur = 15;
-                    ctx.shadowColor = d.color;
                     ctx.fillStyle = d.color;
                     ctx.beginPath();
-                    ctx.arc(d.x, d.y, d.size, 0, Math.PI*2);
+                    ctx.arc(d.x, d.y, d.size, 0, 2 * Math.PI);
                     ctx.fill();
-                    // Spikes - 8 triangles
+
+                    // Spikes
                     ctx.fillStyle = '#fff';
                     for (let i = 0; i < 8; i++) {
-                        const angle = (i / 8) * Math.PI * 2 + d.spin;
-                        const baseX = d.x + Math.cos(angle) * d.size;
-                        const baseY = d.y + Math.sin(angle) * d.size;
-                        const tipX = d.x + Math.cos(angle + Math.PI/2) * (d.size + 20);
-                        const tipY = d.y + Math.sin(angle + Math.PI/2) * (d.size + 20);
+                        const angle = i * Math.PI / 4 + d.spin;
+                        const spikeX = d.x + Math.cos(angle) * d.size;
+                        const spikeY = d.y + Math.sin(angle) * d.size;
+                        const tipX = d.x + Math.cos(angle) * (d.size + 20);
+                        const tipY = d.y + Math.sin(angle) * (d.size + 20);
                         ctx.beginPath();
                         ctx.moveTo(d.x, d.y);
-                        ctx.lineTo(baseX, baseY);
+                        ctx.lineTo(spikeX, spikeY);
                         ctx.lineTo(tipX, tipY);
                         ctx.closePath();
                         ctx.fill();
                     }
+
                     // HP bar
                     const barW = d.size * 2;
                     const barH = 4;
-                    const hpPct = d.hp / d.tier.hp;
+                    const hpPct = d.hp / d.maxHp;
                     ctx.fillStyle = hpPct > 0.5 ? '#0f0' : hpPct > 0.25 ? '#ff0' : '#f00';
                     ctx.fillRect(d.x - barW/2, d.y - d.size - 10, barW * hpPct, barH);
                     ctx.strokeStyle = '#fff';
@@ -1047,103 +1277,96 @@
                     ctx.strokeRect(d.x - barW/2, d.y - d.size - 10, barW, barH);
                 });
 
-                // Player
-                ctx.shadowBlur = player.overshield ? 30 : 10;
-                ctx.shadowColor = '#0ff';
-                ctx.fillStyle = '#0f0';
-                ctx.beginPath();
-                ctx.arc(player.x, player.y, player.r, 0, Math.PI*2);
-                ctx.fill();
-                // Shield ring
-                if (player.shield > 0) {
-                    ctx.strokeStyle = '#0ff';
-                    ctx.lineWidth = 2;
-                    const shieldR = player.r + player.shield / 2; // Scale
-                    ctx.beginPath();
-                    ctx.arc(player.x, player.y, shieldR, 0, Math.PI*2);
-                    ctx.stroke();
-                    if (player.overshield) {
-                        ctx.shadowBlur = 20;
-                        ctx.strokeStyle = '#fff';
-                        ctx.lineWidth = 1;
-                        ctx.stroke();
+                // Render projectiles
+                projectiles.forEach(p => {
+                    ctx.shadowColor = p.color;
+                    ctx.shadowBlur = 10;
+                    switch (p.type) {
+                        case 'projectile':
+                            if (p.symbol) {
+                                ctx.font = '16px monospace';
+                                ctx.textAlign = 'center';
+                                ctx.fillText(p.symbol, p.x, p.y + 6);
+                            }
+                            ctx.fillStyle = p.color;
+                            ctx.beginPath();
+                            ctx.arc(p.x, p.y, p.size, 0, 2 * Math.PI);
+                            ctx.fill();
+                            break;
+                        case 'wall':
+                            ctx.fillStyle = p.color;
+                            ctx.fillRect(p.x, p.y, p.w, p.h);
+                            break;
+                        case 'beam':
+                        case 'laser':
+                            ctx.strokeStyle = p.color;
+                            ctx.lineWidth = p.thickness || 2;
+                            ctx.lineCap = 'round';
+                            ctx.beginPath();
+                            ctx.moveTo(p.cx + Math.cos(p.angle) * p.length/2, p.cy + Math.sin(p.angle) * p.length/2);
+                            ctx.lineTo(p.cx - Math.cos(p.angle) * p.length/2, p.cy - Math.sin(p.angle) * p.length/2);
+                            ctx.stroke();
+                            break;
+                        case 'spiral':
+                        case 'orbit':
+                        case 'vortex':
+                            ctx.fillStyle = p.color;
+                            ctx.beginPath();
+                            ctx.arc(p.x, p.y, p.size || 4, 0, 2 * Math.PI);
+                            ctx.fill();
+                            break;
+                        // Add renders for other types...
+                        default:
+                            ctx.fillStyle = p.color;
+                            ctx.beginPath();
+                            ctx.arc(p.x, p.y, p.size || 3, 0, 2 * Math.PI);
+                            ctx.fill();
                     }
-                }
+                    ctx.shadowBlur = 0;
+                });
 
-                // Event warning
-                if (eventWarning.active) {
-                    ctx.fillStyle = '#fff';
-                    ctx.font = '48px monospace';
-                    ctx.textAlign = 'center';
-                    const pulse = Math.sin((performance.now() / 1000 - eventWarning.start) * 10) * 0.5 + 0.5;
-                    ctx.globalAlpha = pulse;
-                    ctx.fillText(eventWarning.symbol, canvas.width/2, canvas.height/2);
+                // Particles
+                particles.forEach(part => {
+                    ctx.globalAlpha = part.life / part.maxLife;
+                    ctx.fillStyle = part.color;
+                    ctx.beginPath();
+                    ctx.arc(part.x, part.y, part.size, 0, 2 * Math.PI);
+                    ctx.fill();
                     ctx.globalAlpha = 1;
-                }
-
-                // HUD
-                ctx.shadowBlur = 0;
-                ctx.fillStyle = '#fff';
-                ctx.font = '18px monospace';
-                ctx.textAlign = 'left';
-                ctx.fillText(`HP: ${Math.round(player.hp)}/100`, 10, 30);
-                ctx.fillText(`Shield: ${Math.round(player.shield)}/50${player.overshield ? ' (OS)' : ''}`, 10, 50);
-                const stages = currentWorld === 1 ? keyList : unicodeList;
-                ctx.fillText(`Stage: ${stages[currentStage]}`, 10, 70);
-                ctx.textAlign = 'center';
-                ctx.fillText(`Time: ${Math.round(timeLeft)}s`, canvas.width/2, 30);
-                ctx.fillText('DODGE | UNICODE BUFFS | R = RESTART', canvas.width/2, canvas.height - 20);
-
-                // Status icons bottom
-                let iconY = canvas.height - 60;
-                player.effects.forEach(e => {
-                    ctx.font = '24px monospace';
-                    ctx.fillText(e.icon, canvas.width/2 - 50 + Math.random()*10, iconY); // Simple
-                    iconY -= 30;
                 });
 
                 // Popups
-                popups.forEach(p => {
-                    ctx.globalAlpha = p.life;
-                    ctx.fillStyle = p.color;
+                popups.forEach(pop => {
+                    ctx.globalAlpha = pop.life / pop.maxLife;
+                    ctx.fillStyle = pop.color;
                     ctx.font = '16px monospace';
                     ctx.textAlign = 'center';
-                    ctx.fillText(p.text, p.x, p.y);
-                    if (p.icon) ctx.fillText(p.icon, p.x, p.y + 20);
+                    if (pop.icon) ctx.fillText(pop.icon, pop.x, pop.y);
+                    ctx.fillText(pop.text, pop.x, pop.y + 20);
                     ctx.globalAlpha = 1;
                 });
 
-                // Fade
-                if (fadeAlpha > 0) {
-                    ctx.fillStyle = '#000';
-                    ctx.globalAlpha = fadeAlpha;
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
-                    ctx.globalAlpha = 1;
+                
+                if (fading) {
+                    fadeAlpha += dt * 0.5;
+                    if (fadeAlpha > 1) fadeAlpha = 1;
+                    ctx.fillStyle = `rgba(0,0,0,${fadeAlpha})`;
+                    ctx.fillRect(0, 0, width, height);
                 }
-
-            } else if (state === 'gameover') {
-                ctx.fillStyle = '#f00';
-                ctx.font = '48px monospace';
-                ctx.textAlign = 'center';
-                ctx.fillText('GAME OVER', canvas.width/2, canvas.height/2);
-                ctx.font = '24px monospace';
-                ctx.fillText('Press R to Restart', canvas.width/2, canvas.height/2 + 50);
-            } else if (state === 'menu' || state === 'yourchoice') {
-                // Menu handled by DOM
             }
 
             ctx.restore();
         }
 
-        function loop(timestamp) {
-            dt = Math.min((timestamp - lastTime) / 1000, 0.05);
-            lastTime = timestamp;
+        function loop(time) {
+            dt = Math.min((time - lastTime) / 1000, 0.05);
+            lastTime = time;
             update(dt);
             render();
             requestAnimationFrame(loop);
         }
 
-        // Start
+        
         init();
     </script>
 </body>
