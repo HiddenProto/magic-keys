@@ -1,913 +1,783 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>KEYBOARD DOOM</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <style> /* EXACT CSS BELOW */
-* { margin:0; padding:0; box-sizing:border-box; }
-body { background:#000; overflow:hidden; touch-action:none; font-family:Arial,Helvetica,sans-serif; }
-canvas { display:block; image-rendering:pixelated; cursor:none; }
-#hud { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; color:#fff; }
-.topleft { position:absolute; top:10px; left:10px; font-size:14px; }
-.centertop { position:absolute; top:10px; left:50%; transform:translateX(-50%); font-size:16px; font-weight:bold; }
-.bottomcenter { position:absolute; bottom:10px; left:50%; transform:translateX(-50%); font-size:12px; opacity:0.8; }
-.status { position:absolute; top:60px; left:10px; font-size:12px; }
-.menu, .gameover { position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:20px; }
-button { padding:15px 30px; font-size:20px; background:#222; color:#fff; border:2px solid #fff; cursor:pointer; }
-button:hover { background:#444; }
-button.locked { background:#111; border-color:#666; color:#666; }
-button.locked:hover { background:#111; }
-.hidden { display:none; }
-.event-warning { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:120px; color:#ff0; opacity:0; pointer-events:none; }
+<meta charset="UTF-8">
+<title>KEYBOARD DOOM</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#000;overflow:hidden;touch-action:none;font-family:Arial,Helvetica,sans-serif}
+canvas{display:block;image-rendering:pixelated;cursor:none}
+#hud{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;color:#fff}
+.topleft{position:absolute;top:10px;left:10px;font-size:14px}
+.centertop{position:absolute;top:10px;left:50%;transform:translateX(-50%);font-size:16px;font-weight:bold}
+.bottomcenter{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);font-size:12px;opacity:.8}
+.status{position:absolute;top:60px;left:10px;font-size:12px}
+.menu,.gameover{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.9);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px}
+button{padding:15px 30px;font-size:20px;background:#222;color:#fff;border:2px solid #fff;cursor:pointer}
+button:hover{background:#444}
+button.locked{background:#111;border-color:#666;color:#666}
+button.locked:hover{background:#111}
+.hidden{display:none}
+.event-warning{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:120px;color:#ff0;opacity:0;pointer-events:none}
+.small{font-size:14px;color:#aaa}
 </style>
 </head>
 <body>
-  <canvas id="c"></canvas>
-  <div id="hud">
-    <div class="topleft" id="hp">HP: 100/100<br>Shield: 0/50<br>Stage: -</div>
-    <div class="status" id="status"></div>
-    <div class="centertop" id="timer"></div>
-    <div class="bottomcenter" id="instructions">DODGE | UNICODE BUFFS/DEBUFFS | R = RESTART</div>
-  </div>
-  <div id="event-warning" class="event-warning"></div>
-  <div id="menu" class="menu">
-    <h1 style="color:#fff; font-size:48px;">KEYBOARD DOOM</h1>
-    <button id="precoded">Precoded Order (World 1)</button>
-    <button id="precoded-uni">Precoded Unicodes (World 2)</button>
-  </div>
-  <div id="gameover" class="menu hidden">
-    <h1 style="color:#f00; font-size:48px;">GAME OVER</h1>
-    <p style="font-size:18px;">Press R to Restart</p>
-  </div>
+<canvas id="c"></canvas>
+<div id="hud">
+  <div class="topleft" id="hp">HP: 100/100<br>Shield: 0/50<br>Stage: -</div>
+  <div class="status" id="status"></div>
+  <div class="centertop" id="timer"></div>
+  <div class="bottomcenter" id="instructions">DODGE | UNICODE BUFFS/DEBUFFS | R = RESTART</div>
+</div>
+<div id="event-warning" class="event-warning"></div>
+<div id="menu" class="menu">
+  <h1 style="color:#fff;font-size:48px">KEYBOARD DOOM</h1>
+  <button id="precoded">Precoded Order (World 1)</button>
+  <button id="precoded-uni">Precoded Unicodes (World 2)</button>
+  <div class="small">Complete a short run of World 1 to unlock World 2</div>
+</div>
+<div id="gameover" class="menu hidden">
+  <h1 style="color:#f00;font-size:48px">GAME OVER</h1>
+  <p style="font-size:18px">Press R to Restart</p>
+</div>
 
 <script>
-/* ===================== KEYBOARD DOOM - SINGLE FILE GAME =======================
-   Implements:
-   - World 1: 70+ keyboard key attacks (unique update + render)
-   - World 2: 40+ unicode attacks (unique patterns)
-   - Unicode event system every 4-7s with 1.5s warning
-   - Status effects, HUD, menu, progress saving, gameover/restart
-   - Particles, popups, screen shake, trails
-   - All within one HTML file as requested
-==============================================================================*/
+/* ------------------ CORE & RESIZE ------------------ */
+const canvas = document.getElementById('c'), ctx = canvas.getContext('2d');
+let W=0,H=0,cw=0,ch=0;
+function resize(){W=innerWidth;H=innerHeight;canvas.width=W;canvas.height=H;cw=W/2;ch=H/2;}
+resize(); addEventListener('resize', resize);
 
-(() => {
-  // Canvas & Resize
-  const canvas = document.getElementById('c');
-  const ctx = canvas.getContext('2d');
-  let W, H, cw, ch;
-  function resize() {
-    W = window.innerWidth; H = window.innerHeight;
-    canvas.width = W; canvas.height = H;
-    cw = W/2; ch = H/2;
+/* ------------------ PLAYER ------------------ */
+let player = {
+  x: cw, y: ch, r: 12,
+  hp: 100, maxHp: 100,
+  shield: 0, maxShield: 50,
+  dead: false,
+  statuses: {
+    protection: { duration: 0, stacks: 0 },
+    shieldRegen: { duration: 0, rate: 0 },
+    poison: { duration: 0, damage: 0 },
+    speedBoost: { duration: 0, multiplier: 1 },
+    slow: { duration: 0, multiplier: 1 },
+    regen: { duration: 0, rate: 0 }
   }
-  resize(); window.addEventListener('resize', resize);
+};
+let mouse = { x: cw, y: ch };
+canvas.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
 
-  // UI elements
-  const hudHp = document.getElementById('hp');
-  const hudStatus = document.getElementById('status');
-  const hudTimer = document.getElementById('timer');
-  const menu = document.getElementById('menu');
-  const gameoverEl = document.getElementById('gameover');
-  const eventWarning = document.getElementById('event-warning');
-  const precodedBtn = document.getElementById('precoded');
-  const precodedUniBtn = document.getElementById('precoded-uni');
+/* ------------------ UTILS & COLLISIONS ------------------ */
+function clamp(a,b,c){return Math.max(b,Math.min(c,a));}
+function circleCircle(x1,y1,r1,x2,y2,r2){const dx=x2-x1,dy=y2-y1;return dx*dx+dy*dy<(r1+r2)*(r1+r2);}
+function rectCircle(rx,ry,rw,rh,cx,cy,cr){
+  const cxn = clamp(cx, rx, rx+rw);
+  const cyn = clamp(cy, ry, ry+rh);
+  return circleCircle(cxn,cyn,cr, rx+rw/2, ry+rh/2, Math.min(rw,rh)/2);
+}
+function lineCircle(x1,y1,x2,y2,cx,cy,cr){
+  const A = cx - x1, B = cy - y1, C = x2 - x1, D = y2 - y1;
+  const dot = A*C + B*D;
+  const len2 = C*C + D*D;
+  let t = len2 ? dot / len2 : 0;
+  t = Math.max(0, Math.min(1, t));
+  const px = x1 + C * t, py = y1 + D * t;
+  return circleCircle(px,py,cr,cx,cy,0);
+}
+function rotatedRectCircle(rx,ry,w,h,angle,cx,cy,cr){
+  const c = Math.cos(-angle), s = Math.sin(-angle);
+  const tx = c*(cx-rx) - s*(cy-ry) + rx;
+  const ty = s*(cx-rx) + c*(cy-ry) + ry;
+  return rectCircle(rx,ry,w,h,tx,ty,cr);
+}
 
-  // Progress saving
-  let progress = JSON.parse(localStorage.getItem('keyboardDoomProgress') || '{"world1":false,"world2":false}');
-  function saveProgress(){ localStorage.setItem('keyboardDoomProgress', JSON.stringify(progress)); }
-  precodedUniBtn.classList.toggle('locked', !progress.world1);
+/* ------------------ PARTICLES & POPUPS ------------------ */
+let particles = [];
+function spawnParticle(x,y,vx,vy,life,sz,color,fade){
+  particles.push({x,y,vx,vy,life,age:0,sz,color,fade});
+}
+let popups = [];
+function popup(text,x,y,ttl=1000,color='#fff'){
+  popups.push({text,x,y,ttl,age:0,color});
+}
 
-  // Input & player
-  let mouse = {x: cw, y: ch, down:false};
-  window.addEventListener('pointermove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
-  window.addEventListener('pointerdown', ()=>mouse.down=true);
-  window.addEventListener('pointerup', ()=>mouse.down=false);
+/* ------------------ SCREEN SHAKE ------------------ */
+let shakeTimer = 0, shakeAmp = 0;
+function startShake(ms,amp=8){shakeTimer = ms; shakeAmp = amp;}
 
-  // Restart on R
-  window.addEventListener('keydown', (e)=>{
-    if(e.key.toLowerCase()==='r'){ restartGame(); }
-  });
-
-  // Player Object
-  let player = {
-    x: cw, y: ch, r:12,
-    hp:100, maxHp:100,
-    shield:0, maxShield:50,
-    dead:false,
-    statuses: {
-      protection: { duration:0, stacks:0 },
-      shieldRegen: { duration:0, rate:0 },
-      poison: { duration:0, damage:0 },
-      speedBoost: { duration:0, multiplier:1 },
-      slow: { duration:0, multiplier:1 },
-      regen: { duration:0, rate:0 }
-    }
-  };
-
-  // Keys list (exact)
-  const keys = [
+/* ------------------ GAME STATE ------------------ */
+const keys = [
   'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z',
   '0','1','2','3','4','5','6','7','8','9',
   '!','@','#','$','%','^','&','*','(',')','_','+','-','=','[',']','{','}','|',';','\'','"',',','.','<','>','?','/',
   ' ','Enter','Backspace','Tab','Shift','Control','Alt','CapsLock','Escape',
   'ArrowUp','ArrowDown','ArrowLeft','ArrowRight'
-  ];
+];
 
-  // Unicode array (>=40)
-  const uniChars = [
-  '→','←','▲','▼','█','◆','★','◈','▣','◇','▶','◀','◤','◥','◢','◣',
-  '✦','✧','✿','❀','❖','✸','✹','✺','✻','✼','❁','❂','❃','❄','❅','❆','❇','❈','❉','❊',
-  '♠','♣','♥','♦','♚','♛','♜','♝','♞','♟','☀','☾','☄','✪','✶','✷','✺','✽'
-  ];
+let game = {
+  stage: 1,
+  timer: 8 + Math.random()*4,
+  attacks: [],
+  lastSpawn: 0,
+  spawnInterval: 600 // ms average (will vary)
+};
 
-  // Game state
-  let game = {
-    running:false,
-    world:'world1', // or 'world2'
-    timer: 10,
-    stage: 0,
-    lastTime: performance.now(),
-    attacks: [],
-    particles: [],
-    popups: [],
-    trails: [],
-    unicodeTimer: performance.now(),
-    unicodeQueue: [],
-    shake: {x:0,y:0,amt:0,decay:0.9},
-    keysDisabled: false
-  };
+let progress = JSON.parse(localStorage.getItem('keyboardDoomProgress') || '{"world1":false,"world2":false}');
+const precodedBtn = document.getElementById('precoded');
+const precodedUniBtn = document.getElementById('precoded-uni');
+precodedUniBtn.classList.toggle('locked', !progress.world1);
 
-  // Utility functions
-  function rand(min,max){ return min + Math.random()*(max-min); }
-  function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
-  function distance(x1,y1,x2,y2){ return Math.hypot(x2-x1, y2-y1); }
+/* ------------------ ATTACK FACTORY (World 1) ------------------ */
+/*
+  spawnAttack(key)
+  - Each key creates a unique object with:
+    .life (ms), .age, .update(dt), .render(ctx), .hit() when collides.
+  Patterns are parameterized by keyIndex to keep functions unique per key.
+*/
+function spawnAttack(key){
+  const idx = keys.indexOf(key);
+  const seed = (idx+1) * 1337;
+  const now = performance.now();
+  const life = 20000; // 20s life limit
+  const angleRnd = (i) => ((Math.sin((seed+i)*0.13)+1)/2)*Math.PI*2;
+  const rand = (i) => Math.abs(Math.sin((seed+i)*0.71))*1;
+  // base spawn position: random edge
+  const edge = Math.floor(rand(1)*4);
+  let x=0,y=0,vx=0,vy=0;
+  const speedBase = 1 + (idx % 7) * 0.6;
+  if(edge===0){ x = -20; y = rand(2)*H; vx = 1+rand(3)*speedBase; vy = (rand(4)-0.5)*2; }
+  if(edge===1){ x = W+20; y = rand(5)*H; vx = -1-rand(6)*speedBase; vy = (rand(7)-0.5)*2; }
+  if(edge===2){ x = rand(8)*W; y = -20; vx = (rand(9)-0.5)*2; vy = 1+rand(10)*speedBase; }
+  if(edge===3){ x = rand(11)*W; y = H+20; vx = (rand(12)-0.5)*2; vy = -1-rand(13)*speedBase; }
 
-  // Collision helpers (as requested)
-  function circleCircle(x1,y1,r1,x2,y2,r2){
-    return (x1-x2)*(x1-x2)+(y1-y2)*(y1-y2) <= (r1+r2)*(r1+r2);
-  }
-  function rectCircle(rx,ry,rw,rh,cx,cy,cr){
-    const closestX = clamp(cx, rx, rx+rw);
-    const closestY = clamp(cy, ry, ry+rh);
-    return distance(closestX,closestY, cx,cy) <= cr;
-  }
-  function lineCircle(x1,y1,x2,y2,cx,cy,cr){
-    const A = cx - x1, B = cy - y1, C = x2 - x1, D = y2 - y1;
-    const dot = A*C + B*D;
-    const len_sq = C*C + D*D;
-    let param = -1;
-    if(len_sq!==0) param = dot/len_sq;
-    let xx, yy;
-    if(param<0){ xx = x1; yy = y1; }
-    else if(param>1){ xx = x2; yy = y2; }
-    else { xx = x1 + param * C; yy = y1 + param * D; }
-    return distance(xx,yy,cx,cy) <= cr;
-  }
-  function rotatedRectCircle(x,y,w,h,angle,cx,cy,cr){
-    const cos = Math.cos(-angle), sin = Math.sin(-angle);
-    const relx = cos*(cx - x) - sin*(cy - y) + x;
-    const rely = sin*(cx - x) + cos*(cy - y) + y;
-    return rectCircle(x - w/2, y - h/2, w, h, relx, rely, cr);
-  }
-  // Additional custom collisions are implemented inline in attacks when needed.
+  // color & visual variety
+  const hue = Math.floor((idx*37) % 360);
+  const col = `hsl(${hue} 90% 60%)`.replace(/ /g, '');
+  const glow = `hsla(${hue},90%,60%,0.15)`;
 
-  // Particles & popups
-  function spawnParticle(x,y,opts={}){
-    game.particles.push({
-      x,y,
-      vx: rand(-opts.spd||-100, opts.spd||100)/60,
-      vy: rand(-opts.spd||-100, opts.spd||100)/60,
-      life: opts.life||rand(20,60),
-      size: opts.size||rand(1,4),
-      col: opts.col||'rgba(255,255,255,0.9)',
-      fade:true
-    });
-  }
-  function spawnPopup(text, x, y, col='white', ttl=80){
-    game.popups.push({text,x,y,vy:-0.5,life:ttl,col});
-  }
+  // Many unique patterns determined by idx mod patternsCount + per-key params
+  const pattern = idx % 24; // 24 base behaviors that are parameterized with idx
+  const size = 8 + (idx % 5) * 4;
 
-  // Screen shake
-  function doShake(amt=8){ game.shake.amt = Math.max(game.shake.amt, amt); }
+  // create object skeleton
+  const a = {
+    key, idx, x, y, vx, vy,
+    ang: angleRnd(0),
+    spin: (idx%5-2)*0.02,
+    size,
+    life, born: now, age: 0,
+    hitCooldown: 0,
+    trail: [],
+    update(dt){
+      this.age = performance.now() - this.born;
+      this.hitCooldown = Math.max(0, this.hitCooldown - dt);
+      // base pos update
+      this.x += this.vx * dt * 0.06;
+      this.y += this.vy * dt * 0.06;
+      // trail record
+      this.trail.push({x:this.x,y:this.y,age:0});
+      if(this.trail.length>16) this.trail.shift();
+      for(let t of this.trail) t.age += dt;
 
-  // Status effect applications
-  function applyStatus(name, duration, params){
-    const s = player.statuses[name];
-    if(!s) return;
-    s.duration = duration*1000; // ms
-    Object.assign(s, params || {});
-    spawnPopup(name.toUpperCase(), player.x, player.y - 30, '#0ff', 60);
-  }
-
-  // Heal function
-  function heal(amount){
-    const prev = player.hp;
-    player.hp = clamp(player.hp + amount, 0, player.maxHp);
-    spawnPopup('+' + Math.floor(player.hp - prev) , player.x, player.y - 20, '#6f6', 50);
-    for(let i=0;i<6;i++) spawnParticle(player.x + rand(-6,6), player.y + rand(-6,6), {spd:40, col:'rgba(100,255,100,0.9)', life:40});
-  }
-
-  // Damage function (respect protection and shield)
-  function damage(amount){
-    if(player.dead) return;
-    // shield absorbs first
-    if(player.shield > 0){
-      const absorbed = Math.min(player.shield, amount);
-      player.shield -= absorbed;
-      amount -= absorbed;
-      spawnPopup('-' + Math.floor(absorbed) + ' shield', player.x, player.y - 10, '#ccf', 40);
-    }
-    if(amount<=0) return;
-    // protection reduces by 50%
-    if(player.statuses.protection.duration > 0){
-      amount *= 0.5;
-    }
-    player.hp -= amount;
-    spawnPopup('-' + Math.ceil(amount), player.x, player.y - 20, '#f88', 50);
-    doShake(8);
-    // particles
-    for(let i=0;i<10;i++) spawnParticle(player.x + rand(-8,8), player.y + rand(-8,8), {spd:120, col:'rgba(255,100,100,0.9)', life:50});
-    if(player.hp <= 0){
-      player.hp = 0;
-      player.dead = true;
-      onGameOver();
-    }
-  }
-
-  // Attacks management
-  function spawnAttackByKey(k){
-    const a = makeKeyAttack(k);
-    game.attacks.push(a);
-  }
-  function spawnAttackByUni(u){
-    const a = makeUniAttack(u);
-    game.attacks.push(a);
-  }
-
-  // Attack base factory: each returns an object with unique update(dt) and render(ctx)
-  // To ensure uniqueness, we hash the key/symbol and choose pattern parameters.
-  function hashStr(s){
-    let h=0; for(let i=0;i<s.length;i++) h = (h*31 + s.charCodeAt(i))|0; return Math.abs(h);
-  }
-
-  // Helper: choose spawn edge or position
-  function edgePos(seed){
-    const side = seed % 4;
-    if(side===0) return {x: rand(0,W), y:-20};
-    if(side===1) return {x: rand(0,W), y:H+20};
-    if(side===2) return {x:-20, y: rand(0,H)};
-    return {x: W+20, y: rand(0,H)};
-  }
-
-  // Key Attack Builder (70+ unique)
-  function makeKeyAttack(k){
-    const id = 'k_'+k + '_' + Date.now() + '_' + Math.floor(Math.random()*1000);
-    const h = hashStr(k);
-    const pos = edgePos(h);
-    const lifeMax = 20000; // 20s
-    // Base parameters derived from hash
-    const speed = 0.4 + (h%80)/100;
-    const size = 8 + (h%30)/3;
-    const colorHue = (h%360);
-    const behavior = (h%12); // choose among many templates
-    const sub = (h%7);
-    let angle = rand(0,Math.PI*2);
-    // State vars unique per attack
-    const st = {x:pos.x, y:pos.y, vx:0, vy:0, t:0, life:lifeMax, r:size, spin: (h%10 -5)/40 };
-
-    // Different unique update & render per behavior, using k for visuals
-    const label = String(k).toUpperCase();
-
-    function update(dt){
-      st.t += dt;
-      st.life -= dt;
-      // many patterns
-      switch(behavior){
-        case 0: // homing jitter
+      // pattern behaviors
+      switch(pattern){
+        case 0: // straight fast bullet + glow
+          // slowly accelerate
+          this.vx *= 1 + 0.0006 * (idx%4);
+          this.vy *= 1 + 0.0006 * (idx%4);
+          break;
+        case 1: // homing small orb
           {
-            const angleTo = Math.atan2(player.y - st.y, player.x - st.x);
-            angle += (angleTo - angle) * 0.02;
-            st.vx = Math.cos(angle) * speed * 120 * (1 + Math.sin(st.t/300)*0.2);
-            st.vy = Math.sin(angle) * speed * 120 * (1 + Math.cos(st.t/300)*0.2);
-            st.x += st.vx * dt/16.67;
-            st.y += st.vy * dt/16.67;
-          } break;
-        case 1: // straight then split into waves
-          {
-            if(st.t < 800){
-              st.vx = Math.cos(angle) * speed * 160;
-              st.vy = Math.sin(angle) * speed * 160;
-            } else {
-              st.vx += Math.cos(angle + st.t/200 + sub) * 0.6;
-              st.vy += Math.sin(angle + st.t/200 + sub) * 0.6;
+            const dx = player.x - this.x, dy = player.y - this.y;
+            const d = Math.hypot(dx,dy) || 1;
+            const mh = 0.12 + (idx%6)*0.02;
+            this.vx += (dx/d) * mh * dt*0.01;
+            this.vy += (dy/d) * mh * dt*0.01;
+            // clamp
+            const speed = 1 + (idx%5);
+            const sp = Math.hypot(this.vx,this.vy) || 1;
+            this.vx = (this.vx/sp)*speed; this.vy = (this.vy/sp)*speed;
+          }
+          break;
+        case 2: // sine wave horizontally
+          this.y += Math.sin(this.age*0.01 + idx)*2*(1+idx%3);
+          break;
+        case 3: // rotating laser segment (rotates around its center)
+          this.ang += this.spin * dt;
+          break;
+        case 4: // burst: every 1.2s spawns small bullets outward
+          if(!this._burstNext || performance.now()>this._burstNext){
+            this._burstNext = performance.now() + 1200 - (idx%6)*80;
+            const pieces = 6 + (idx%5);
+            for(let i=0;i<pieces;i++){
+              const ang = (Math.PI*2/pieces)*i + Math.random()*0.4;
+              spawnSubBullet(this.x,this.y, Math.cos(ang)*(2+idx%4), Math.sin(ang)*(2+idx%4), hue);
             }
-            st.x += st.vx * dt/16.67; st.y += st.vy * dt/16.67;
-            // spawn small particles as trail
-            if(Math.random() < 0.2) spawnParticle(st.x, st.y, {spd:20, life:30, col:`hsla(${colorHue},80%,60%,0.9)`});
-          } break;
-        case 2: // orbital motion
-          {
-            const radius = 80 + (h%80);
-            angle += 0.02 * (1 + (sub/4));
-            st.x = player.x + Math.cos(st.t/180 + h%10) * radius;
-            st.y = player.y + Math.sin(st.t/180 + h%10) * radius;
-          } break;
-        case 3: // zig-zag line
-          {
-            const dir = Math.sign(Math.cos(st.t/200 + h%7));
-            st.vx = Math.cos(angle) * speed * 130;
-            st.vy = Math.sin(angle) * speed * 130 + dir * (sub*2);
-            st.x += st.vx * dt/16.67; st.y += st.vy * dt/16.67;
-          } break;
-        case 4: // expanding pulse (slower position)
-          {
-            st.x += Math.cos(angle)*speed*50*dt/16.67;
-            st.y += Math.sin(angle)*speed*50*dt/16.67;
-            // r oscillates
-            st.r = size + Math.abs(Math.sin(st.t/200 + h%3))* (10 + sub);
-          } break;
-        case 5: // rotating rectangle shape path
-          {
-            angle += 0.01 + sub*0.001;
-            st.x = cw + Math.cos(st.t/300 + h%8) * (200 + (h%150));
-            st.y = ch + Math.sin(st.t/300 + h%8) * (120 + (h%90));
-          } break;
-        case 6: // bullet with aftershock
-          {
-            if(st.t < 900){
-              st.vx = Math.cos(angle) * speed * 220;
-              st.vy = Math.sin(angle) * speed * 220;
-            } else {
-              // slow and spiral
-              st.vx *= 0.98; st.vy *= 0.98;
-              st.x += Math.cos(st.t/100 + h%5) * 0.6;
-              st.y += Math.sin(st.t/100 + h%5) * 0.6;
-            }
-            st.x += st.vx * dt/16.67; st.y += st.vy * dt/16.67;
-          } break;
-        case 7: // sine wave approach
-          {
-            const baseSpeed = speed * 140;
-            st.x += Math.cos(angle) * baseSpeed * dt/16.67;
-            st.y += Math.sin(angle) * baseSpeed * dt/16.67;
-            st.x += Math.cos(st.t/80 + h%6) * (4+sub);
-            st.y += Math.sin(st.t/60 + h%3) * (2+sub/2);
-          } break;
-        case 8: // drop and pause then rush
-          {
-            if(st.t < 1200){
-              st.y += (20 + sub*6) * dt/16.67;
-            } else {
-              st.vx = Math.cos(angle) * speed * 260;
-              st.vy = Math.sin(angle) * speed * 260;
-              st.x += st.vx * dt/16.67; st.y += st.vy * dt/16.67;
-            }
-          } break;
-        case 9: // bouncing box
-          {
-            st.vx = st.vx || (Math.cos(angle) * 120);
-            st.vy = st.vy || (Math.sin(angle) * 120);
-            st.x += st.vx * dt/16.67; st.y += st.vy * dt/16.67;
-            if(st.x < 0 || st.x > W) st.vx *= -1;
-            if(st.y < 0 || st.y > H) st.vy *= -1;
-          } break;
-        case 10: // laser turret (stationary spin beam)
-          {
-            if(st.t < 500) { st.x += Math.cos(angle)*50*dt/16.67; st.y += Math.sin(angle)*50*dt/16.67; }
-            // else remain and spin
-            angle += 0.03 + sub*0.001;
-          } break;
-        case 11: // slow creep that leaves damaging puddles
-          {
-            st.vx = Math.cos(angle) * 40;
-            st.vy = Math.sin(angle) * 40;
-            st.x += st.vx * dt/16.67; st.y += st.vy * dt/16.67;
-            if(Math.random()<0.02) spawnParticle(st.x, st.y, {spd:10, life:80, col:`hsla(${colorHue},70%,50%,0.8)`});
-          } break;
+          }
+          break;
+        case 5: // bouncing ball (bounces off walls)
+          if(this.x < 0 || this.x > W) this.vx *= -1;
+          if(this.y < 0 || this.y > H) this.vy *= -1;
+          break;
+        case 6: // boomerang: goes forward then returns
+          if(!this._phase) this._phase=0;
+          if(this._phase===0){ if(this.age>2500+idx*10) this._phase=1; }
+          if(this._phase===1){
+            // steer back to player
+            const dx = player.x - this.x, dy = player.y - this.y; const d = Math.hypot(dx,dy)||1;
+            this.vx += (dx/d)*0.08*dt*0.01; this.vy += (dy/d)*0.08*dt*0.01;
+          }
+          break;
+        case 7: // layered rectangles telegraph then slam
+          if(!this._tele || performance.now()>this._tele){
+            this._tele = performance.now() + 1500 - (idx%7)*60;
+            this._slam = performance.now() + 1500;
+          }
+          if(this._slam && performance.now()>this._slam && !this._slammed){
+            this._slammed = true;
+            // create shock particles and area pulse
+            for(let i=0;i<24;i++) spawnParticle(this.x,this.y,(Math.cos(i)*2),(Math.sin(i)*2),800,2,col,true);
+          }
+          break;
+        case 8: // triangle sweeping beam
+          this.ang += 0.01 * (idx%6+1);
+          break;
+        case 9: // falling keys that stick then explode
+          if(!this._stuck && (this.y > H-40 || this.age>4000)) this._stuck = true;
+          if(this._stuck){ this.vx *= 0.98; this.vy *= 0.98; }
+          break;
+        case 10: // spiral inwards
+          this.ang += 0.06; this.x += Math.cos(this.ang)*0.8; this.y += Math.sin(this.ang)*0.8;
+          break;
+        case 11: // fast dart that leaves damaging trail (line collision)
+          break;
+        case 12: // slowing field - emits slow pulses
+          if(!this._nextPulse || performance.now()>this._nextPulse){ this._nextPulse=performance.now()+1200; spawnSlowPulse(this.x,this.y, hue); }
+          break;
+        case 13: // teleporting dash every few seconds
+          if(!this._tp || performance.now()>this._tp){ this._tp = performance.now()+1200 - (idx%5)*80; this.x += (Math.random()-0.5)*200; this.y += (Math.random()-0.5)*200; }
+          break;
+        case 14: // triangular orbiters
+          if(!this._orbiters){ this._orbiters=[]; for(let i=0;i<3;i++){ this._orbiters.push({a: i*(Math.PI*2/3), r: 20 + i*10}); } }
+          // they are rendered separately using this._orbiters
+          break;
+        case 15: // shielded orb that drains on hit
+          break;
+        case 16: // wavefront (long rectangle)
+          this.x += this.vx*0.7; this.y += this.vy*0.7;
+          break;
+        case 17: // exploding mine that arms after some time
+          if(!this._armed && this.age>1500) this._armed=true;
+          break;
+        case 18: // reversing velocity often (zigzag)
+          if(!this._nextFlip || performance.now()>this._nextFlip){ this._nextFlip=performance.now()+300+idx*10; this.vx*=-1; this.vy*=-1; }
+          break;
+        case 19: // slow heavy meteor (big size)
+          this.vx *= 1.0002; this.vy *= 1.0002;
+          break;
+        case 20: // seeker that spawns child seekers
+          if(!this._childNext || performance.now()>this._childNext){ this._childNext = performance.now() + 800 + (idx%4)*80; spawnSeeker(this.x,this.y,idx); }
+          break;
+        case 21: // twin-laser rotating pair
+          this.ang += 0.02 * (idx%5+1);
+          break;
+        case 22: // teleporting rectangle that flashes before appearing
+          if(!this._flash) this._flash = performance.now() + 800;
+          break;
+        case 23: // chaotic jittering blob
+          this.x += (Math.random()-0.5)*2*(1+idx%3);
+          this.y += (Math.random()-0.5)*2*(1+idx%3);
+          break;
       }
 
-      // lifetime check done in main loop
-    }
+      // world bounds clamp small buffer
+      if(this.x < -120 || this.x > W+120 || this.y < -120 || this.y > H+120) {
+        // keep, but if out for too long, mark life expiry
+      }
+      // basic lifetime expiration
+      if(this.age > this.life) { this.dead = true; }
 
-    function render(ctx){
+      // collisions with player:
+      if(!this.dead && this.hitCooldown<=0){
+        // collision shape varies per pattern
+        let hit = false;
+        if([3,8,21].includes(pattern)){
+          // rotated rect or beam
+          hit = rotatedRectCircle(this.x-20,this.y-6, 40,12, this.ang, player.x, player.y, player.r);
+        } else if([16].includes(pattern)){
+          hit = rectCircle(this.x-30,this.y-10,60,20, player.x, player.y, player.r);
+        } else {
+          hit = circleCircle(this.x,this.y,this.size, player.x, player.y, player.r);
+        }
+        if(hit){
+          this.hitCooldown = 300;
+          this.onHit && this.onHit();
+        }
+      }
+    },
+    render(ctx){
       ctx.save();
-      // Animated glow based on label
-      const glow = Math.abs(Math.sin(st.t/200)) * 0.6 + 0.4;
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.translate(st.x, st.y);
-      ctx.rotate(st.t * st.spin / 1000);
-      // shape vary by behavior
-      if(behavior===2 || behavior===5){
-        // fancy symbol with text
-        ctx.font = `${Math.max(10, st.r*1.6)}px Arial`;
-        ctx.fillStyle = `hsla(${colorHue},80%,60%,${0.9})`;
-        ctx.textAlign = 'center'; ctx.textBaseline='middle';
-        ctx.fillText(label[0]||label, 0, 0);
-      } else if(behavior===10){
-        // laser beam rendering as rotating line
-        ctx.strokeStyle = `hsla(${colorHue},80%,60%,${0.6})`;
-        ctx.lineWidth = 3 + (st.r/6);
-        ctx.beginPath();
-        ctx.moveTo(0,0);
-        ctx.lineTo(Math.cos(angle)*60, Math.sin(angle)*60);
-        ctx.stroke();
-        // core
-        ctx.fillStyle = `hsla(${colorHue},80%,60%,${0.9})`;
-        ctx.beginPath(); ctx.arc(0,0, st.r, 0, Math.PI*2); ctx.fill();
-      } else if(behavior===11){
-        // blob
-        ctx.fillStyle = `hsla(${colorHue},70%,40%,${0.9})`;
-        ctx.beginPath(); ctx.ellipse(0,0, st.r*1.6, st.r*(1+Math.sin(st.t/200)*0.3), 0,0,Math.PI*2); ctx.fill();
-      } else if(behavior===9){
-        // square
-        ctx.fillStyle = `hsla(${colorHue},70%,50%,${0.95})`;
-        ctx.fillRect(-st.r, -st.r, st.r*2, st.r*2);
-      } else {
-        // default: circle with label
-        ctx.fillStyle = `hsla(${colorHue},80%,55%,${0.95})`;
-        ctx.beginPath(); ctx.arc(0,0, st.r, 0, Math.PI*2); ctx.fill();
-        ctx.font = `${Math.max(10, st.r)}px Arial`;
-        ctx.fillStyle = `rgba(0,0,0,0.6)`;
-        ctx.textAlign='center'; ctx.textBaseline='middle';
-        ctx.fillText(label[0]||label, 0, 0);
-      }
-      // subtle aura
-      ctx.globalAlpha = 0.35 * glow;
-      ctx.fillStyle = `hsla(${colorHue},80%,60%,${0.25})`;
-      ctx.beginPath(); ctx.arc(0,0, st.r*2.2,0,Math.PI*2); ctx.fill();
-      ctx.restore();
-      ctx.globalCompositeOperation = 'source-over';
-    }
-
-    // collision check for this attack with player
-    function checkCollision(){
-      // different shapes per behavior might use different collisions
-      if(behavior===10){
-        // laser beam check as line
-        const lx = st.x, ly = st.y, l2x = st.x + Math.cos(angle)*60, l2y = st.y + Math.sin(angle)*60;
-        return lineCircle(lx,ly,l2x,l2y, player.x, player.y, player.r);
-      } else if(behavior===9){
-        return rectCircle(st.x - st.r, st.y - st.r, st.r*2, st.r*2, player.x, player.y, player.r);
-      } else {
-        return circleCircle(st.x, st.y, Math.max(6, st.r), player.x, player.y, player.r);
-      }
-    }
-
-    return {
-      id, k, st, update, render, checkCollision, lifeMax, getLife(){ return st.life; }
-    };
-  }
-
-  // Unicode attack builder (unique 40+)
-  function makeUniAttack(u){
-    const id = 'u_'+u + '_' + Date.now() + '_' + Math.floor(Math.random()*1000);
-    const h = hashStr(u + Math.random());
-    const pos = {x: rand(50, W-50), y: rand(50, H-50)};
-    const lifeMax = 20000;
-    const size = 12 + (h%36)/2;
-    const colorHue = (h%360);
-    const pattern = (h%10);
-    const st = {x:pos.x, y:pos.y, t:0, life:lifeMax, angle: rand(0,Math.PI*2), r:size, alpha:1};
-    const char = u;
-
-    function update(dt){
-      st.t += dt; st.life -= dt;
+      // rendering depends on pattern to be visually unique
       switch(pattern){
         case 0:
-          st.y += Math.sin(st.t/200 + h%5) * 0.6;
-          st.x += Math.cos(st.t/300 + h%7) * 0.6;
+          // fast glowing bullet
+          ctx.beginPath();
+          ctx.arc(this.x,this.y,this.size,0,Math.PI*2);
+          ctx.fillStyle = col; ctx.shadowBlur = 14; ctx.shadowColor = glow; ctx.fill();
           break;
         case 1:
-          st.angle += 0.015;
-          st.x += Math.cos(st.angle) * 0.4;
-          st.y += Math.sin(st.angle) * 0.4;
+          // homing orb with inner core
+          ctx.beginPath();
+          ctx.arc(this.x,this.y,this.size+2,0,Math.PI*2);
+          ctx.fillStyle = `rgba(255,255,255,0.08)`; ctx.fill();
+          ctx.beginPath();
+          ctx.arc(this.x,this.y,this.size,0,Math.PI*2);
+          ctx.fillStyle = col; ctx.fill();
           break;
         case 2:
-          st.y += Math.sin(st.t/100) * 2;
-          st.r = size + Math.abs(Math.sin(st.t/150))*8;
+          // sine wave key glyph render
+          ctx.beginPath();
+          ctx.fillStyle = col;
+          ctx.font = `${this.size*2+6}px monospace`;
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText(key, this.x, this.y);
           break;
         case 3:
-          st.x += Math.cos(st.t/140 + h%6) * 1.2;
+          // rotating beam
+          ctx.translate(this.x,this.y); ctx.rotate(this.ang);
+          ctx.fillStyle = col; ctx.fillRect(-this.size*3, -this.size/2, this.size*6, this.size);
+          ctx.rotate(-this.ang); ctx.translate(-this.x,-this.y);
           break;
         case 4:
-          if(Math.random()<0.02) {
-            // spawn small shard
-            game.attacks.push(makeShardAttack(st.x, st.y, h));
-          }
-          st.r = size + Math.sin(st.t/180 + h%9)*6;
+          ctx.beginPath(); ctx.arc(this.x,this.y,this.size+2,0,Math.PI*2); ctx.fillStyle=col; ctx.fill();
+          // render small sparks
           break;
         case 5:
-          st.y += Math.cos(st.t/120 + h%8) * 1.5;
+          // bouncing ball with rim
+          ctx.beginPath(); ctx.arc(this.x,this.y,this.size+2,0,Math.PI*2); ctx.fillStyle=col; ctx.fill();
+          ctx.beginPath(); ctx.arc(this.x,this.y,this.size,0,Math.PI*2); ctx.fillStyle='#000'; ctx.fill();
           break;
         case 6:
-          // spins and pulses
-          st.angle += 0.04;
-          st.r = size + Math.abs(Math.sin(st.t/90))*12;
+          // boomerang key glyph, rotated
+          ctx.save(); ctx.translate(this.x,this.y); ctx.rotate(this.ang);
+          ctx.font = `${this.size*2}px monospace`; ctx.textAlign='center'; ctx.textBaseline='middle';
+          ctx.fillStyle = col; ctx.fillText(key,0,0);
+          ctx.restore();
           break;
         case 7:
-          st.x += Math.sign(Math.sin(st.t/200))*0.6;
-          st.y += Math.sign(Math.cos(st.t/150))*0.5;
+          // telegraph rectangle pulsing
+          const pulse = 1 - Math.min(1, this.age/1500);
+          ctx.fillStyle = `rgba(${hsvToRgb(hue,90,60).join(',')},${0.3+0.7*pulse})`;
+          ctx.fillRect(this.x-20, this.y-8, 40, 16);
           break;
         case 8:
-          st.alpha = 0.5 + Math.abs(Math.sin(st.t/130))*0.5;
+          // triangle wedge
+          ctx.save(); ctx.translate(this.x,this.y); ctx.rotate(this.ang);
+          ctx.beginPath(); ctx.moveTo(-this.size*2, -this.size*1.2); ctx.lineTo(this.size*2,0); ctx.lineTo(-this.size*2,this.size*1.2); ctx.closePath();
+          ctx.fillStyle = col; ctx.fill(); ctx.restore();
           break;
         case 9:
-          // telegraph and dash
-          if(st.t % 1400 < 60){
-            const ax = (player.x - st.x), ay = (player.y - st.y);
-            const len = Math.hypot(ax,ay) || 1;
-            st.x += (ax/len)*8; st.y += (ay/len)*8;
+          // falling sticky key — render as key with shadow
+          ctx.beginPath(); ctx.arc(this.x,this.y,this.size,0,Math.PI*2); ctx.fillStyle=col; ctx.fill();
+          ctx.font = `${this.size}px monospace`; ctx.textAlign='center'; ctx.textBaseline='middle';
+          ctx.fillStyle = '#000'; ctx.fillText(key, this.x, this.y+1);
+          break;
+        case 10:
+          // spiral dot
+          ctx.beginPath(); ctx.arc(this.x,this.y,this.size,0,Math.PI*2); ctx.fillStyle = col; ctx.fill();
+          break;
+        case 11:
+          // fast dart with tail
+          ctx.beginPath();
+          for(let i=0;i<this.trail.length;i++){
+            const t = this.trail[i];
+            ctx.globalAlpha = 1 - i/this.trail.length;
+            ctx.fillStyle = col;
+            ctx.fillRect(t.x-1,t.y-1,2,2);
           }
+          ctx.globalAlpha = 1;
+          ctx.beginPath(); ctx.arc(this.x,this.y,this.size,0,Math.PI*2); ctx.fillStyle=col; ctx.fill();
+          break;
+        case 12:
+          // slow pulse emitter - draw ring
+          const ring = 6+ (this.age*0.01%(40));
+          ctx.beginPath(); ctx.arc(this.x,this.y,ring,0,Math.PI*2);
+          ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.stroke();
+          break;
+        case 13:
+          ctx.save(); ctx.translate(this.x,this.y);
+          ctx.beginPath(); ctx.arc(0,0,this.size+2,0,Math.PI*2); ctx.fillStyle = `rgba(255,255,255,0.04)`; ctx.fill();
+          ctx.font = `${this.size+6}px monospace`; ctx.fillStyle = col; ctx.fillText(key,0,0);
+          ctx.restore();
+          break;
+        case 14:
+          // orbiters
+          if(this._orbiters) for(let ob of this._orbiters){
+            const ox = this.x + Math.cos(performance.now()*0.002 + ob.a)*(ob.r);
+            const oy = this.y + Math.sin(performance.now()*0.002 + ob.a)*(ob.r);
+            ctx.beginPath(); ctx.arc(ox,oy, this.size*0.6,0,Math.PI*2); ctx.fillStyle = col; ctx.fill();
+          }
+          ctx.beginPath(); ctx.arc(this.x,this.y,this.size,0,Math.PI*2); ctx.fillStyle = `rgba(0,0,0,0.6)`; ctx.fill();
+          break;
+        case 15:
+          // shielded orb
+          ctx.beginPath(); ctx.arc(this.x,this.y,this.size+6,0,Math.PI*2); ctx.strokeStyle = col; ctx.lineWidth=3; ctx.stroke();
+          ctx.beginPath(); ctx.arc(this.x,this.y,this.size,0,Math.PI*2); ctx.fillStyle = col; ctx.fill();
+          break;
+        case 16:
+          ctx.fillStyle = col; ctx.fillRect(this.x-40,this.y-6,80,12);
+          break;
+        case 17:
+          ctx.beginPath(); ctx.arc(this.x,this.y,this._armed?this.size+6:this.size,0,Math.PI*2);
+          ctx.fillStyle = this._armed? 'red' : col; ctx.fill();
+          break;
+        case 18:
+          ctx.beginPath(); ctx.arc(this.x,this.y,this.size+(Math.sin(this.age*0.02)*2),0,Math.PI*2); ctx.fillStyle = col; ctx.fill();
+          break;
+        case 19:
+          ctx.beginPath(); ctx.arc(this.x,this.y,this.size+8,0,Math.PI*2); ctx.fillStyle = col; ctx.fill();
+          break;
+        case 20:
+          ctx.beginPath(); ctx.arc(this.x,this.y,this.size,0,Math.PI*2); ctx.fillStyle = col; ctx.fill();
+          break;
+        case 21:
+          // twin lasers
+          ctx.save(); ctx.translate(this.x,this.y); ctx.rotate(this.ang);
+          ctx.fillStyle = col; ctx.fillRect(-120,-2,80,4); ctx.fillRect(40,-2,80,4);
+          ctx.restore();
+          break;
+        case 22:
+          // flashing teleport
+          ctx.globalAlpha = (performance.now()%600)/600;
+          ctx.beginPath(); ctx.arc(this.x,this.y,this.size*1.6,0,Math.PI*2); ctx.fillStyle = col; ctx.fill();
+          ctx.globalAlpha = 1;
+          break;
+        case 23:
+          // jitter blob
+          ctx.beginPath(); ctx.arc(this.x,this.y,this.size+Math.random()*3,0,Math.PI*2); ctx.fillStyle = col; ctx.fill();
           break;
       }
-    }
-
-    function render(ctx){
-      ctx.save();
-      ctx.translate(st.x, st.y);
-      ctx.globalAlpha = st.alpha || 1;
-      ctx.font = `${Math.max(12, st.r)}px sans-serif`;
-      ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillStyle = `hsla(${colorHue},85%,60%,${0.95})`;
-      ctx.fillText(char, 0, 0);
-      // glow pulse
-      ctx.globalAlpha = 0.25;
-      ctx.beginPath(); ctx.arc(0,0, st.r*1.8, 0, Math.PI*2); ctx.fillStyle = `hsla(${colorHue},85%,60%,0.12)`; ctx.fill();
       ctx.restore();
-      ctx.globalAlpha = 1;
-    }
-
-    function checkCollision(){
-      // many unicode attacks are treated as circles
-      return circleCircle(st.x, st.y, st.r*0.9, player.x, player.y, player.r);
-    }
-
-    return {
-      id,k:char, st, update, render, checkCollision, lifeMax, getLife(){ return st.life; }
-    };
-  }
-
-  // Make a small shard attack used by some unicode patterns
-  function makeShardAttack(x,y,seed){
-    const h = seed|1;
-    const st = {x,y,vx: Math.cos(seed)*rand(60,200)/60, vy: Math.sin(seed)*rand(60,200)/60, t:0, life:5000, r:4 + (h%4)};
-    const colorHue = h%360;
-    function update(dt){
-      st.t += dt; st.life -= dt;
-      st.x += st.vx * dt/16.67; st.y += st.vy * dt/16.67;
-      st.vx *= 0.997; st.vy *= 0.997;
-    }
-    function render(ctx){
-      ctx.save();
-      ctx.translate(st.x, st.y);
-      ctx.fillStyle = `hsla(${colorHue},70%,60%,0.95)`;
-      ctx.beginPath(); ctx.arc(0,0,st.r,0,Math.PI*2); ctx.fill();
-      ctx.restore();
-    }
-    function checkCollision(){ return circleCircle(st.x, st.y, st.r, player.x, player.y, player.r); }
-    return {id:'shard_'+Date.now(), st, update, render, checkCollision, lifeMax:5000, getLife(){ return st.life; }};
-  }
-
-  // Spawning routines for each stage: spawn a mix depending on world and stage
-  function spawnWave(){
-    const g = game;
-    const count = 6 + Math.floor(Math.random()*6) + Math.floor(g.stage/2);
-    if(g.world === 'world1'){
-      // spawn a variety of key attacks
-      for(let i=0;i<count;i++){
-        const k = keys[Math.floor(Math.random()*keys.length)];
-        spawnAttackByKey(k);
+    },
+    onHit(){
+      // damage and visual response: vary based on idx
+      const dmg = 6 + (idx % 5) * 2;
+      damage(dmg);
+      startShake(200, 6 + (idx%4));
+      popup(`-${Math.round(dmg)}`, player.x + (Math.random()-0.5)*30, player.y - 20, 800, 'red');
+      // spawn particles
+      for(let i=0;i<10;i++){
+        spawnParticle(this.x, this.y, (Math.random()-0.5)*(3+idx%3), (Math.random()-0.5)*(3+idx%3), 800, 2 + Math.random()*2, `hsl(${hue} 90% 60%)`, true);
       }
-    } else {
-      for(let i=0;i<count;i++){
-        const u = uniChars[Math.floor(Math.random()*uniChars.length)];
-        spawnAttackByUni(u);
+      // some patterns explode on hit
+      if([4,9,17,19].includes(pattern)){
+        this.dead = true;
+        for(let i=0;i<18;i++) spawnParticle(this.x,this.y, Math.cos(i)*2, Math.sin(i)*2, 800, 2, col, true);
       }
-    }
-  }
-
-  // Unicode buff/debuff event system
-  function unicodeEventTick(now){
-    if(now - game.unicodeTimer > 4000 + Math.random()*3000){
-      const eventChar = uniChars[Math.floor(Math.random()*uniChars.length)];
-      game.unicodeQueue.push({ char: eventChar, warnTime: now });
-      game.unicodeTimer = now;
-    }
-    // process queue
-    if(game.unicodeQueue.length){
-      const q = game.unicodeQueue[0];
-      const dt = now - q.warnTime;
-      const warnDur = 1500;
-      // show warning 1.5 sec
-      if(dt < warnDur){
-        eventWarning.style.opacity = 1;
-        eventWarning.textContent = q.char;
-        eventWarning.style.transform = `translate(-50%,-50%) scale(${1 + Math.sin(dt/120)*0.08})`;
-      } else {
-        // apply effect then remove
-        eventWarning.style.opacity = 0;
-        applyUnicodeEffect(q.char);
-        game.unicodeQueue.shift();
-      }
-    }
-  }
-
-  function applyUnicodeEffect(ch){
-    // 60% buff, 40% debuff
-    if(Math.random() < 0.6){
-      // buff: choose randomly among protection, shieldRegen, speedBoost, regen
-      const r = Math.random();
-      if(r < 0.25){
-        applyStatus('protection', 5, {stacks:1});
-      } else if(r < 0.55){
-        applyStatus('shieldRegen', 6, {rate:30});
-        player.shield = Math.min(player.maxShield, player.shield + 10);
-      } else if(r < 0.8){
-        applyStatus('speedBoost', 5, {multiplier:1.5});
-      } else {
-        applyStatus('regen', 5, {rate:25});
-      }
-    } else {
-      // debuff: poison or slow
-      if(Math.random() < 0.5){
-        applyStatus('poison', 4, {damage:40});
-      } else {
-        applyStatus('slow', 4, {multiplier:0.6});
-      }
-    }
-  }
-
-  // Stage management
-  function nextStage(){
-    game.stage += 1;
-    game.timer = 8 + Math.random()*4; // 8–12 sec
-    // heal(12)
-    heal(12);
-    // spawn waves right away
-    spawnWave();
-    // award progress if world1 stage reaches threshold
-    if(game.world === 'world1' && game.stage >= 3){
-      progress.world1 = true;
-      precodedUniBtn.classList.toggle('locked', !progress.world1);
-      saveProgress();
-    }
-    if(game.world === 'world2' && game.stage >= 5){
-      progress.world2 = true;
-      saveProgress();
-    }
-  }
-
-  // Starting games
-  function startGame(mode){
-    menu.classList.add('hidden');
-    gameoverEl.classList.add('hidden');
-    game.running = true;
-    game.world = (mode === 'precoded-uni') ? 'world2' : 'world1';
-    game.attacks = [];
-    game.particles = [];
-    game.popups = [];
-    game.trails = [];
-    player.hp = player.maxHp; player.shield = 0; player.dead = false;
-    // reset statuses
-    for(let s in player.statuses){ for(let k in player.statuses[s]) if(k!=='duration') player.statuses[s][k]= (k==='stacks'?0:0); player.statuses[s].duration = 0; }
-    game.stage = 0;
-    nextStage();
-    game.lastTime = performance.now();
-  }
-  precodedBtn.onclick = ()=> startGame('precoded');
-  precodedUniBtn.onclick = ()=>{
-    if(!progress.world1){
-      // Shake & locked warning
-      doShake(12);
-      spawnPopup('Locked', cw, ch, '#f66', 80);
-      return;
-    }
-    startGame('precoded-uni');
+    },
+    dead: false
   };
 
-  // Game Over
-  function onGameOver(){
-    game.running = false;
-    gameoverEl.classList.remove('hidden');
-    menu.classList.add('hidden');
-    for(let i=0;i<40;i++) spawnParticle(player.x + rand(-20,20), player.y + rand(-20,20), {spd:200, life:rand(40,120), col:'rgba(255,40,40,0.9)'});
-    doShake(18);
+  // helper sub-spawners closed over hue
+  function spawnSubBullet(x,y,vx,vy,h){
+    game.attacks.push({
+      key: key + '-sub',
+      idx: idx,
+      x:x,y:y,vx:vx,vy:vy, size:4, born: performance.now(), life: 4000, age:0,
+      trail: [],
+      update(dt){
+        this.age = performance.now()-this.born;
+        this.x += this.vx*dt*0.06; this.y += this.vy*dt*0.06;
+        this.trail.push({x:this.x,y:this.y}); if(this.trail.length>10) this.trail.shift();
+        if(circleCircle(this.x,this.y,this.size, player.x, player.y, player.r)){
+          damage(3); this.dead=true; startShake(120,4);
+        }
+        if(this.age>this.life) this.dead=true;
+      },
+      render(ctx){
+        ctx.beginPath(); ctx.arc(this.x,this.y,this.size,0,Math.PI*2); ctx.fillStyle = `hsl(${h} 90% 60%)`; ctx.fill();
+      }
+    });
   }
 
-  function restartGame(){
-    menu.classList.remove('hidden');
-    gameoverEl.classList.add('hidden');
-    game.running = false;
-    player.hp = player.maxHp;
-    player.shield = 0;
-    player.dead = false;
-    // clear
-    game.attacks = []; game.particles = []; game.popups = [];
+  function spawnSlowPulse(x,y,h){
+    // create radial slow effect that lasts short time; we simulate via particles and small area
+    const pulse = { x,y,r:0,max:120, born:performance.now(), life:900, age:0, h:h };
+    pulse.update = function(dt){
+      this.age = performance.now()-this.born; this.r = Math.min(this.max, this.age*0.18);
+      // if player in ring area apply slow effect
+      const d = Math.hypot(player.x - this.x, player.y - this.y);
+      if(d < this.r+player.r && d > this.r-16){
+        // apply slow debuff
+        player.statuses.slow.duration = Math.max(player.statuses.slow.duration, 400);
+        player.statuses.slow.multiplier = 0.6;
+      }
+      if(this.age > this.life) this.dead = true;
+    };
+    pulse.render = function(ctx){
+      ctx.beginPath(); ctx.arc(this.x,this.y,this.r,0,Math.PI*2); ctx.strokeStyle = `hsla(${this.h},90%,60%,${1 - this.age/this.life})`; ctx.lineWidth=3; ctx.stroke();
+    };
+    pulse.dead = false;
+    game.attacks.push(pulse);
   }
 
-  // Main loop
-  function loop(now){
-    const dt = Math.min(60, now - game.lastTime || 16.67);
-    game.lastTime = now;
-    // update player movement: player circle follows mouse, but speed affected by speedBoost/slow
-    const speedMul = (player.statuses.speedBoost.duration>0?player.statuses.speedBoost.multiplier:1) * (player.statuses.slow.duration>0?player.statuses.slow.multiplier:1);
-    const targetX = mouse.x, targetY = mouse.y;
-    // lerp
-    player.x += (targetX - player.x) * 0.25 * speedMul;
-    player.y += (targetY - player.y) * 0.25 * speedMul;
-
-    // tick statuses
-    for(let s in player.statuses){
-      const st = player.statuses[s];
-      if(st.duration > 0){
-        st.duration -= dt;
-        if(s === 'poison'){
-          // poison deals damage over time
-          const tickDamage = (st.damage || 0) * dt / 1000;
-          if(tickDamage > 0.01) player.hp = Math.max(0, player.hp - tickDamage);
-        }
-        if(s === 'shieldRegen'){
-          const gain = (st.rate || 0) * dt / 1000;
-          if(gain>0){ player.shield = Math.min(player.maxShield, player.shield + gain); }
-        }
-        if(s === 'regen'){
-          const gain = (st.rate || 0) * dt / 1000;
-          if(gain>0){ player.hp = Math.min(player.maxHp, player.hp + gain); }
-        }
-        if(st.duration <= 0){
-          // expire
-        }
-      }
-    }
-
-    // unicode event tick
-    unicodeEventTick(now);
-
-    // update attacks
-    for(let i = game.attacks.length-1; i>=0; i--){
-      const at = game.attacks[i];
-      at.update(dt);
-      // self destruct after life or out-of-bounds for certain types
-      if(at.getLife && at.getLife() <= 0) { game.attacks.splice(i,1); continue; }
-      // collision
-      if(at.checkCollision && at.checkCollision()){
-        // apply damage unique by type: small random value influenced by id
-        const dmg = 6 + (hashStr(at.id)%24);
-        damage(dmg);
-        // spawn explosion & remove (most attacks destroy on hit)
-        for(let p=0;p<12;p++) spawnParticle(player.x + rand(-8,8), player.y + rand(-8,8), {spd:200, life:rand(20,80), col:'rgba(255,160,60,0.9)'});
-        game.attacks.splice(i,1);
-      }
-    }
-
-    // update particles
-    for(let i=game.particles.length-1;i>=0;i--){
-      const p = game.particles[i];
-      p.x += p.vx * dt/16.67; p.y += p.vy * dt/16.67;
-      p.life -= dt;
-      if(p.life <= 0) game.particles.splice(i,1);
-    }
-
-    // update popups
-    for(let i=game.popups.length-1;i>=0;i--){
-      const pp = game.popups[i];
-      pp.y += pp.vy * dt/16.67;
-      pp.life -= dt;
-      if(pp.life <= 0) game.popups.splice(i,1);
-    }
-
-    // timer countdown
-    if(game.running){
-      game.timer -= dt/1000;
-      if(game.timer <= 0){
-        // heal(12) and nextStage
-        nextStage();
-      }
-    }
-
-    // shake update
-    if(game.shake.amt > 0.1){
-      game.shake.x = rand(-game.shake.amt, game.shake.amt);
-      game.shake.y = rand(-game.shake.amt, game.shake.amt);
-      game.shake.amt *= game.shake.decay;
-    } else { game.shake.x = 0; game.shake.y = 0; game.shake.amt = 0; }
-
-    // RENDER PASS
-    ctx.save();
-    ctx.clearRect(0,0,W,H);
-    // background gradient
-    const g = ctx.createLinearGradient(0,0,0,H);
-    g.addColorStop(0,'#07070a'); g.addColorStop(1,'#000');
-    ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
-    // apply shake transform
-    ctx.translate(game.shake.x, game.shake.y);
-
-    // render attacks
-    for(const at of game.attacks) at.render(ctx);
-
-    // render player
-    // aura
-    ctx.save();
-    ctx.beginPath();
-    ctx.fillStyle = 'rgba(80,180,255,0.06)';
-    ctx.arc(player.x, player.y, player.r*3.5, 0, Math.PI*2); ctx.fill();
-    ctx.restore();
-
-    // player circle with shield ring
-    ctx.beginPath();
-    ctx.fillStyle = '#3ad';
-    ctx.arc(player.x, player.y, player.r, 0, Math.PI*2); ctx.fill();
-    if(player.shield > 0){
-      ctx.beginPath();
-      ctx.strokeStyle = 'rgba(150,200,255,0.9)';
-      ctx.lineWidth = 4;
-      ctx.arc(player.x, player.y, player.r + 6, 0, Math.PI*2);
-      ctx.stroke();
-    }
-
-    // particles
-    for(const p of game.particles){
-      ctx.globalAlpha = Math.max(0, p.life/120);
-      ctx.fillStyle = p.col;
-      ctx.beginPath(); ctx.arc(p.x, p.y, p.size,0,Math.PI*2); ctx.fill();
-      ctx.globalAlpha = 1;
-    }
-
-    // popups
-    for(const pp of game.popups){
-      ctx.font = '16px Arial';
-      ctx.fillStyle = pp.col || '#fff';
-      ctx.textAlign='center'; ctx.fillText(pp.text, pp.x, pp.y);
-    }
-
-    ctx.restore();
-
-    // HUD text update
-    hudHp.innerHTML = `HP: ${Math.floor(player.hp)}/${player.maxHp}<br>Shield: ${Math.floor(player.shield)}/${player.maxShield}<br>Stage: ${game.stage}`;
-    hudStatus.innerHTML = getStatusString();
-    hudTimer.textContent = game.running ? `TIME: ${Math.max(0, game.timer).toFixed(1)}s` : '';
-
-    // remove eventWarning opacity when not showing
-    if(game.unicodeQueue.length===0){
-      eventWarning.style.opacity = 0;
-    }
-
-    // stop loop if not running? still render but don't spawn
-    if(game.running){
-      // occasionally spawn more attacks to maintain intensity
-      if(Math.random() < 0.02 + game.stage*0.003) spawnWave();
-    }
-
-    // request next frame
-    requestAnimationFrame(loop);
+  function spawnSeeker(x,y, sourceIdx){
+    // small seeker child
+    game.attacks.push({
+      key: key + '-child',
+      idx: sourceIdx,
+      x:x,y:y,vx:0,vy:0, size:5, born:performance.now(), life:3000, age:0,
+      update(dt){
+        this.age = performance.now()-this.born;
+        const dx = player.x - this.x, dy = player.y - this.y, d = Math.hypot(dx,dy)||1;
+        this.vx += (dx/d) * 0.12 * dt*0.01; this.vy += (dy/d) * 0.12 * dt*0.01;
+        const sp = Math.hypot(this.vx,this.vy)||1; const maxsp = 2 + (sourceIdx%3);
+        this.vx = (this.vx/sp)*maxsp; this.vy = (this.vy/sp)*maxsp;
+        this.x += this.vx * dt * 0.06; this.y += this.vy * dt * 0.06;
+        if(circleCircle(this.x,this.y,this.size,player.x,player.y,player.r)){ damage(4); this.dead=true; startShake(120,4); }
+        if(this.age>this.life) this.dead=true;
+      },
+      render(ctx){
+        ctx.beginPath(); ctx.arc(this.x,this.y,this.size,0,Math.PI*2); ctx.fillStyle = `hsl(${hue} 80% 55%)`; ctx.fill();
+      },
+      dead:false
+    });
   }
 
-  function getStatusString(){
-    const parts = [];
-    for(const s in player.statuses){
-      if(player.statuses[s].duration > 0){
-        parts.push(`${s.toUpperCase()}: ${(player.statuses[s].duration/1000).toFixed(1)}s`);
+  // add initial subtle particles
+  for(let i=0;i<6;i++) spawnParticle(a.x + (Math.random()-0.5)*6, a.y + (Math.random()-0.5)*6, (Math.random()-0.5)*1.2, (Math.random()-0.5)*1.2, 600, 1.2, col, true);
+
+  // push main object
+  game.attacks.push(a);
+}
+
+/* ------------------ SPAWN SCHEDULER (World 1) ------------------ */
+function spawnPatternForStage(stage){
+  // spawn rate increases with stage
+  const count = 1 + Math.floor(stage * 0.6);
+  for(let i=0;i<count;i++){
+    const key = keys[Math.floor(Math.random()*keys.length)];
+    spawnAttack(key);
+  }
+}
+
+/* ------------------ DAMAGE & HEAL ------------------ */
+function heal(v){
+  player.hp = Math.min(player.maxHp, player.hp + v);
+  popup('+'+Math.round(v), player.x + 10, player.y - 20, 800, '#0f0');
+}
+function damage(v){
+  if(player.statuses.protection.duration > 0) v *= 0.5;
+  if(player.shield > 0){
+    const use = Math.min(v, player.shield);
+    player.shield -= use;
+    v -= use;
+  }
+  player.hp -= v;
+  if(player.hp <= 0) { player.hp = 0; gameOver(); }
+}
+
+/* ------------------ GAME CONTROLS & MENU ------------------ */
+let currentWorld = null;
+precodedBtn.onclick = () => startGame('precoded');
+precodedUniBtn.onclick = () => {
+  if(!progress.world1){ startShake(300,8); popup('Locked', cw, ch, 1200, '#ff0'); return; }
+  startGame('precoded-uni');
+};
+
+function startGame(world){
+  currentWorld = world;
+  document.getElementById('menu').classList.add('hidden');
+  player.x = cw; player.y = ch; player.hp = player.maxHp; player.shield = 0;
+  player.dead = false;
+  clearAll();
+  game.stage = 1; game.timer = 8 + Math.random()*4;
+  game.attacks = []; game.lastSpawn = 0;
+  loop(performance.now());
+}
+
+/* restart / gameover */
+const gameoverEl = document.getElementById('gameover');
+function gameOver(){ player.dead = true; gameoverEl.classList.remove('hidden'); }
+function resetGame(){ player.hp = player.maxHp; player.shield = 0; player.dead = false; document.getElementById('gameover').classList.add('hidden'); clearAll(); game.attacks=[]; game.stage=1; game.timer=8+Math.random()*4; document.getElementById('menu').classList.remove('hidden'); }
+document.addEventListener('keydown', e => { if(e.key==='r' || e.key==='R'){ resetGame(); } });
+
+function clearAll(){ particles=[]; popups=[]; game.attacks=[]; }
+
+/* ------------------ HSV helper (for colors) ------------------ */
+function hsvToRgb(h,s,v){
+  s/=100; v/=100;
+  let c = v*s, x = c*(1-Math.abs((h/60)%2-1)), m = v-c, r=0,g=0,b=0;
+  if(h<60){ r=c; g=x; b=0; } else if(h<120){ r=x; g=c; b=0; } else if(h<180){ r=0; g=c; b=x; } else if(h<240){ r=0; g=x; b=c; } else if(h<300){ r=x; g=0; b=c; } else { r=c; g=0; b=x; }
+  return [Math.round((r+m)*255), Math.round((g+m)*255), Math.round((b+m)*255)];
+}
+
+/* ------------------ RENDER & MAIN LOOP ------------------ */
+let last = performance.now();
+function loop(now){
+  if(player.dead) return;
+  const dt = Math.min(40, now - last); last = now;
+
+  // update screen shake transform
+  ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,W,H);
+  if(shakeTimer>0){ const s = (Math.random()-0.5)*shakeAmp; ctx.translate(s, (Math.random()-0.5)*shakeAmp); shakeTimer = Math.max(0, shakeTimer - dt); }
+
+  // update player statuses
+  for(const k in player.statuses){
+    const s = player.statuses[k];
+    if(s && s.duration && s.duration > 0){
+      s.duration = Math.max(0, s.duration - dt);
+      if(k === 'poison'){ player.hp = Math.max(0, player.hp - (s.damage * dt/1000)); if(player.hp<=0) gameOver(); }
+      if(k === 'regen'){ heal(s.rate * dt/1000); }
+      if(k === 'shieldRegen'){ player.shield = Math.min(player.maxShield, player.shield + (s.rate * dt/1000)); }
+      if(s.duration === 0){
+        // expire effects: reset multipliers
+        if(k==='speedBoost') s.multiplier = 1;
+        if(k==='slow') s.multiplier = 1;
       }
     }
-    return parts.join(' | ');
   }
 
-  // initial call
+  // move player toward mouse using speed modifiers
+  const spd = 0.12 * ((player.statuses.speedBoost.duration>0?1.5:1) * (player.statuses.slow.duration>0?0.6:1));
+  player.x += (mouse.x - player.x) * spd;
+  player.y += (mouse.y - player.y) * spd;
+
+  // spawn new attacks periodically
+  if(performance.now() - game.lastSpawn > (game.spawnInterval * (0.6 + Math.random()*0.8)) ){
+    game.lastSpawn = performance.now();
+    // spawn one or multiple based on stage
+    spawnPatternForStage(game.stage);
+  }
+
+  // update attacks
+  for(let i=game.attacks.length-1;i>=0;i--){
+    const a = game.attacks[i];
+    if(a.update) a.update(dt);
+    if(a.dead) { game.attacks.splice(i,1); continue; }
+  }
+
+  // update particles
+  for(let i=particles.length-1;i>=0;i--){
+    const p = particles[i]; p.age += dt;
+    p.x += p.vx * dt * 0.06; p.y += p.vy * dt * 0.06;
+    if(p.age > p.life) particles.splice(i,1);
+  }
+
+  // update popups
+  for(let i=popups.length-1;i>=0;i--){
+    const p = popups[i]; p.age += dt;
+    p.y -= dt*0.02;
+    if(p.age > p.ttl) popups.splice(i,1);
+  }
+
+  // render attacks under player
+  // background gradient
+  const g = ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,'#000'); g.addColorStop(1,'#001018'); ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+
+  // render attacks
+  for(const a of game.attacks) a.render && a.render(ctx);
+
+  // render particles
+  for(const p of particles){
+    ctx.globalAlpha = 1 - (p.age / p.life);
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.sz,0,Math.PI*2); ctx.fillStyle = p.color; ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  // player render (on top)
+  ctx.beginPath(); ctx.arc(player.x,player.y,player.r,0,Math.PI*2);
+  ctx.fillStyle = player.hp>30 ? '#0f0' : 'orange'; ctx.fill();
+  // small shield ring
+  if(player.shield>0){
+    ctx.beginPath(); ctx.arc(player.x,player.y,player.r+6,0,Math.PI*2); ctx.strokeStyle = 'rgba(0,200,255,0.6)'; ctx.lineWidth = 3; ctx.stroke();
+  }
+
+  // render popups
+  ctx.font = '18px Arial'; ctx.textAlign='center';
+  for(const p of popups){ ctx.fillStyle = p.color || '#fff'; ctx.fillText(p.text, p.x, p.y); }
+
+  // HUD update
+  document.getElementById('hp').innerHTML = `HP: ${Math.round(player.hp)}/${player.maxHp}<br>Shield: ${Math.round(player.shield)}/${player.maxShield}<br>Stage: ${game.stage}`;
+  document.getElementById('timer').textContent = game.timer.toFixed(1);
+  game.timer -= dt/1000;
+  if(game.timer <= 0){
+    // stage finished: heal 12 and next stage
+    heal(12); game.stage++; game.timer = 8 + Math.random()*4;
+    popup('Stage Clear!', cw, 60, 1400, '#ff0');
+    // small milestone: if stage reached 4 unlock world2 progress
+    if(game.stage >= 4){ progress.world1 = true; localStorage.setItem('keyboardDoomProgress', JSON.stringify(progress)); precodedUniBtn.classList.toggle('locked', !progress.world1); popup('World 2 Unlocked!', cw, ch-40, 1600, '#0ff'); startShake(400,10); }
+  }
+
+  // debug: show number of active attacks
+  document.getElementById('status').textContent = `${game.attacks.length} active`;
+
+  // request next frame
   requestAnimationFrame(loop);
+}
 
-  // Initial menu visible - do tiny intro particles
-  for(let i=0;i<60;i++) spawnParticle(rand(0,W), rand(0,H), {spd:200, life:rand(40,140), col:`hsla(${rand(0,360)},60%,60%,0.08)`});
+/* ------------------ INITIALIZE & HELPER BOILERPLATE ------------------ */
+function init(){
+  // start idle menu visuals
+  document.getElementById('menu').classList.remove('hidden');
+}
+init();
 
-  // Bindings: spawn some preset attacks if user presses many keys (for variety during development)
-  window.addEventListener('keydown', (e)=>{
-    if(!game.running) return;
-    // spawn attack matching pressed key if exists in keys list
-    const keyName = e.key;
-    // sometimes browsers report ' ' as ' '
-    let foundKey = null;
-    for(const k of keys){
-      if(k.toLowerCase() === keyName.toLowerCase() || (k===' ' && keyName===' ' ) || (k==='Enter' && keyName==='Enter')) { foundKey = k; break; }
+/* ------------------ Extra helpers used above ------------------ */
+function spawnSlowPulse(x,y,h){ // wrapper to global for patterns that call it
+  const pulse = { x,y,r:0,max:120, born:performance.now(), life:900, age:0, h:h };
+  pulse.update = function(dt){
+    this.age = performance.now()-this.born; this.r = Math.min(this.max, this.age*0.18);
+    const d = Math.hypot(player.x - this.x, player.y - this.y);
+    if(d < this.r+player.r && d > this.r-24){
+      player.statuses.slow.duration = Math.max(player.statuses.slow.duration, 800);
+      player.statuses.slow.multiplier = 0.6;
     }
-    if(foundKey) spawnAttackByKey(foundKey);
-  });
+    if(this.age > this.life) this.dead = true;
+  };
+  pulse.render = function(ctx){ ctx.beginPath(); ctx.arc(this.x,this.y,this.r,0,Math.PI*2); ctx.strokeStyle = `hsla(${this.h},90%,60%,${1 - this.age/this.life})`; ctx.lineWidth=3; ctx.stroke(); };
+  pulse.dead = false;
+  game.attacks.push(pulse);
+}
 
-  // quick debug tap: click to spawn random attack
-  window.addEventListener('click', (e) => {
-    if(!game.running) return;
-    if(game.world === 'world1'){
-      const k = keys[Math.floor(Math.random()*keys.length)];
-      spawnAttackByKey(k);
-    } else {
-      const u = uniChars[Math.floor(Math.random()*uniChars.length)];
-      spawnAttackByUni(u);
-    }
+/* spawnSeeker defined earlier inside spawnAttack via closure; provide fallback global function for calls */
+function spawnSeeker(x,y,sourceIdx){
+  // small seeker child
+  game.attacks.push({
+    key: 'global-seeker',
+    idx: sourceIdx,
+    x:x,y:y,vx:0,vy:0, size:5, born:performance.now(), life:3000, age:0,
+    update(dt){
+      this.age = performance.now()-this.born;
+      const dx = player.x - this.x, dy = player.y - this.y, d = Math.hypot(dx,dy)||1;
+      this.vx += (dx/d) * 0.12 * dt*0.01; this.vy += (dy/d) * 0.12 * dt*0.01;
+      const sp = Math.hypot(this.vx,this.vy)||1; const maxsp = 2 + (sourceIdx%3);
+      this.vx = (this.vx/sp)*maxsp; this.vy = (this.vy/sp)*maxsp;
+      this.x += this.vx * dt * 0.06; this.y += this.vy * dt * 0.06;
+      if(circleCircle(this.x,this.y,this.size,player.x,player.y,player.r)){ damage(4); this.dead=true; startShake(120,4); }
+      if(this.age>this.life) this.dead=true;
+    },
+    render(ctx){
+      ctx.beginPath(); ctx.arc(this.x,this.y,this.size,0,Math.PI*2); ctx.fillStyle = 'orange'; ctx.fill();
+    },
+    dead:false
   });
+}
 
-  // Ensure that attacks never move the cursor (we never change mouse position)
-  // Save initial menu state
-})();
+/* small helper to convert HSL in use above (already created hsvToRgb for numeric) */
+function hslToCss(h,s,l){ return `hsl(${h} ${s}% ${l}%)`; }
+
+/* -------------- Utility for initial debug spawn when user clicks menu to start precoded: spawn bunch immediately -------------- */
+precodedBtn.addEventListener('click', ()=> {
+  // pre-fill a safe wave of unique keys when starting
+  const prekeys = [...keys];
+  for(let i=0;i<Math.min(12,prekeys.length);i++){
+    const k = prekeys.splice(Math.floor(Math.random()*prekeys.length),1)[0];
+    spawnAttack(k);
+  }
+});
+
 </script>
 </body>
 </html>
