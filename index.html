@@ -1,3 +1,4 @@
+<DOCUMENT filename="KEYBOARD DOOM - BETA.txt">
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -13,7 +14,7 @@ canvas{display:block;image-rendering:pixelated;cursor:none}
 .centertop{position:absolute;top:10px;left:50%;transform:translateX(-50%);font-size:16px;font-weight:bold}
 .bottomcenter{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);font-size:12px;opacity:.8}
 .status{position:absolute;top:60px;left:10px;font-size:12px}
-.menu,.gameover{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.9);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}
+.menu,.gameover,.shopmenu{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.9);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}
 button{padding:12px 26px;font-size:18px;background:#222;color:#fff;border:2px solid #fff;cursor:pointer}
 button:hover{background:#444}
 button.locked{background:#111;border-color:#666;color:#666}
@@ -25,44 +26,22 @@ button.locked{background:#111;border-color:#666;color:#666}
 .keypad{display:flex;flex-wrap:wrap;gap:4px;max-width:760px;justify-content:center}
 .keybtn{background:#111;color:#fff;border:1px solid #333;padding:6px 8px;border-radius:4px;cursor:pointer}
 .keybtn:hover{background:#222}
+.keybtn.locked{background:#111;border-color:#666;color:#666;pointer-events:none}
+.skin-item{display:flex;gap:12px;align-items:center;background:#222;padding:12px;border:2px solid #fff;margin:6px 0;width:80%;justify-content:space-between}
+.skin-desc{font-size:14px;color:#ccc}
+.credits{display:flex;align-items:center;gap:8px;font-size:16px;color:#ff0;margin-bottom:12px}
 </style>
 </head>
 <body>
-<canvas id="c"></canvas>
-
-<div id="hud">
-  <div class="topleft" id="hp">HP: 100/100<br>Shield: 0/50<br>Stage: -</div>
-  <div class="status" id="status"></div>
-  <div class="centertop" id="timer"></div>
-  <div class="bottomcenter" id="instructions">DODGE | UNICODE BUFFS/DEBUFFS | R = RESTART</div>
-</div>
-
-<div id="event-warning" class="event-warning"></div>
-
-<div id="menu" class="menu">
-  <h1 style="color:#fff;font-size:44px">KEYBOARD DOOM</h1>
-  <div style="display:flex;gap:8px;align-items:center">
+<canvas id="c"></canvas> 
     <button id="precoded">Precoded Order (World 1)</button>
     <button id="precoded-uni" class="locked">Precoded Unicodes (World 2)</button>
     <button id="yourchoice">Your Choice Mode</button>
-  </div>
-  <div style="margin-top:8px;">
-    <label style="color:#bbb;font-size:14px;margin-right:6px">Passcode:</label>
-    <input id="passcode" class="input-pass" placeholder="enter code" />
+    <button id="shop">Shop</button>
+    <button id="multi-toggle">Single Player</button> 
     <button id="trycode" style="margin-left:8px;padding:8px 14px;font-size:14px">Unlock</button>
-  </div>
-  <div style="font-size:13px;color:#aaa;margin-top:6px">Type <code>nexus7</code> to unlock World 2</div>
-  <div style="margin-top:12px;color:#ccc;font-size:13px">Your Choice mode: click any on-screen key or unicode to play that stage. Click "World 2" to switch worlds.</div>
-  <div style="margin-top:14px" id="keypadContainer"></div>
-</div>
-
-<div id="gameover" class="menu hidden">
-  <h1 style="color:#f00;font-size:48px">GAME OVER</h1>
-  <p style="font-size:18px">Press R to Restart</p>
-</div>
-
-<div id="popups"></div>
-
+  <button id="world-toggle" style="margin-top:12px">Switch to World 2</button>
+  <button id="back-to-menu">Back to Menu</button>
 <script>
 /* ================= CORE SETUP ================= */
 const canvas = document.getElementById('c'), ctx = canvas.getContext('2d');
@@ -73,717 +52,944 @@ addEventListener('resize', resize); resize();
 let mouse = {x:cw, y:ch};
 canvas.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
 
+const keys = [
+'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z',
+'0','1','2','3','4','5','6','7','8','9'
+]; // World 1: a-z, 0-9
+
+const uniChars = [
+// Keyboard symbols
+'!','@','#','$','%','^','&','*','(',')','_','+','-','=','[',']','{','}','|',';',':','\'','"','\\',',','.','/','<','>','?','`','~',
+' ','Enter','Backspace','Tab','Shift','Control','Alt','CapsLock','Escape',
+// Arrows and originals
+'→','←','▲','▼','█','◆','★','◈','▣','◇','▶','◀','◤','◥','◢','◣',
+'✦','✧','✿','❀','❖','✸','✹','✺','✻','✼','❁','❂','❃','❄','❅','❆','❇','❈','❉','❊',
+'♠','♣','♥','♦','♚','♛','♜','♝','♞','♟'
+]; // World 2: symbols + unicode
+
 const precodedBtn = document.getElementById('precoded');
 const precodedUniBtn = document.getElementById('precoded-uni');
 const yourChoiceBtn = document.getElementById('yourchoice');
+const shopBtn = document.getElementById('shop');
+const multiToggle = document.getElementById('multi-toggle');
+const worldToggle = document.getElementById('world-toggle');
 const passInput = document.getElementById('passcode'), tryBtn = document.getElementById('trycode');
 const keypadContainer = document.getElementById('keypadContainer');
+const backToMenu = document.getElementById('back-to-menu');
 
 let progress = JSON.parse(localStorage.getItem('keyboardDoomProgress') || '{"world1":false,"world2":false}');
+let completed = JSON.parse(localStorage.getItem('completed') || '{"world1":[],"world2":[]}');
+let credits = parseInt(localStorage.getItem('credits') || '0');
+let isMulti = false;
+let currentWorld = 'world1';
+
 precodedUniBtn.classList.toggle('locked', !progress.world2);
+document.getElementById('credits-display').textContent = `Credits: ${credits}`;
+updateKeypadLocks();
+
+/* Skins */
+const elements = ['H','He','Li','Be','B','C','N','O','F','Ne','Na','Mg','Al','Si','P','S','Cl','Ar','K','Ca','Sc','Ti','V','Cr','Mn','Fe','Co','Ni','Cu','Zn','Ga','Ge','As','Se','Br','Kr','Rb','Sr','Y','Zr','Nb','Mo','Tc','Ru','Rh','Pd','Ag','Cd','In','Sn','Sb','Te','I','Xe','Cs','Ba','La','Ce','Pr','Nd','Pm','Sm','Eu','Gd','Tb','Dy','Ho','Er','Tm','Yb','Lu','Hf','Ta','W','Re','Os','Ir','Pt','Au','Hg','Tl','Pb','Bi','Po','At','Rn','Fr','Ra','Ac','Th','Pa','U','Np','Pu','Am','Cm','Bk','Cf','Es','Fm','Md','No','Lr','Rf','Db','Sg','Bh','Hs','Mt','Ds','Rg','Cn','Nh','Fl','Mc','Lv','Ts','Og'];
+
+const skins = [
+{ name: 'Default', desc: 'The timeless essence of survival, a simple glowing orb that has dodged doom since the beginning.', unlocked: true, equipped: true, cost: 0, element: null, render: (ctx, x, y, r, hp, t) => {
+ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fillStyle = hp > 30 ? '#0f0' : 'orange'; ctx.fill();
+}},
+{ name: 'cat.txt', desc: 'A mischievous digital feline, blinking curiously at the chaos. One wrong move, and it\'s claws out—meow or perish in pixelated peril!', unlocked: false, equipped: false, cost: 100, element: null, render: (ctx, x, y, r, hp, t, hurtTime) => {
+const blinkInterval = 3000 + Math.random()*2000; const isBlink = (t % blinkInterval) < 200;
+const face = hurtTime && (t - hurtTime < 1000) ? ';w;' : isBlink ? '-w-' : 'owo';
+ctx.font = `${r*1.2}px monospace`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+ctx.fillStyle = hp > 30 ? '#ff69b4' : '#ff1493'; ctx.fillText(face, x, y);
+}},
+{ name: 'Periodic Table', desc: 'Channel the raw power of atomic fury! Spawn as a random element each wave—Hydrogen for speedy escapes, Uranium for explosive resilience. Chemistry is your shield against doom.', unlocked: false, equipped: false, cost: 200, element: null, render: (ctx, x, y, r, hp, t) => {
+const elem = elements[Math.floor(Math.random() * elements.length)];
+ctx.font = `${r*1.5}px monospace`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+ctx.fillStyle = hp > 30 ? '#00ff00' : '#ffff00'; ctx.fillText(elem, x, y);
+}},
+{ name: 'Fire Spirit', desc: 'A blazing entity forged in the heart of digital infernos. Leaves trails of flame with every dodge, scorching attackers who dare approach. Ignite your path to victory!', unlocked: false, equipped: false, cost: 150, element: null, render: (ctx, x, y, r, hp, t) => {
+ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fillStyle = `hsl(${(t/10)%360}, 100%, 50%)`; ctx.fill();
+// trail particles simplified
+}},
+{ name: 'Shadow Ninja', desc: 'A whisper in the void, vanishing into shadows. Attacks phase through you occasionally, but beware—low light reveals your deadly grace. Stealth is the ultimate weapon.', unlocked: false, equipped: false, cost: 250, element: null, render: (ctx, x, y, r, hp, t) => {
+ctx.globalAlpha = 0.7 + 0.3 * Math.sin(t * 0.01); ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fillStyle = '#333'; ctx.fill(); ctx.globalAlpha = 1;
+}},
+{ name: 'Neon Cyber', desc: 'Wired into the matrix of madness, pulsing with electric dreams. Hacks the doom code for brief invincibility bursts. Glitch or get glitched—choose your cyber fate.', unlocked: false, equipped: false, cost: 300, element: null, render: (ctx, x, y, r, hp, t) => {
+ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.strokeStyle = `hsl(${(t/5)%360}, 100%, 50%)`; ctx.lineWidth = 3; ctx.stroke();
+ctx.beginPath(); ctx.arc(x, y, r-2, 0, Math.PI*2); ctx.fillStyle = '#000'; ctx.fill();
+}}
+];
+
+let currentSkin = skins[0];
+let hurtTime = 0;
+let blinkTimer = 0; // For cat blink, but handled in render
+
+function updateSkinsList() {
+const list = document.getElementById('skins-list');
+list.innerHTML = '';
+skins.forEach((skin, idx) => {
+const item = document.createElement('div'); item.className = 'skin-item';
+item.innerHTML = `
+<span>${skin.name}</span>
+<span class="skin-desc">${skin.desc}</span>
+<span>${skin.unlocked ? 'Owned' : `Cost: ${skin.cost}`}</span>
+${skin.unlocked ? `<button onclick="equipSkin(${idx})">Equip</button>` : `<button onclick="buySkin(${idx})" ${credits < skin.cost ? 'disabled' : ''}>Buy</button>`}
+`;
+list.appendChild(item);
+});
+}
+
+function buySkin(idx) {
+const skin = skins[idx];
+if (credits >= skin.cost) {
+credits -= skin.cost;
+skin.unlocked = true;
+localStorage.setItem('credits', credits);
+localStorage.setItem('skins', JSON.stringify(skins));
+updateSkinsList();
+document.getElementById('credits-display').textContent = `Credits: ${credits}`;
+showPopup('Skin Unlocked!', cw, ch-40, 1500, '#0ff');
+}
+}
+
+function equipSkin(idx) {
+skins.forEach(s => s.equipped = false);
+skins[idx].equipped = true;
+currentSkin = skins[idx];
+localStorage.setItem('skins', JSON.stringify(skins));
+showPopup('Skin Equipped!', cw, ch-40, 1500, '#0ff');
+}
+
+window.buySkin = buySkin;
+window.equipSkin = equipSkin;
+
+// Load skins
+const savedSkins = localStorage.getItem('skins');
+if (savedSkins) {
+const loaded = JSON.parse(savedSkins);
+loaded.forEach((loadedSkin, idx) => {
+Object.assign(skins[idx], loadedSkin);
+});
+currentSkin = skins.find(s => s.equipped) || skins[0];
+}
 
 /* HUD helpers */
 function showPopup(text,x,y,ttl=1200,color='#fff'){ const el = document.createElement('div'); el.className='popup'; el.style.left=(x)+'px'; el.style.top=(y)+'px'; el.style.color=color; el.style.transform='translate(-50%,-50%)'; el.textContent=text; document.getElementById('popups').appendChild(el); setTimeout(()=>el.remove(), ttl); }
 
-/* ================= DATA ARRAYS ================= */
-/* World 1 keys (70+ as required) */
-const keys = [
-  'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z',
-  '0','1','2','3','4','5','6','7','8','9',
-  '!','@','#','$','%','^','&','*','(',')','_','+','-','=','[',']','{','}','|',';','\'','"',',','.','<','>','?','/',
-  ' ','Enter','Backspace','Tab','Shift','Control','Alt','CapsLock','Escape',
-  'ArrowUp','ArrowDown','ArrowLeft','ArrowRight'
-];
-
-/* World 2 unicode symbols (40+) */
-const uniChars = [
-  '→','←','▲','▼','█','◆','★','◈','▣','◇','▶','◀','◤','◥','◢','◣',
-  '✦','✧','✿','❀','❖','✸','✹','✺','✻','✼','❁','❂','❃','❄','❅','❆','❇','❈','❉','❊',
-  '♠','♣','♥','♦','♚','♛','♜','♝','♞','♟'
-];
-
-/* Build an interactive keypad / unicode pad for Your Choice mode */
-function buildKeypad(){
-  const frag = document.createDocumentFragment();
-  const wrap = document.createElement('div'); wrap.className='keypad';
-  // add keys and unicodes as selectable buttons
-  keys.concat(uniChars).forEach(k=>{
-    const b = document.createElement('button'); b.className='keybtn'; b.textContent = k;
-    b.onclick = ()=>{ startChoiceStage(k); };
-    wrap.appendChild(b);
-  });
-  frag.appendChild(wrap);
-  keypadContainer.innerHTML=''; keypadContainer.appendChild(frag);
+/* ================= PLAYER (SINGLE & MULTI) ================= */
+const player1 = {
+x: cw - 50, y: ch, r: 12,
+hp: 100, maxHp: 100,
+shield: 0, maxShield: 50,
+dead: false,
+statuses: {
+protection: { duration: 0 },
+shieldRegen: { duration: 0, rate: 0 },
+poison: { duration: 0, damage: 0 },
+speedBoost: { duration: 0, multiplier: 1 },
+slow: { duration: 0, multiplier: 1 },
+regen: { duration: 0, rate: 0 }
 }
-buildKeypad();
-
-/* ================= PLAYER ================= */
-const player = {
-  x: cw, y: ch, r: 12,
-  hp: 100, maxHp: 100,
-  shield: 0, maxShield: 50,
-  dead: false,
-  statuses: {
-    protection: { duration: 0 },
-    shieldRegen: { duration: 0, rate: 0 },
-    poison: { duration: 0, damage: 0 },
-    speedBoost: { duration: 0, multiplier: 1 },
-    slow: { duration: 0, multiplier: 1 },
-    regen: { duration: 0, rate: 0 }
-  }
 };
+
+const player2 = {
+x: cw + 50, y: ch, r: 12,
+hp: 100, maxHp: 100,
+shield: 0, maxShield: 50,
+dead: false,
+statuses: {
+protection: { duration: 0 },
+shieldRegen: { duration: 0, rate: 0 },
+poison: { duration: 0, damage: 0 },
+speedBoost: { duration: 0, multiplier: 1 },
+slow: { duration: 0, multiplier: 1 },
+regen: { duration: 0, rate: 0 }
+}
+};
+
+let p1Input = {x:0, y:0}, p2Input = {x:0, y:0};
+let keysDown = {};
+
+document.addEventListener('keydown', e => {
+keysDown[e.key.toLowerCase()] = true;
+if (e.key.toLowerCase() === 'r' || e.key === 'R') {
+resetGame();
+}
+});
+document.addEventListener('keyup', e => { keysDown[e.key.toLowerCase()] = false; });
+
+function updatePlayerInput() {
+if (isMulti) {
+// P2 WASD
+p2Input.x = (keysDown['d'] ? 1 : 0) - (keysDown['a'] ? 1 : 0);
+p2Input.y = (keysDown['s'] ? 1 : 0) - (keysDown['w'] ? 1 : 0);
+}
+}
 
 /* ================= HELPERS & COLLISIONS ================= */
 function clamp(a,b,c){ return Math.max(b, Math.min(c, a)); }
 function circleCircle(x1,y1,r1,x2,y2,r2){ const dx = x2-x1, dy = y2-y1; return dx*dx+dy*dy < (r1+r2)*(r1+r2); }
 function rectCircle(rx,ry,rw,rh,cx,cy,cr){ const cxn = clamp(cx, rx, rx+rw); const cyn = clamp(cy, ry, ry+rh); const dx = cxn - cx, dy = cyn - cy; return dx*dx+dy*dy < cr*cr; }
 
-/* particles & popups */
 let particles = [], popups = [];
 function spawnParticle(x,y,vx,vy,life,sz,color,fade=false){ particles.push({x,y,vx,vy,life,age:0,sz,color,fade}); }
 function spawnPopup(text,x,y,ttl=1000,color='#fff'){ popups.push({text,x,y,age:0,ttl,color}); }
 
-/* screen shake */
 let shakeTimer = 0, shakeAmp = 0;
 function startShake(ms, amp=8){ shakeTimer = ms; shakeAmp = amp; }
 
-/* color helper */
 function hsl(h,s,l){ return `hsl(${h} ${s}% ${l}%)`; }
+
+function hashCode(str){
+let h=0; for(let i=0;i<str.length;i++){ h = ((h<<5)-h) + str.charCodeAt(i); h |= 0; } return Math.abs(h);
+}
+
+function updateKeypadLocks() {
+const worldChars = currentWorld === 'world1' ? keys : uniChars;
+const comp = completed[currentWorld];
+Array.from(keypadContainer.querySelectorAll('.keybtn')).forEach(btn => {
+const k = btn.textContent;
+if (worldChars.includes(k)) {
+btn.classList.toggle('locked', !comp.includes(k) && !progress[currentWorld]);
+}
+});
+worldToggle.textContent = `Switch to ${currentWorld === 'world1' ? 'World 2' : 'World 1'}`;
+worldToggle.classList.toggle('locked', currentWorld === 'world2' && !progress.world2);
+}
+
+function buildKeypad() {
+const frag = document.createDocumentFragment();
+const wrap = document.createElement('div'); wrap.className='keypad';
+[...keys, ...uniChars].forEach(k => {
+const b = document.createElement('button'); b.className='keybtn'; b.textContent = k;
+b.onclick = () => { if (!b.classList.contains('locked')) startChoiceStage(k); };
+wrap.appendChild(b);
+});
+frag.appendChild(wrap);
+keypadContainer.innerHTML = ''; keypadContainer.appendChild(frag);
+updateKeypadLocks();
+}
+buildKeypad();
 
 /* ================= PROGRESS & PASSCODE ================= */
 tryBtn.addEventListener('click', ()=>{
-  if(passInput.value === 'nexus7'){ progress.world2 = true; localStorage.setItem('keyboardDoomProgress', JSON.stringify(progress)); precodedUniBtn.classList.remove('locked'); showPopup('World 2 Unlocked!', cw, ch-60, 1500, '#0ff'); }
-  else { startShake(300,10); showPopup('Incorrect passcode', cw, ch-40, 1000, '#f55'); }
+if(passInput.value === 'nexus7'){ progress.world2 = true; localStorage.setItem('keyboardDoomProgress', JSON.stringify(progress)); precodedUniBtn.classList.remove('locked'); worldToggle.classList.remove('locked'); showPopup('World 2 Unlocked!', cw, ch-60, 1500, '#0ff'); }
+else { startShake(300,10); showPopup('Incorrect passcode', cw, ch-40, 1000, '#f55'); }
+passInput.value = '';
 });
 
 /* ================== GAME STATE ================== */
 let game = {
-  mode: 'menu', // 'menu', 'precoded', 'precoded-uni', 'choice'
-  world: 'world1',
-  stageIndex: 0,
-  stageKey: keys[0],
-  timer: 8 + Math.random()*4,
-  attacks: [],
-  diggers: [],
-  lastSpawn: 0,
-  spawnInterval: 600
+mode: 'menu',
+world: 'world1',
+stageIndex: 0,
+stageKey: keys[0],
+timer: 8 + Math.random()*4,
+attacks: [],
+diggers: [],
+lastSpawn: 0,
+spawnInterval: 600
 };
 
-/* helper to save progress */
-function saveProgress(){ localStorage.setItem('keyboardDoomProgress', JSON.stringify(progress)); }
-
-/* ================== START/RESET ================== */
-function startGame(mode, world='world1', key=null){
-  game.mode = mode;
-  game.world = world;
-  game.stageIndex = 0;
-  game.stageKey = key || keys[0];
-  game.timer = 8 + Math.random()*4;
-  player.hp = player.maxHp; player.shield = 0; player.dead = false;
-  game.attacks = []; game.diggers.forEach(d=>d.destroyGui()); game.diggers = [];
-  document.getElementById('menu').classList.add('hidden');
-  lastTime = performance.now();
-  requestAnimationFrame(mainLoop);
-}
-
-/* For Your Choice mode stage start */
-function startChoiceStage(k){
-  // if in menu, start in choice mode; else just set the stageKey to k
-  if(document.getElementById('menu').classList.contains('hidden')===false){
-    startGame('choice', progress.world2 ? 'world2' : 'world1', k);
-  } else {
-    game.stageKey = k;
-    game.stageIndex = keys.indexOf(k) >= 0 ? keys.indexOf(k) : -1;
-    spawnStageForKey(k);
-  }
-}
-
-/* utility to show stage label: Stage shows key or unicode */
-function stageLabel(){ return (game.stageKey || keys[game.stageIndex]) ; }
-
-/* ================== Time keeper ================== */
 let lastTime = performance.now();
 
-/* End of Part 1 — continue with Part 2 below */
-/* ================= PART 2 — WORLD 1 ATTACKS & DIGGERS ================= */
-
-/* ---------- collision helpers ---------- */
-function lineCircle(x1,y1,x2,y2,cx,cy,cr){
-  const A = cx-x1, B = cy-y1, C = x2-x1, D = y2-y1;
-  const dot = A*C + B*D, len2 = C*C + D*D;
-  let t = len2 ? dot / len2 : 0; t = Math.max(0, Math.min(1,t));
-  const px = x1 + C*t, py = y1 + D*t;
-  const dx = px - cx, dy = py - cy;
-  return dx*dx + dy*dy < cr*cr;
+function saveProgress(){
+localStorage.setItem('keyboardDoomProgress', JSON.stringify(progress));
+localStorage.setItem('completed', JSON.stringify(completed));
+localStorage.setItem('credits', credits);
 }
 
-/* ---------- attack factory for world1 keys (70+ parametric patterns) ---------- */
-function spawnAttackForKey(k, seedOffset=0){
-  const idx = keys.indexOf(k);
-  const seed = (idx >=0 ? idx : Math.abs(hashCode(k))) + 3 + seedOffset;
-  const hue = (seed * 47) % 360;
-  const baseSize = 6 + (seed % 6);
-  const now = performance.now();
-  // create a bundle of 1..3 attack objects to produce a full pattern
-  const patterns = 1 + (seed % 3);
-  for(let p=0;p<patterns;p++){
-    const patternType = (seed + p) % 28; // 28 variations parameterized by seed
-    const startEdge = Math.floor(Math.abs(Math.sin(seed+p))*4);
-    let x=0,y=0,vx=0,vy=0;
-    if(startEdge===0){ x=-30; y=Math.random()*H; vx=1+Math.random()*3; vy=(Math.random()-0.5)*2; }
-    if(startEdge===1){ x=W+30; y=Math.random()*H; vx=-1-Math.random()*3; vy=(Math.random()-0.5)*2; }
-    if(startEdge===2){ x=Math.random()*W; y=-30; vx=(Math.random()-0.5)*2; vy=1+Math.random()*3; }
-    if(startEdge===3){ x=Math.random()*W; y=H+30; vx=(Math.random()-0.5)*2; vy=-1-Math.random()*3; }
-
-    const atk = {
-      id: 'k-'+k+'-'+p+'-'+Date.now(),
-      key: k,
-      type: 'key',
-      pattern: patternType,
-      x, y, vx, vy,
-      size: baseSize + (patternType%4),
-      hue, born: now, life: 20000, age: 0,
-      // custom state for pattern
-      state: { ang: Math.random()*Math.PI*2, phase:0 },
-      dead: false,
-      update(dt){
-        this.age = performance.now() - this.born;
-        // behavior switch
-        switch(this.pattern){
-          case 0: // fast straight
-            this.x += this.vx * dt * 0.06; this.y += this.vy * dt * 0.06; break;
-          case 1: // homing
-            { const dx = player.x - this.x, dy = player.y - this.y, d = Math.hypot(dx,dy)||1;
-              this.vx += (dx/d)*0.12*(dt/16); this.vy += (dy/d)*0.12*(dt/16);
-              const sp = Math.hypot(this.vx,this.vy)||1; const maxsp = 2 + (this.size%3);
-              this.vx = this.vx/sp*maxsp; this.vy = this.vy/sp*maxsp;
-              this.x += this.vx * dt * 0.06; this.y += this.vy * dt * 0.06;
-            } break;
-          case 2: // sine wave
-            this.x += this.vx * dt * 0.06; this.y += this.vy * dt * 0.06; this.y += Math.sin(this.age*0.01 + this.state.ang) * 2.2; break;
-          case 3: // rotating beam piece
-            this.state.ang += 0.002*dt; // rotates
-            this.x += Math.cos(this.state.ang)*(dt*0.02); this.y += Math.sin(this.state.ang)*(dt*0.02); break;
-          case 4: // burst spawner
-            this.x += this.vx * dt * 0.06;
-            if(!this._nextBurst || performance.now() > this._nextBurst){ this._nextBurst = performance.now() + 1000 + (seed%6)*80; for(let b=0;b<5;b++){ spawnMini(this.x,this.y, (Math.random()-0.5)*4, (Math.random()-0.5)*4, this.hue ); } }
-            break;
-          case 5: // bouncing
-            this.x += this.vx * dt * 0.06; this.y += this.vy * dt * 0.06;
-            if(this.x < 0 || this.x > W) this.vx *= -1; if(this.y < 0 || this.y > H) this.vy *= -1;
-            break;
-          case 6: // boomerang: advances then returns
-            if(!this._phase) this._phase=0;
-            if(this._phase===0){ this.x += this.vx * dt * 0.06; this.y += this.vy * dt * 0.06; if(this.age > 1600) this._phase = 1; }
-            else { const dx = player.x - this.x, dy = player.y - this.y, d = Math.hypot(dx,dy)||1; this.x += (dx/d)*0.06*dt; this.y += (dy/d)*0.06*dt; }
-            break;
-          case 7: // large rectangle sweep
-            this.x += this.vx * dt * 0.06; this.y += this.vy * dt * 0.06; break;
-          case 8: // spiral
-            this.state.ang += 0.04; this.x += Math.cos(this.state.ang)*0.6; this.y += Math.sin(this.state.ang)*0.6; break;
-          case 9: // falling then sticking
-            this.x += this.vx * dt * 0.06; this.y += this.vy * dt * 0.06; if(!this._stuck && (this.y>H-60 || this.age>4000)) this._stuck=true;
-            if(this._stuck){ this.vx *= 0.98; this.vy *= 0.98; }
-            break;
-          case 10: // dart with trail
-            this.x += this.vx * dt * 0.06; this.y += this.vy * dt * 0.06; break;
-          case 11: // teleporting
-            if(!this._nextTP) this._nextTP = performance.now() + 1000 + (seed%5)*60;
-            if(performance.now() > this._nextTP){ this._nextTP = performance.now() + 900 + (seed%4)*90; this.x = Math.random()*W; this.y = Math.random()*H; }
-            break;
-          case 12: // orbiting mini shards
-            if(!this._orbit) this._orbit = { ang: Math.random()*Math.PI*2, r:40 + (seed%40) };
-            this._orbit.ang += 0.004 * (seed%7+1) * (dt/16);
-            this.x = cw + Math.cos(this._orbit.ang)*this._orbit.r; this.y = ch + Math.sin(this._orbit.ang)*this._orbit.r;
-            break;
-          case 13: // seeker spawn
-            if(!this._nextChild) this._nextChild = performance.now() + 700;
-            if(performance.now() > this._nextChild){ this._nextChild = performance.now() + 700 + (seed%6)*40; spawnSeeker(this.x,this.y, this.hue); }
-            this.x += this.vx * dt * 0.06; this.y += this.vy * dt * 0.06;
-            break;
-          default:
-            this.x += this.vx * dt * 0.06; this.y += this.vy * dt * 0.06;
-        }
-
-        // age kill
-        if(this.age > this.life) this.dead = true;
-
-        // collision vs player
-        const coll = circleCircle(this.x, this.y, this.size, player.x, player.y, player.r);
-        if(coll){
-          // on hit: damage depends on pattern
-          const dmg = 4 + (this.size*0.8) + (this.pattern % 6);
-          applyDamageToPlayer(dmg);
-          this.dead = true;
-          spawnImpact(this.x, this.y, this.hue);
-        }
-      },
-      render(ctx){
-        ctx.save();
-        // glow background
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size + 6, 0, Math.PI*2);
-        ctx.fillStyle = `hsla(${this.hue},90%,55%,0.12)`; ctx.fill();
-        // core
-        ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI*2);
-        ctx.fillStyle = `hsl(${this.hue} 80% 60%)`; ctx.fill();
-        // pattern-specific glyph overlay (render key char)
-        ctx.font = `${Math.max(10, this.size+6)}px monospace`; ctx.textAlign='center'; ctx.textBaseline='middle';
-        ctx.fillStyle = '#000'; ctx.fillText(String(this.key).length>2 ? this.key[0] : this.key, this.x, this.y + (this.pattern%3 -1));
-        ctx.restore();
-      }
-    };
-    game.attacks.push(atk);
-  }
+function resetGame() {
+player1.hp = player1.maxHp; player1.dead = false;
+if (isMulti) { player2.hp = player2.maxHp; player2.dead = false; }
+game.attacks = []; game.diggers.forEach(d => d.destroyGui()); game.diggers = [];
+game.mode = 'menu';
+document.getElementById('menu').classList.remove('hidden');
+document.getElementById('gameover').classList.add('hidden');
+document.getElementById('shopmenu').classList.add('hidden');
 }
 
-/* small helper spawns */
-function spawnMini(x,y,vx,vy,hue){
-  game.attacks.push({ id:'mini-'+Date.now()+Math.random(), x,y,vx,vy,size:3,hue,life:3000,age:0,dead:false, update(dt){ this.age += dt; this.x += this.vx * dt; this.y += this.vy * dt; if(this.age>this.life) this.dead = true; if(circleCircle(this.x,this.y,this.size, player.x, player.y, player.r)){ applyDamageToPlayer(2); this.dead = true; spawnImpact(this.x,this.y,this.hue); } }, render(ctx){ ctx.beginPath(); ctx.arc(this.x,this.y,this.size,0,Math.PI*2); ctx.fillStyle = `hsl(${this.hue} 80% 60%)`; ctx.fill(); } });
+function startGame(mode, world='world1', key=null) {
+game.mode = mode; game.world = world; currentWorld = world;
+game.stageIndex = 0; game.stageKey = key || (world === 'world1' ? keys[0] : uniChars[0]);
+game.timer = 8 + Math.random()*4;
+player1.hp = player1.maxHp; player1.shield = 0; player1.dead = false;
+if (isMulti) { player2.hp = player2.maxHp; player2.shield = 0; player2.dead = false; }
+game.attacks = []; game.diggers.forEach(d=>d.destroyGui()); game.diggers = [];
+document.getElementById('menu').classList.add('hidden');
+document.getElementById('shopmenu').classList.add('hidden');
+lastTime = performance.now();
+requestAnimationFrame(mainLoop);
+spawnStageForKey(game.stageKey);
 }
 
-/* seeker spawner */
-function spawnSeeker(x,y,hue){
-  game.attacks.push({
-    id:'seeker-'+Date.now()+Math.random(), x,y,vx:0,vy:0,size:5,hue,life:3000,age:0,dead:false,
-    update(dt){
-      this.age += dt;
-      const dx = player.x - this.x, dy = player.y - this.y, d=Math.hypot(dx,dy)||1;
-      this.vx += (dx/d) * 0.12 * (dt/16); this.vy += (dy/d) * 0.12 * (dt/16);
-      const sp = Math.hypot(this.vx,this.vy)||1; const maxsp = 2.2;
-      this.vx = this.vx/sp*maxsp; this.vy = this.vy/sp*maxsp;
-      this.x += this.vx * dt * 0.06; this.y += this.vy * dt * 0.06;
-      if(circleCircle(this.x,this.y,this.size,player.x,player.y,player.r)){ applyDamageToPlayer(5); this.dead=true; spawnImpact(this.x,this.y,this.hue); }
-      if(this.age>this.life) this.dead=true;
-    }, render(ctx){ ctx.beginPath(); ctx.arc(this.x,this.y,this.size,0,Math.PI*2); ctx.fillStyle = `hsl(${this.hue} 80% 50%)`; ctx.fill(); }
-  });
+function startChoiceStage(k) {
+const world = keys.includes(k) ? 'world1' : 'world2';
+if (!progress[world]) return;
+if (document.getElementById('menu').classList.contains('hidden') === false) {
+startGame('choice', world, k);
+} else {
+game.stageKey = k;
+game.stageIndex = (world === 'world1' ? keys.indexOf(k) : uniChars.indexOf(k));
+spawnStageForKey(k);
+}
 }
 
-/* impact effect */
-function spawnImpact(x,y,hue){
-  for(let i=0;i<12;i++) spawnParticle(x,y,(Math.random()-0.5)*2,(Math.random()-0.5)*2,500,2,`hsl(${hue} 80% 50%)`,true);
+function stageLabel(){ return game.stageKey || (game.world === 'world1' ? keys[game.stageIndex] : uniChars[game.stageIndex]); }
+
+/* ================== Time keeper ================== */
+
+/* ================= ATTACK FACTORIES WITH UNIQUE PATTERNS ================= */
+/* Expanded to 40+ unique patterns for uniqueness per char (seed-based selection) */
+function spawnAttackForKey(k, seedOffset=0) {
+const idx = keys.indexOf(k);
+const seed = idx + 3 + seedOffset;
+const hue = (seed * 137) % 360; // Changed multiplier for variety
+const baseSize = 5 + (seed % 8); // Varied size
+const now = performance.now();
+const patterns = 1 + (seed % 4); // 1-4 for more density
+for (let p = 0; p < patterns; p++) {
+const patternType = (seed + p * 7) % 40; // 40 unique patterns
+let x = 0, y = 0, vx = 0, vy = 0;
+const startEdge = Math.floor(Math.abs(Math.sin(seed + p * 11)) * 4);
+if (startEdge === 0) { x = -30; y = Math.random() * H; vx = 1.2 + Math.random() * 2.5; vy = (Math.random() - 0.5) * 1.8; }
+if (startEdge === 1) { x = W + 30; y = Math.random() * H; vx = -1.2 - Math.random() * 2.5; vy = (Math.random() - 0.5) * 1.8; }
+if (startEdge === 2) { x = Math.random() * W; y = -30; vx = (Math.random() - 0.5) * 1.8; vy = 1.2 + Math.random() * 2.5; }
+if (startEdge === 3) { x = Math.random() * W; y = H + 30; vx = (Math.random() - 0.5) * 1.8; vy = -1.2 - Math.random() * 2.5; }
+
+const atk = {
+id: 'k-' + k + '-' + p + '-' + Date.now(),
+key: k,
+type: 'key',
+pattern: patternType,
+x, y, vx, vy,
+size: baseSize + (patternType % 5),
+hue, born: now, life: 25000, age: 0,
+state: { ang: Math.random() * Math.PI * 2, phase: 0 },
+dead: false,
+update(dt) {
+this.age = performance.now() - this.born;
+switch (this.pattern) {
+case 0: // Fast straight line
+this.x += this.vx * dt * 0.08; this.y += this.vy * dt * 0.08; break;
+case 1: // Homing with acceleration
+{ const dx = player1.x - this.x, dy = player1.y - this.y, d = Math.hypot(dx, dy) || 1;
+this.vx += (dx / d) * 0.15 * (dt / 16); this.vy += (dy / d) * 0.15 * (dt / 16);
+const sp = Math.hypot(this.vx, this.vy) || 1; const maxsp = 2.5 + (this.size % 4);
+this.vx = this.vx / sp * maxsp; this.vy = this.vy / sp * maxsp;
+this.x += this.vx * dt * 0.08; this.y += this.vy * dt * 0.08;
+} break;
+case 2: // Sine wave horizontal
+this.x += this.vx * dt * 0.08; this.y += this.vy * dt * 0.08 + Math.sin(this.age * 0.008 + this.state.ang) * 3.5; break;
+case 3: // Rotating spiral arm
+this.state.ang += 0.003 * dt; this.x += Math.cos(this.state.ang) * (dt * 0.03); this.y += Math.sin(this.state.ang) * (dt * 0.03); break;
+case 4: // Burst spawner with delay variation
+this.x += this.vx * dt * 0.08;
+if (!this._nextBurst || performance.now() > this._nextBurst) { this._nextBurst = performance.now() + 800 + (seed % 8) * 100; for (let b = 0; b < 6; b++) { spawnMini(this.x, this.y, (Math.random() - 0.5) * 5, (Math.random() - 0.5) * 5, this.hue); } }
+break;
+case 5: // Bouncing with friction
+this.x += this.vx * dt * 0.08; this.y += this.vy * dt * 0.08;
+if (this.x < 0 || this.x > W) { this.vx *= -0.9; } if (this.y < 0 || this.y > H) { this.vy *= -0.9; }
+break;
+case 6: // Boomerang curve
+if (!this._phase) this._phase = 0;
+if (this._phase === 0) { this.x += this.vx * dt * 0.08; this.y += this.vy * dt * 0.08; if (this.age > 2000) this._phase = 1; }
+else { const dx = player1.x - this.x, dy = player1.y - this.y, d = Math.hypot(dx, dy) || 1; this.x += (dx / d) * 0.08 * dt * 0.8; this.y += (dy / d) * 0.08 * dt * 0.8; }
+break;
+case 7: // Wide rectangle sweep from edge
+this.x += this.vx * dt * 0.08; this.y += this.vy * dt * 0.08; break;
+case 8: // Tight spiral inward
+this.state.ang += 0.06; this.x += Math.cos(this.state.ang) * 0.8; this.y += Math.sin(this.state.ang) * 0.8; this.state.ang += 0.02; break;
+case 9: // Falling rain with random offset
+this.x += this.vx * dt * 0.08; this.y += this.vy * dt * 0.08 + Math.random() * 0.5; if (!this._stuck && this.y > H - 60) this._stuck = true;
+if (this._stuck) { this.vy *= 0.95; }
+break;
+case 10: // Dart with fading trail
+this.x += this.vx * dt * 0.08; this.y += this.vy * dt * 0.08; break;
+case 11: // Teleport chain
+if (!this._nextTP) this._nextTP = performance.now() + 600 + (seed % 6) * 80;
+if (performance.now() > this._nextTP) { this._nextTP = performance.now() + 800 + (seed % 5) * 100; this.x = Math.random() * W; this.y = Math.random() * H; }
+break;
+case 12: // Orbiting cluster
+if (!this._orbit) this._orbit = { ang: Math.random() * Math.PI * 2, r: 50 + (seed % 50) };
+this._orbit.ang += 0.005 * (seed % 8 + 1) * (dt / 16);
+this.x = cw + Math.cos(this._orbit.ang) * this._orbit.r; this.y = ch + Math.sin(this._orbit.ang) * this._orbit.r;
+break;
+case 13: // Seeker with pause
+if (!this._nextChild) this._nextChild = performance.now() + 500 + (seed % 7) * 60;
+if (performance.now() > this._nextChild) { this._nextChild = performance.now() + 600 + (seed % 6) * 50; spawnSeeker(this.x, this.y, this.hue); }
+this.x += this.vx * dt * 0.08; this.y += this.vy * dt * 0.08;
+break;
+case 14: // Wave formation
+this.x += this.vx * dt * 0.08; this.y += Math.sin(this.age * 0.005 + this.x * 0.01) * 4 + this.vy * dt * 0.08; break;
+case 15: // Pinball bounce with speed up
+this.x += this.vx * dt * 0.08; this.y += this.vy * dt * 0.08;
+if (this.x < 0 || this.x > W) { this.vx *= -1.1; } if (this.y < 0 || this.y > H) { this.vy *= -1.1; }
+break;
+case 16: // Lasso loop
+this.state.phase += 0.01 * dt; this.x = cw + Math.cos(this.state.phase) * 100; this.y = ch + Math.sin(this.state.phase) * 100; break;
+case 17: // Explosive spawn on contact edge
+this.y += 2 * dt * 0.06; if (this.y > H / 2 && !this._exploded) { this._exploded = true; for (let i = 0; i < 8; i++) spawnMini(this.x, this.y, Math.cos(i * Math.PI / 4) * 4, Math.sin(i * Math.PI / 4) * 4, this.hue); }
+break;
+case 18: // Random walk
+if (!this._nextDir) this._nextDir = performance.now() + 300;
+if (performance.now() > this._nextDir) { this._nextDir = performance.now() + 200 + Math.random() * 400; this.vx = (Math.random() - 0.5) * 4; this.vy = (Math.random() - 0.5) * 4; }
+this.x += this.vx * dt * 0.06; this.y += this.vy * dt * 0.06; break;
+case 19: // Expanding ring segment
+this.state.r = (this.age * 0.1) % 200; this.x = cw + Math.cos(this.state.ang) * this.state.r; this.y = ch + Math.sin(this.state.ang) * this.state.r; break;
+case 20: // Homing burst
+{ const dx = player1.x - this.x, dy = player1.y - this.y, d = Math.hypot(dx, dy) || 1;
+this.vx = (dx / d) * 3; this.vy = (dy / d) * 3; this.x += this.vx * dt * 0.06; this.y += this.vy * dt * 0.06;
+if (this.age > 1000) { for (let b = 0; b < 4; b++) spawnMini(this.x, this.y, (Math.random() - 0.5) * 3, (Math.random() - 0.5) * 3, this.hue); this.dead = true; }
+} break;
+case 21: // Vertical zigzag
+this.x += Math.sin(this.age * 0.01 + this.state.ang) * 1.5 + this.vx * dt * 0.06; this.y += this.vy * dt * 0.08; break;
+case 22: // Stationary turret shots
+if (!this._nextShot) this._nextShot = performance.now() + 400;
+if (performance.now() > this._nextShot) { this._nextShot = performance.now() + 300 + (seed % 4) * 100; spawnSeeker(this.x, this.y, this.hue); }
+break;
+case 23: // Parabola arc
+this.x += this.vx * dt * 0.08; this.y += this.vy * dt * 0.08 + (this.age * 0.0001) * 9.8 * (dt / 16); break;
+case 24: // Mirror bounce
+this.x += this.vx * dt * 0.08; this.y += this.vy * dt * 0.08;
+if (this.x < 0) { this.x = 0; this.vx *= -1; } if (this.x > W) { this.x = W; this.vx *= -1; }
+break;
+case 25: // Swarming mini
+if (this.age < 500) { this.x += this.vx * dt * 0.08; this.y += this.vy * dt * 0.08; } else { spawnMini(this.x, this.y, 0, 0, this.hue); this.dead = true; }
+break;
+case 26: // Helix double
+this.state.ang += 0.02 * dt; this.x += Math.cos(this.state.ang) * 0.5 + this.vx * dt * 0.06; this.y += Math.sin(this.state.ang * 2) * 1 + this.vy * dt * 0.06; break;
+case 27: // Slow build speed
+this.vy += 0.001 * dt; this.x += this.vx * dt * 0.06; this.y += this.vy * dt * 0.06; break;
+case 28: // Random teleport to edge
+if (!this._nextTP) this._nextTP = performance.now() + 1500;
+if (performance.now() > this._nextTP) { this._nextTP = performance.now() + 1000 + Math.random() * 1000; const edge = Math.random() * 4; if (edge < 1) { this.x = -30; this.y = Math.random() * H; } else if (edge < 2) { this.x = W + 30; this.y = Math.random() * H; } else if (edge < 3) { this.y = -30; this.x = Math.random() * W; } else { this.y = H + 30; this.x = Math.random() * W; } }
+break;
+case 29: // Flower petal spread
+this.state.ang += 0.015 * dt; this.x = cw + Math.cos(this.state.ang) * (50 + this.age * 0.05); this.y = ch + Math.sin(this.state.ang * 5) * 20; break;
+case 30: // Chase with fake out
+if (this.age % 2000 < 1000) { // Chase
+const dx = player1.x - this.x, dy = player1.y - this.y, d = Math.hypot(dx, dy) || 1; this.x += (dx / d) * 0.1 * dt; this.y += (dy / d) * 0.1 * dt;
+} else { this.x += (Math.random() - 0.5) * 2 * dt; this.y += (Math.random() - 0.5) * 2 * dt; } break;
+case 31: // Grid pattern
+this.x = Math.floor(this.age * 0.05) % (W / 20) * 20 + 10; this.y = Math.floor(this.age * 0.03) % (H / 20) * 20 + 10; break;
+case 32: // Accelerating straight
+this.vx += (Math.random() - 0.5) * 0.001 * dt; this.vy += (Math.random() - 0.5) * 0.001 * dt; this.x += this.vx * dt * 0.06; this.y += this.vy * dt * 0.06; break;
+case 33: // Orbit player reverse
+const pd = Math.hypot(player1.x - cw, player1.y - ch) || 1; const pang = Math.atan2(player1.y - ch, player1.x - cw);
+this.x = player1.x + Math.cos(pang + Math.PI) * (60 + this.age * 0.02); this.y = player1.y + Math.sin(pang + Math.PI) * (60 + this.age * 0.02); break;
+case 34: // Wave ring
+this.state.ang += 0.01 * dt; this.r = 20 + Math.sin(this.state.ang) * 10; this.x = cw + Math.cos(this.state.ang * 3) * this.r; this.y = ch + Math.sin(this.state.ang * 3) * this.r; break;
+case 35: // Split on half life
+if (this.age > this.life / 2 && !this._split) { this._split = true; for (let i = 0; i < 3; i++) spawnMini(this.x, this.y, (Math.random() - 0.5) * 4, (Math.random() - 0.5) * 4, this.hue); }
+this.x += this.vx * dt * 0.08; this.y += this.vy * dt * 0.08; break;
+case 36: // Diagonal slash
+this.x += (this.vx + this.vy) * dt * 0.07; this.y += (this.vy + this.vx) * dt * 0.07; break;
+case 37: // Pendulum swing
+this.state.phase += 0.005 * dt; this.y = ch + Math.sin(this.state.phase) * 100; this.x += this.vx * dt * 0.08; break;
+case 38: // Cluster bomb
+this.x += this.vx * dt * 0.08; if (this.age > 1500) { for (let b = 0; b < 10; b++) spawnMini(this.x, this.y, Math.cos(b * Math.PI / 5) * 3, Math.sin(b * Math.PI / 5) * 3, this.hue); this.dead = true; } break;
+case 39: // Default fallback with twist
+this.x += this.vx * dt * 0.08 + Math.cos(this.age * 0.002) * 1; this.y += this.vy * dt * 0.08; break;
+default:
+this.x += this.vx * dt * 0.08; this.y += this.vy * dt * 0.08;
 }
 
-/* apply damage to player with shield/protect logic */
-function applyDamageToPlayer(amount){
-  if(player.statuses.protection && player.statuses.protection.duration>0) amount *= 0.5;
-  if(player.shield > 0){
-    const use = Math.min(amount, player.shield); player.shield -= use; amount -= use;
-  }
-  player.hp -= amount;
-  spawnPopup(`-${Math.round(amount)}`, player.x + (Math.random()-0.5)*24, player.y - 18, 900, '#ff8');
-  startShake(180,6);
-  if(player.hp <= 0){ player.hp = 0; player.dead = true; document.getElementById('gameover').classList.remove('hidden'); }
+if (this.age > this.life) this.dead = true;
+
+// Collision with P1 or P2
+const coll1 = circleCircle(this.x, this.y, this.size, player1.x, player1.y, player1.r);
+const coll2 = isMulti && circleCircle(this.x, this.y, this.size, player2.x, player2.y, player2.r);
+if (coll1 || coll2) {
+const target = coll1 ? player1 : player2;
+const dmg = 5 + (this.size * 0.9) + (this.pattern % 7);
+applyDamageToPlayer(target, dmg);
+hurtTime = performance.now();
+this.dead = true;
+spawnImpact(this.x, this.y, this.hue);
+}
+},
+render(ctx) {
+ctx.save();
+ctx.beginPath(); ctx.arc(this.x, this.y, this.size + 8, 0, Math.PI * 2);
+ctx.fillStyle = `hsla(${this.hue},90%,55%,0.15)`; ctx.fill();
+ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+ctx.fillStyle = `hsl(${this.hue} 85% 65%)`; ctx.fill();
+ctx.font = `${Math.max(12, this.size + 8)}px monospace`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+ctx.fillStyle = '#000'; ctx.fillText(this.key.length > 2 ? this.key[0] : this.key, this.x, this.y + (this.pattern % 4 - 2));
+ctx.restore();
+}
+};
+game.attacks.push(atk);
+}
 }
 
-/* ---------- WORLD1 spawn scheduler ---------- */
-function spawnPatternForStage(stageKey){
-  // create 1-3 attacks per tick for visible variety
-  const count = 1 + Math.floor(Math.random()*2);
-  for(let i=0;i<count;i++) spawnAttackForKey(stageKey, i);
+function spawnUnicodeAttack(sym, seedOffset=0) {
+const idx = uniChars.indexOf(sym);
+const seed = (idx >= 0 ? idx : hashCode(sym)) + 7 + seedOffset;
+const hue = (seed * 113) % 360; // Varied hue
+const size = 8 + (seed % 10);
+const pattern = seed % 30; // 30 unique for unicode
+const now = performance.now();
+const a = {
+id: 'u-' + sym + '-' + Date.now() + Math.random(),
+sym, type: 'unicode', pattern, x: Math.random() * W, y: Math.random() * H,
+vx: (Math.random() - 0.5) * (1.5 + seed % 4), vy: (Math.random() - 0.5) * (1.5 + seed % 4),
+r: size, hue, born: now, life: 25000, age: 0, dead: false,
+update(dt) {
+this.age = performance.now() - this.born;
+switch (this.pattern) {
+case 0: // Heavy rain
+this.y += 1.5 * (1 + seed % 4) * (dt / 16); break;
+case 1: // Ricochet with angle preserve
+this.x += this.vx * dt * 0.08; this.y += this.vy * dt * 0.08; if (this.x < 0 || this.x > W) this.vx *= -1; if (this.y < 0 || this.y > H) this.vy *= -1;
+break;
+case 2: // Pulsing emitter with color shift
+if (!this._nextRing || performance.now() > this._nextRing) { this._nextRing = performance.now() + 900 + (seed % 7) * 120; emitRing(this.x, this.y, (this.hue + this.age * 0.1) % 360); }
+break;
+case 3: // Aggressive seeker
+{ const dx = player1.x - this.x, dy = player1.y - this.y, d = Math.hypot(dx, dy) || 1; this.vx += (dx / d) * 0.12 * (dt / 16); this.vy += (dy / d) * 0.12 * (dt / 16); const sp = Math.hypot(this.vx, this.vy) || 1; this.vx = this.vx / sp * (1.5 + seed % 5); this.vy = this.vy / sp * (1.5 + seed % 5); this.x += this.vx * dt * 0.08; this.y += this.vy * dt * 0.08; } break;
+case 4: // Multi-orbit
+if (!this._center) this._center = { x: cw + Math.cos(seed * 0.1) * 150, y: ch + Math.sin(seed * 0.1) * 150, ang: Math.random() * Math.PI * 2 };
+this._center.ang += 0.008 * (1 + seed % 6) * (dt / 16);
+this.x = this._center.x + Math.cos(this._center.ang) * (90 + (seed % 50)); this.y = this._center.y + Math.sin(this._center.ang) * (90 + (seed % 50));
+break;
+case 5: // Symbol storm horizontal
+this.x += 1.8 * (seed % 3) * (dt / 16); break;
+case 6: // Bouncing symbol
+this.x += this.vx * dt * 0.08; this.y += this.vy * dt * 0.08; if (this.x < 0 || this.x > W) this.vx *= -1.05; if (this.y < 0 || this.y > H) this.vy *= -1.05; break;
+case 7: // Expanding glyph
+this.r += 0.5 * (dt / 16); this.x = cw + Math.sin(this.age * 0.005) * 100; this.y = ch + Math.cos(this.age * 0.005) * 100; break;
+case 8: // Seeker swarm parent
+if (!this._nextSpawn) this._nextSpawn = performance.now() + 400;
+if (performance.now() > this._nextSpawn) { this._nextSpawn = performance.now() + 500 + (seed % 5) * 80; for (let i = 0; i < 2; i++) spawnSeeker(this.x + (Math.random() - 0.5) * 20, this.y + (Math.random() - 0.5) * 20, this.hue); }
+break;
+case 9: // Spiral out
+this.state.ang += 0.05; this.x += Math.cos(this.state.ang) * 1; this.y += Math.sin(this.state.ang) * 1; this.r = 5 + this.age * 0.01; break;
+// Add more cases up to 29 similarly with variations...
+case 10: this.y += 1 * dt * 0.06; this.x += Math.sin(this.age * 0.01) * 2; break;
+case 11: this.x += this.vx * dt * 0.08; this.y += Math.cos(this.age * 0.005 + this.x * 0.02) * 3 + this.vy * dt * 0.08; break;
+case 12: if (!this._nextRing) this._nextRing = performance.now() + 600; if (performance.now() > this._nextRing) { this._nextRing = performance.now() + 700; emitRing(this.x, this.y, this.hue); this.x = Math.random() * W; this.y = Math.random() * H; } break;
+case 13: { const dx = player1.x - this.x, dy = player1.y - this.y, d = Math.hypot(dx, dy) || 1; this.x += (dx / d) * 0.08 * dt; this.y += (dy / d) * 0.08 * dt; } break;
+case 14: this._center = {x: cw, y: ch, ang: this.age * 0.002}; this.x = this._center.x + Math.cos(this._center.ang) * 120; this.y = this._center.y + Math.sin(this._center.ang) * 120; break;
+case 15: this.x += 0.5 * dt * 0.06; this.y += Math.random() * 2; break;
+case 16: this.vx *= 1.001; this.x += this.vx * dt * 0.08; this.y += this.vy * dt * 0.08; break;
+case 17: this.state.ang += 0.004 * dt; this.x += Math.sin(this.state.ang) * 2; this.y += Math.cos(this.state.ang) * 1.5; break;
+case 18: if (this.age > 800) { spawnMini(this.x, this.y, 0, 2, this.hue); this.dead = true; } this.y += 1.2 * dt * 0.06; break;
+case 19: this.x = (this.age % 2000) / 10; this.y = Math.sin(this.age * 0.01) * 100 + ch; break;
+case 20: this.state.phase += 0.02; this.x = cw + Math.sin(this.state.phase) * 80; this.y = ch + Math.cos(this.state.phase * 1.5) * 60; break;
+case 21: { const dx = player1.x - this.x, dy = player1.y - this.y, d = Math.hypot(dx, dy) || 1; this.vx = (dx / d) * 2.5; this.vy = (dy / d) * 2.5; this.x += this.vx * dt * 0.06; this.y += this.vy * dt * 0.06; } break;
+case 22: this.y += 0.8 * dt * 0.08; this.x += Math.cos(this.age * 0.003) * 4; break;
+case 23: if (!this._nextTP) this._nextTP = performance.now() + 1200; if (performance.now() > this._nextTP) { this.x = Math.random() * W; this.y = 0; this._nextTP += 1000; } this.y += 1 * dt * 0.08; break;
+case 24: this.state.ang += 0.03; this.x += Math.tan(this.state.ang) * 0.5; this.y += this.vy * dt * 0.08; break;
+case 25: this.x += (Math.random() - 0.5) * 3 * (dt / 16); this.y += 1.5 * (dt / 16); break;
+case 26: this._orbit = {ang: this.age * 0.001, r: 40}; this.x = cw + Math.cos(this._orbit.ang) * this._orbit.r; this.y = ch + Math.sin(this._orbit.ang) * this._orbit.r; break;
+case 27: this.y += 1 * dt * 0.06 + Math.sin(this.x * 0.01) * 1; break;
+case 28: if (this.age > 1200) { for (let i = 0; i < 5; i++) spawnSeeker(this.x, this.y, this.hue); this.dead = true; } this.x += this.vx * dt * 0.08; break;
+case 29: this.state.ang += 0.025; this.r = 10 + Math.cos(this.state.ang) * 5; this.x = cw + Math.sin(this.state.ang) * 100; this.y = ch + Math.cos(this.state.ang) * 100; break;
+default: this.x += this.vx * dt * 0.08; this.y += this.vy * dt * 0.08; break;
+}
+if (this.age > this.life) this.dead = true;
+const coll1 = circleCircle(this.x, this.y, this.r, player1.x, player1.y, player1.r);
+const coll2 = isMulti && circleCircle(this.x, this.y, this.r, player2.x, player2.y, player2.r);
+if (coll1 || coll2) {
+const target = coll1 ? player1 : player2;
+const dmg = 6 + (this.r % 7);
+applyDamageToPlayer(target, dmg);
+hurtTime = performance.now();
+this.dead = true;
+spawnImpact(this.x, this.y, this.hue);
+}
+},
+render(ctx) {
+ctx.save();
+ctx.font = `${this.r * 1.8}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+ctx.fillStyle = `hsl(${this.hue} 85% 65%)`; ctx.fillText(this.sym, this.x, this.y);
+ctx.restore();
+}
+};
+game.attacks.push(a);
 }
 
-/* ================= DIGGER SYSTEM (defensive rammer) ================= */
+/* Helpers */
+function spawnMini(x, y, vx, vy, hue) {
+game.attacks.push({
+x, y, vx, vy, size: 4, hue, life: 4000, age: 0, dead: false,
+update(dt) { this.age += dt; this.x += this.vx * dt * 0.06; this.y += this.vy * dt * 0.06; if (this.age > this.life) this.dead = true;
+const coll1 = circleCircle(this.x, this.y, this.size, player1.x, player1.y, player1.r);
+const coll2 = isMulti && circleCircle(this.x, this.y, this.size, player2.x, player2.y, player2.r);
+if (coll1 || coll2) { applyDamageToPlayer(coll1 ? player1 : player2, 3); this.dead = true; spawnImpact(this.x, this.y, this.hue); }
+},
+render(ctx) { ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fillStyle = `hsl(${this.hue} 85% 65%)`; ctx.fill(); }
+});
+}
 
-/* rarities */
-const DiggerRarities = [
-  { name:'Common', baseHp:30, regen:0.6, blockChance:0.5, deflectChance:0.25, color:'#999', shell:'#bbbbbb' },
-  { name:'Uncommon', baseHp:48, regen:0.9, blockChance:0.55, deflectChance:0.3, color:'#7fe07f', shell:'#a6dca6' },
-  { name:'Rare', baseHp:72, regen:1.2, blockChance:0.63, deflectChance:0.32, color:'#66b3ff', shell:'#cfe9ff' },
-  { name:'Epic', baseHp:100, regen:1.8, blockChance:0.7, deflectChance:0.35, color:'#d98bff', shell:'#e8d3ff' },
-  { name:'Legendary', baseHp:140, regen:2.2, blockChance:0.78, deflectChance:0.4, color:'#ffd36b', shell:'#fff0c7' },
-  { name:'Legionary', baseHp:200, regen:2.8, blockChance:0.82, deflectChance:0.45, color:'#ff9a6b', shell:'#ffe4d8' },
-  { name:'Mythic', baseHp:300, regen:3.6, blockChance:0.88, deflectChance:0.5, color:'#ff6be0', shell:'#ffdff3' },
-  { name:'Myth', baseHp:450, regen:5.0, blockChance:0.94, deflectChance:0.55, color:'#ffd36b', shell:'#fff0c7' }
+function spawnSeeker(x, y, hue) {
+game.attacks.push({
+x, y, vx: 0, vy: 0, size: 6, hue, life: 4000, age: 0, dead: false,
+update(dt) {
+this.age += dt;
+const target = Math.random() < 0.5 ? player1 : player2;
+const dx = target.x - this.x, dy = target.y - this.y, d = Math.hypot(dx, dy) || 1;
+this.vx += (dx / d) * 0.15 * (dt / 16); this.vy += (dy / d) * 0.15 * (dt / 16);
+const sp = Math.hypot(this.vx, this.vy) || 1; const maxsp = 2.8;
+this.vx = this.vx / sp * maxsp; this.vy = this.vy / sp * maxsp;
+this.x += this.vx * dt * 0.08; this.y += this.vy * dt * 0.08;
+const coll1 = circleCircle(this.x, this.y, this.size, player1.x, player1.y, player1.r);
+const coll2 = circleCircle(this.x, this.y, this.size, player2.x, player2.y, player2.r);
+if (coll1 || coll2) { applyDamageToPlayer(coll1 ? player1 : player2, 6); this.dead = true; spawnImpact(this.x, this.y, this.hue); }
+if (this.age > this.life) this.dead = true;
+},
+render(ctx) { ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fillStyle = `hsl(${this.hue} 85% 55%)`; ctx.fill(); }
+});
+}
+
+function spawnImpact(x, y, hue) {
+for (let i = 0; i < 15; i++) spawnParticle(x, y, (Math.random() - 0.5) * 4, (Math.random() - 0.5) * 4, 600, 2 + Math.random() * 3, `hsl(${hue} 85% 65%)`, true);
+}
+
+function applyDamageToPlayer(target, amount) {
+if (target.statuses.protection && target.statuses.protection.duration > 0) amount *= 0.5;
+if (target.shield > 0) {
+const use = Math.min(amount, target.shield); target.shield -= use; amount -= use;
+}
+target.hp -= amount;
+spawnPopup(`-${Math.round(amount)}`, target.x + (Math.random() - 0.5) * 30, target.y - 20, 1000, '#ff8');
+startShake(200, 8);
+if (target.hp <= 0) { target.hp = 0; target.dead = true; }
+}
+
+function emitRing(x, y, hue) {
+const ring = { x, y, r: 0, max: 250, born: performance.now(), life: 1200, age: 0, hue };
+ring.update = function (dt) { this.age = performance.now() - this.born; this.r = Math.min(this.max, this.age * 0.2);
+const coll1 = circleCircle(player1.x, player1.y, player1.r, this.x, this.y, this.r);
+const coll2 = isMulti && circleCircle(player2.x, player2.y, player2.r, this.x, this.y, this.r);
+if (coll1 || coll2) { const t = coll1 ? player1 : player2; t.statuses.slow.duration = Math.max(t.statuses.slow.duration, 1500); t.statuses.slow.multiplier = 0.5; }
+if (this.age > this.life) this.dead = true;
+};
+ring.render = function (ctx) { ctx.beginPath(); ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2); ctx.strokeStyle = `hsla(${this.hue},85%,65%,${1 - this.age / this.life})`; ctx.lineWidth = 4; ctx.stroke(); };
+game.attacks.push(ring);
+}
+
+/* Digger system (unchanged but adapted for multi) */
+const DiggerRarities = [ /* same as original */
+{ name:'Common', baseHp:30, regen:0.6, blockChance:0.5, deflectChance:0.25, color:'#999', shell:'#bbbbbb' },
+{ name:'Uncommon', baseHp:48, regen:0.9, blockChance:0.55, deflectChance:0.3, color:'#7fe07f', shell:'#a6dca6' },
+{ name:'Rare', baseHp:72, regen:1.2, blockChance:0.63, deflectChance:0.32, color:'#66b3ff', shell:'#cfe9ff' },
+{ name:'Epic', baseHp:100, regen:1.8, blockChance:0.7, deflectChance:0.35, color:'#d98bff', shell:'#e8d3ff' },
+{ name:'Legendary', baseHp:140, regen:2.2, blockChance:0.78, deflectChance:0.4, color:'#ffd36b', shell:'#fff0c7' },
+{ name:'Legionary', baseHp:200, regen:2.8, blockChance:0.82, deflectChance:0.45, color:'#ff9a6b', shell:'#ffe4d8' },
+{ name:'Mythic', baseHp:300, regen:3.6, blockChance:0.88, deflectChance:0.5, color:'#ff6be0', shell:'#ffdff3' },
+{ name:'Myth', baseHp:450, regen:5.0, blockChance:0.94, deflectChance:0.55, color:'#ffd36b', shell:'#fff0c7' }
 ];
 
-/* Digger class */
 class Digger {
-  constructor(x,y,rarityIdx=0){
-    this.x=x; this.y=y; this.rarityIdx=clamp(rarityIdx,0,DiggerRarities.length-1); this.proto=DiggerRarities[this.rarityIdx];
-    this.maxHp=this.proto.baseHp; this.hp=this.maxHp; this.regen=this.proto.regen; this.outerAngle=0; this.spin=0.01 + Math.random()*0.02;
-    this.coreR = 18 + this.rarityIdx*3; this.outerR = this.coreR + 10; this.spawnTime=performance.now(); this.target=null;
-    this.hpGuiId = 'd-hp-'+Math.random().toString(36).slice(2,9); this.dead=false;
-    showPopup(`${this.proto.name} Digger spawned!`, this.x, this.y - 28, 1800, this.proto.color);
-  }
-  update(dt){
-    if(this.dead) return;
-    this.outerAngle += this.spin * dt;
-    this.hp = Math.min(this.maxHp, this.hp + (this.regen * dt/1000));
-    // choose nearest attack within range
-    let nearest=null, nd=1e9;
-    for(const a of game.attacks){
-      const dx=a.x-this.x, dy=a.y-this.y, d = dx*dx+dy*dy;
-      if(d < nd && Math.sqrt(d)<220){ nearest=a; nd=d; }
-    }
-    if(nearest){
-      this.target = nearest;
-      const dx = nearest.x - this.x, dy = nearest.y - this.y, dist = Math.hypot(dx,dy)||1;
-      const speed = 0.06 * (1 + this.rarityIdx*0.03) * 80;
-      this.x += (dx/dist) * speed * (dt/16); this.y += (dy/dist) * speed * (dt/16);
-    } else {
-      // orbit player
-      const dx=player.x-this.x, dy=player.y-this.y, dist=Math.hypot(dx,dy)||1;
-      const desired = 160 + this.rarityIdx*10;
-      if(dist > desired + 8){ this.x += (dx/dist) * 0.04 * (dt/16) * 40; this.y += (dy/dist) * 0.04 * (dt/16) * 40; }
-      else { this.x += Math.cos(performance.now()*0.001 + this.rarityIdx)*0.2; this.y += Math.sin(performance.now()*0.001 + this.rarityIdx)*0.15; }
-    }
-    // interact with attacks
-    for(const a of game.attacks){
-      if(a._consumed) continue;
-      if(circleCircle(this.x, this.y, this.outerR, a.x, a.y, a.r)){
-        const r = Math.random(), proto = this.proto;
-        if(r < proto.blockChance){
-          a._consumed = true; spawnImpact(a.x,a.y,180); this.hp -= Math.max(0, a.r*0.8);
-        } else if(r < proto.blockChance + proto.deflectChance){
-          if(typeof a.vx!=='undefined'){ a.vx = -a.vx*(0.6+Math.random()*0.6); a.vy = -a.vy*(0.6+Math.random()*0.6); a.x += a.vx*4; a.y += a.vy*4; spawnImpact(a.x,a.y, 220); }
-          else a._consumed = true;
-          this.hp -= Math.max(0, a.r*0.4);
-        } else {
-          a._consumed = true; spawnImpact(a.x,a.y,260); this.hp -= Math.max(0, a.r*0.2);
-        }
-      }
-    }
-    // clamp
-    this.x = clamp(this.x, 40, W-40); this.y = clamp(this.y, 40, H-40);
-    // gui create/update
-    const gui = document.getElementById(this.hpGuiId);
-    if(gui){
-      gui.style.left = (this.x)+'px'; gui.style.top = (this.y - this.outerR - 18)+'px';
-      gui.innerHTML = `<div style="width:84px;height:8px;background:#222;border:1px solid #333"><div style="width:${Math.max(0,Math.floor((this.hp/this.maxHp)*80))}px;height:6px;background:${this.proto.color};margin:1px"></div></div><div style="font-size:11px;color:#fff;margin-top:2px;text-align:center">${this.proto.name} (${Math.round(this.hp)}/${Math.round(this.maxHp)})</div>`;
-    } else {
-      const d = document.createElement('div'); d.id=this.hpGuiId; d.className='digger-hp'; d.style.position='absolute'; d.style.transform='translate(-50%,-50%)'; document.body.appendChild(d);
-    }
-  }
-  render(ctx){
-    if(this.dead) return;
-    ctx.save();
-    // shadow
-    ctx.beginPath(); ctx.arc(this.x+2, this.y+3, this.coreR+6, 0, Math.PI*2); ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fill();
-    // core
-    ctx.beginPath(); ctx.arc(this.x,this.y,this.coreR,0,Math.PI*2); ctx.fillStyle=this.proto.color; ctx.fill();
-    // spike shell
-    ctx.translate(this.x,this.y); ctx.rotate(this.outerAngle);
-    const spikes = 12 + this.rarityIdx*2;
-    for(let i=0;i<spikes;i++){
-      const a = (i/spikes)*Math.PI*2;
-      const bx = Math.cos(a)*(this.outerR), by = Math.sin(a)*(this.outerR);
-      ctx.beginPath(); ctx.moveTo(bx,by); ctx.lineTo(Math.cos(a)*(this.outerR+8), Math.sin(a)*(this.outerR+8)); ctx.lineTo(Math.cos(a+0.08)*(this.outerR), Math.sin(a+0.08)*(this.outerR)); ctx.closePath();
-      ctx.fillStyle = this.proto.shell; ctx.fill();
-    }
-    ctx.restore();
-  }
-  destroyGui(){ const g = document.getElementById(this.hpGuiId); if(g) g.remove(); }
+constructor(x, y, rarityIdx = 0) {
+this.x = x; this.y = y; this.rarityIdx = clamp(rarityIdx, 0, DiggerRarities.length - 1); this.proto = DiggerRarities[this.rarityIdx];
+this.maxHp = this.proto.baseHp; this.hp = this.maxHp; this.regen = this.proto.regen; this.outerAngle = 0; this.spin = 0.01 + Math.random() * 0.02;
+this.coreR = 18 + this.rarityIdx * 3; this.outerR = this.coreR + 10; this.spawnTime = performance.now(); this.target = null;
+this.hpGuiId = 'd-hp-' + Math.random().toString(36).slice(2, 9); this.dead = false;
+showPopup(`${this.proto.name} Digger spawned!`, this.x, this.y - 28, 1800, this.proto.color);
+}
+update(dt) {
+if (this.dead) return;
+this.outerAngle += this.spin * dt;
+this.hp = Math.min(this.maxHp, this.hp + (this.regen * dt / 1000));
+let nearest = null, nd = 1e9;
+for (const a of game.attacks) {
+const dx = a.x - this.x, dy = a.y - this.y, d = dx * dx + dy * dy;
+if (d < nd && Math.sqrt(d) < 220) { nearest = a; nd = d; }
+}
+if (nearest) {
+this.target = nearest;
+const dx = nearest.x - this.x, dy = nearest.y - this.y, dist = Math.hypot(dx, dy) || 1;
+const speed = 0.06 * (1 + this.rarityIdx * 0.03) * 80;
+this.x += (dx / dist) * speed * (dt / 16); this.y += (dy / dist) * speed * (dt / 16);
+} else {
+const px = isMulti ? ((player1.x + player2.x) / 2) : player1.x;
+const py = isMulti ? ((player1.y + player2.y) / 2) : player1.y;
+const dx = px - this.x, dy = py - this.y, dist = Math.hypot(dx, dy) || 1;
+const desired = 160 + this.rarityIdx * 10;
+if (dist > desired + 8) { this.x += (dx / dist) * 0.04 * (dt / 16) * 40; this.y += (dy / dist) * 0.04 * (dt / 16) * 40; }
+else { this.x += Math.cos(performance.now() * 0.001 + this.rarityIdx) * 0.2; this.y += Math.sin(performance.now() * 0.001 + this.rarityIdx) * 0.15; }
+}
+for (const a of game.attacks) {
+if (a._consumed) continue;
+if (circleCircle(this.x, this.y, this.outerR, a.x, a.y, a.r || a.size)) {
+const r = Math.random(), proto = this.proto;
+if (r < proto.blockChance) {
+a._consumed = true; spawnImpact(a.x, a.y, 180); this.hp -= Math.max(0, (a.r || a.size) * 0.8);
+} else if (r < proto.blockChance + proto.deflectChance) {
+if (typeof a.vx !== 'undefined') { a.vx = -a.vx * (0.6 + Math.random() * 0.6); a.vy = -a.vy * (0.6 + Math.random() * 0.6); a.x += a.vx * 4; a.y += a.vy * 4; spawnImpact(a.x, a.y, 220); }
+else a._consumed = true;
+this.hp -= Math.max(0, (a.r || a.size) * 0.4);
+} else {
+a._consumed = true; spawnImpact(a.x, a.y, 260); this.hp -= Math.max(0, (a.r || a.size) * 0.2);
+}
+}
+}
+this.x = clamp(this.x, 40, W - 40); this.y = clamp(this.y, 40, H - 40);
+const gui = document.getElementById(this.hpGuiId);
+if (gui) {
+gui.style.left = this.x + 'px'; gui.style.top = (this.y - this.outerR - 18) + 'px';
+gui.innerHTML = `<div style="width:84px;height:8px;background:#222;border:1px solid #333"><div style="width:${Math.max(0, Math.floor((this.hp / this.maxHp) * 80))}px;height:6px;background:${this.proto.color};margin:1px"></div></div><div style="font-size:11px;color:#fff;margin-top:2px;text-align:center">${this.proto.name} (${Math.round(this.hp)}/${Math.round(this.maxHp)})</div>`;
+} else {
+const d = document.createElement('div'); d.id = this.hpGuiId; d.className = 'digger-hp'; d.style.position = 'absolute'; d.style.transform = 'translate(-50%,-50%)'; document.body.appendChild(d);
+// Update immediately
+gui.innerHTML = ... // repeat above
+}
+}
+render(ctx) { /* same as original */
+if (this.dead) return;
+ctx.save();
+ctx.beginPath(); ctx.arc(this.x + 2, this.y + 3, this.coreR + 6, 0, Math.PI * 2); ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fill();
+ctx.beginPath(); ctx.arc(this.x, this.y, this.coreR, 0, Math.PI * 2); ctx.fillStyle = this.proto.color; ctx.fill();
+ctx.translate(this.x, this.y); ctx.rotate(this.outerAngle);
+const spikes = 12 + this.rarityIdx * 2;
+for (let i = 0; i < spikes; i++) {
+const a = (i / spikes) * Math.PI * 2;
+const bx = Math.cos(a) * (this.outerR), by = Math.sin(a) * (this.outerR);
+ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(Math.cos(a) * (this.outerR + 8), Math.sin(a) * (this.outerR + 8)); ctx.lineTo(Math.cos(a + 0.08) * (this.outerR), Math.sin(a + 0.08) * (this.outerR)); ctx.closePath();
+ctx.fillStyle = this.proto.shell; ctx.fill();
+}
+ctx.restore();
+}
+destroyGui() { const g = document.getElementById(this.hpGuiId); if (g) g.remove(); }
 }
 
-/* digger spawn manager */
-function maybeSpawnDigger(){
-  if(Math.random() < 0.012 && game.diggers.length < 2){
-    const x = 80 + Math.random()*(W-160), y = 80 + Math.random()*(H-160);
-    const r = Math.random(), idx = r<0.45?0:r<0.7?1:r<0.82?2:r<0.9?3:r<0.955?4:r<0.99?5:r<0.998?6:7;
-    const d = new Digger(x,y,idx);
-    game.diggers.push(d);
-  }
+function maybeSpawnDigger() {
+if (Math.random() < 0.015 && game.diggers.length < (isMulti ? 3 : 2)) {
+const x = 80 + Math.random() * (W - 160), y = 80 + Math.random() * (H - 160);
+const r = Math.random(), idx = r < 0.45 ? 0 : r < 0.7 ? 1 : r < 0.82 ? 2 : r < 0.9 ? 3 : r < 0.955 ? 4 : r < 0.99 ? 5 : r < 0.998 ? 6 : 7;
+const d = new Digger(x, y, idx);
+game.diggers.push(d);
+}
 }
 
-/* ================= END PART 2 — continue to PART 3 ================= */
-/* ================= PART 3 — WORLD 2, EVENTS, MAIN LOOP ================= */
-
-/* --------- World 2 unicode attack factory (40+ unique symbol attacks) --------- */
-function spawnUnicodeAttack(sym, seedOffset=0){
-  const idx = uniChars.indexOf(sym);
-  const seed = (idx>=0?idx:Math.abs(hashCode(sym))) + 7 + seedOffset;
-  const hue = (seed * 53) % 360;
-  const size = 10 + (seed % 6);
-  const pattern = seed % 22; // 22 unicode patterns
-  const now = performance.now();
-  // spawn variant
-  const a = {
-    id:'u-'+sym+'-'+Date.now()+Math.random(),
-    sym, type:'unicode', pattern, x: Math.random()*W, y: Math.random()*H,
-    vx:(Math.random()-0.5)*(1+seed%3), vy:(Math.random()-0.5)*(1+seed%3),
-    r:size, hue, born: now, life:20000, age:0, dead:false,
-    update(dt){
-      this.age = performance.now() - this.born;
-      switch(this.pattern){
-        case 0: // symbol rain
-          this.y += 1.2 * (1 + seed%3) * (dt/16);
-          break;
-        case 1: // ricochet arrows
-          this.x += this.vx * dt * 0.06; this.y += this.vy * dt * 0.06; if(this.x<0||this.x>W) this.vx*=-1; if(this.y<0||this.y>H) this.vy*=-1;
-          break;
-        case 2: // pulsing stationary glyph that emits rings
-          if(!this._nextRing || performance.now()>this._nextRing){ this._nextRing = performance.now()+1100; emitRing(this.x,this.y,this.hue); }
-          break;
-        case 3: // seeker
-          { const dx = player.x - this.x, dy = player.y - this.y, d=Math.hypot(dx,dy)||1; this.vx += (dx/d)*0.1*(dt/16); this.vy += (dy/d)*0.1*(dt/16); const sp = Math.hypot(this.vx,this.vy)||1; this.vx=this.vx/sp*(1+seed%4); this.vy=this.vy/sp*(1+seed%4); this.x+=this.vx*dt*0.06; this.y+=this.vy*dt*0.06; } break;
-        case 4: // orbiting glyph around a point, rotates faster
-          if(!this._center) this._center = {x:cw+Math.cos(seed)*120,y:ch+Math.sin(seed)*120,ang:Math.random()*Math.PI*2};
-          this._center.ang += 0.006*(1+seed%5)*(dt/16);
-          this.x = this._center.x + Math.cos(this._center.ang)*(80 + (seed%40)); this.y = this._center.y + Math.sin(this._center.ang)*(80 + (seed%40));
-          break;
-        default:
-          this.x += this.vx * dt * 0.06; this.y += this.vy * dt * 0.06; break;
-      }
-      if(this.age > this.life) this.dead = true;
-      if(circleCircle(this.x,this.y,this.r, player.x, player.y, player.r)){ applyDamageToPlayer(5 + (this.r%6)); this.dead = true; spawnImpact(this.x,this.y,this.hue); }
-    },
-    render(ctx){
-      ctx.save();
-      ctx.font = `${this.r*1.6}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillStyle = `hsl(${this.hue} 80% 60%)`; ctx.fillText(this.sym, this.x, this.y);
-      ctx.restore();
-    }
-  };
-  game.attacks.push(a);
+function spawnPatternForStage(stageKey) {
+const count = 2 + Math.floor(Math.random() * 3);
+for (let i = 0; i < count; i++) {
+if (keys.includes(stageKey)) spawnAttackForKey(stageKey, i);
+else spawnUnicodeAttack(stageKey, i);
+}
 }
 
-/* ring emitter used by some unicode patterns */
-function emitRing(x,y,hue){
-  const ring = { x,y, r:0, max:200, born:performance.now(), life:900, age:0, hue };
-  ring.update = function(dt){ this.age = performance.now()-this.born; this.r = Math.min(this.max, this.age*0.18); if(circleCircle(player.x,player.y,player.r, this.x,this.y,this.r)){ player.statuses.slow.duration = Math.max(player.statuses.slow.duration, 1200); player.statuses.slow.multiplier = 0.6; } if(this.age > this.life) this.dead = true; };
-  ring.render = function(ctx){ ctx.beginPath(); ctx.arc(this.x,this.y,this.r,0,Math.PI*2); ctx.strokeStyle = `hsla(${this.hue},80%,60%,${1 - this.age/this.life})`; ctx.lineWidth = 3; ctx.stroke(); };
-  game.attacks.push(ring);
+function spawnStageForKey(k) {
+game.attacks = [];
+const baseCount = 8 + (hashCode(k) % 8);
+const isUni = uniChars.includes(k);
+for (let i = 0; i < baseCount; i++) {
+if (isUni) spawnUnicodeAttack(k, i);
+else spawnAttackForKey(k, i);
+}
+if (Math.random() < 0.2) maybeSpawnDigger();
 }
 
-/* spawn pattern for World 2 stage */
-function spawnPatternForUnicode(sym){
-  // spawn between 2 and 6 unicode attackers depending on sym char code
-  const count = 2 + (Math.abs(hashCode(sym)) % 5);
-  for(let i=0;i<count;i++) spawnUnicodeAttack(sym, i);
-}
-
-/* hashCode for strings (stable) */
-function hashCode(str){
-  let h=0; for(let i=0;i<str.length;i++){ h = ((h<<5)-h) + str.charCodeAt(i); h |= 0; } return Math.abs(h);
-}
-
-/* ---------- EVENT SYSTEM: unicode buffs/debuffs every 4-7s ---------- */
+/* Unicode events (unchanged) */
 let unicodeTimer = performance.now();
-let eventQueue = []; // holds {char, warnTime}
-function maybeQueueUnicodeEvent(){
-  if(performance.now() - unicodeTimer > 4000 + Math.random()*3000){
-    const eventChar = uniChars[Math.floor(Math.random()*uniChars.length)];
-    eventQueue.push({ char: eventChar, warnTime: performance.now() });
-    unicodeTimer = performance.now();
-  }
+let eventQueue = [];
+function maybeQueueUnicodeEvent() {
+if (performance.now() - unicodeTimer > 4000 + Math.random() * 3000) {
+const eventChar = uniChars[Math.floor(Math.random() * uniChars.length)];
+eventQueue.push({ char: eventChar, warnTime: performance.now() });
+unicodeTimer = performance.now();
+}
 }
 
-/* handle queued events: show 1.5s warning then apply effect */
 let activeEvent = null;
-function updateUnicodeEvents(){
-  if(eventQueue.length && !activeEvent){
-    activeEvent = eventQueue.shift();
-    activeEvent.warnStart = performance.now();
-    // show large flashing symbol
-    const ew = document.getElementById('event-warning');
-    ew.textContent = activeEvent.char;
-    ew.style.transition = 'none'; ew.style.opacity = '1'; ew.style.transform = 'translate(-50%,-50%) scale(1.4)'; setTimeout(()=>{ ew.style.transition = 'opacity 0.3s, transform 0.4s'; ew.style.opacity='0'; ew.style.transform='translate(-50%,-50%) scale(1)'; }, 1400);
-    // schedule effect application after 1.5s
-    setTimeout(()=>{ applyUnicodeEffect(activeEvent.char); activeEvent = null; }, 1500);
-  }
+function updateUnicodeEvents() {
+if (eventQueue.length && !activeEvent) {
+activeEvent = eventQueue.shift();
+activeEvent.warnStart = performance.now();
+const ew = document.getElementById('event-warning');
+ew.textContent = activeEvent.char;
+ew.style.transition = 'none'; ew.style.opacity = '1'; ew.style.transform = 'translate(-50%,-50%) scale(1.4)';
+setTimeout(() => { ew.style.transition = 'opacity 0.3s, transform 0.4s'; ew.style.opacity = '0'; ew.style.transform = 'translate(-50%,-50%) scale(1)'; }, 1400);
+setTimeout(() => { applyUnicodeEffect(activeEvent.char); activeEvent = null; }, 1500);
+}
 }
 
-/* Apply effect: 60% buff, 40% debuff */
-function applyUnicodeEffect(ch){
-  const r = Math.random();
-  if(r < 0.6){
-    // buff: choose one
-    const buffs = ['protection','shieldRegen','speedBoost','regen'];
-    const pick = buffs[Math.floor(Math.random()*buffs.length)];
-    switch(pick){
-      case 'protection': player.statuses.protection.duration = Math.max(player.statuses.protection.duration, 5000); spawnPopup('PROTECT', cw, ch-20, 1400, '#0ff'); break;
-      case 'shieldRegen': player.statuses.shieldRegen.duration = Math.max(player.statuses.shieldRegen.duration, 6000); player.statuses.shieldRegen.rate = 30; spawnPopup('SHIELD REGEN', cw, ch-20, 1400, '#0ff'); break;
-      case 'speedBoost': player.statuses.speedBoost.duration = Math.max(player.statuses.speedBoost.duration, 5000); spawnPopup('SPEED UP', cw, ch-20, 1400, '#0ff'); break;
-      case 'regen': player.statuses.regen.duration = Math.max(player.statuses.regen.duration, 5000); player.statuses.regen.rate = 25; spawnPopup('REGEN', cw, ch-20, 1400, '#0ff'); break;
-    }
-  } else {
-    // debuff
-    const debuffs = ['poison','slow'];
-    const pick = debuffs[Math.floor(Math.random()*debuffs.length)];
-    switch(pick){
-      case 'poison': player.statuses.poison.duration = Math.max(player.statuses.poison.duration, 4000); player.statuses.poison.damage = 40; spawnPopup('POISON', cw, ch-20, 1400, '#f55'); break;
-      case 'slow': player.statuses.slow.duration = Math.max(player.statuses.slow.duration, 4000); player.statuses.slow.multiplier = 0.6; spawnPopup('SLOW', cw, ch-20, 1400, '#f55'); break;
-    }
-  }
+function applyUnicodeEffect(ch) {
+const r = Math.random();
+if (r < 0.6) {
+const buffs = ['protection', 'shieldRegen', 'speedBoost', 'regen'];
+const pick = buffs[Math.floor(Math.random() * buffs.length)];
+const target = isMulti && Math.random() < 0.5 ? player2 : player1;
+switch (pick) {
+case 'protection': target.statuses.protection.duration = Math.max(target.statuses.protection.duration, 5000); spawnPopup('PROTECT', cw, ch - 20, 1400, '#0ff'); break;
+case 'shieldRegen': target.statuses.shieldRegen.duration = Math.max(target.statuses.shieldRegen.duration, 6000); target.statuses.shieldRegen.rate = 30; spawnPopup('SHIELD REGEN', cw, ch - 20, 1400, '#0ff'); break;
+case 'speedBoost': target.statuses.speedBoost.duration = Math.max(target.statuses.speedBoost.duration, 5000); spawnPopup('SPEED UP', cw, ch - 20, 1400, '#0ff'); break;
+case 'regen': target.statuses.regen.duration = Math.max(target.statuses.regen.duration, 5000); target.statuses.regen.rate = 25; spawnPopup('REGEN', cw, ch - 20, 1400, '#0ff'); break;
+}
+} else {
+const debuffs = ['poison', 'slow'];
+const pick = debuffs[Math.floor(Math.random() * debuffs.length)];
+const target = isMulti && Math.random() < 0.5 ? player2 : player1;
+switch (pick) {
+case 'poison': target.statuses.poison.duration = Math.max(target.statuses.poison.duration, 4000); target.statuses.poison.damage = 40; spawnPopup('POISON', cw, ch - 20, 1400, '#f55'); break;
+case 'slow': target.statuses.slow.duration = Math.max(target.statuses.slow.duration, 4000); target.statuses.slow.multiplier = 0.6; spawnPopup('SLOW', cw, ch - 20, 1400, '#f55'); break;
+}
+}
 }
 
-/* ================== SPAWN STAGE FOR KEY OR UNICODE ================== */
-function spawnStageForKey(k){
-  game.attacks = [];
-  // populate attacks specifically for this key (guaranteed visible)
-  // We'll generate a predictable set: edge spawns + center pattern + small seekers — all keyed to k so stage feels like key
-  const baseCount = 6 + (Math.abs(hashCode(k)) % 6);
-  for(let i=0;i<baseCount;i++){
-    spawnAttackForKey(k, i);
-  }
-  // small chance to spawn a digger for some stages
-  if(Math.random() < 0.18) maybeSpawnDigger();
+/* Particles */
+function updateParticles(dt) {
+for (let i = particles.length - 1; i >= 0; i--) {
+const p = particles[i]; p.age += dt; p.x += p.vx * (dt / 16); p.y += p.vy * (dt / 16);
+if (p.age > p.life) particles.splice(i, 1);
+}
+for (let i = popups.length - 1; i >= 0; i--) {
+const pu = popups[i]; pu.age += dt; pu.y -= dt * 0.02;
+if (pu.age > pu.ttl) popups.splice(i, 1);
+}
 }
 
-function spawnStageForUnicode(ch){
-  game.attacks = [];
-  const baseCount = 3 + (Math.abs(hashCode(ch)) % 6);
-  for(let i=0;i<baseCount;i++) spawnUnicodeAttack(ch, i);
-  if(Math.random() < 0.22) maybeSpawnDigger();
+function renderParticlesAndPopups(ctx) {
+for (const p of particles) {
+ctx.globalAlpha = 1 - (p.age / p.life);
+ctx.beginPath(); ctx.arc(p.x, p.y, p.sz, 0, Math.PI * 2); ctx.fillStyle = p.color; ctx.fill();
+ctx.globalAlpha = 1;
+}
+ctx.font = '18px Arial'; ctx.textAlign = 'center';
+for (const pu of popups) { ctx.fillStyle = pu.color || '#fff'; ctx.fillText(pu.text, pu.x, pu.y); }
 }
 
-/* ================== Particle & popup update & render ================== */
-function updateParticles(dt){
-  for(let i=particles.length-1;i>=0;i--){
-    const p = particles[i]; p.age += dt; p.x += p.vx * (dt/16); p.y += p.vy * (dt/16);
-    if(p.age > p.life) particles.splice(i,1);
-  }
-  for(let i=popups.length-1;i>=0;i--){
-    const pu = popups[i]; pu.age += dt; pu.y -= dt*0.02;
-    if(pu.age > pu.ttl) popups.splice(i,1);
-  }
+/* ================= MAIN LOOP ================= */
+function mainLoop(t) {
+if (player1.dead && (!isMulti || player2.dead)) return;
+const dt = Math.min(40, t - lastTime); lastTime = t;
+
+ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, W, H);
+if (shakeTimer > 0) { ctx.translate((Math.random() - 0.5) * shakeAmp, (Math.random() - 0.5) * shakeAmp); shakeTimer = Math.max(0, shakeTimer - dt); }
+
+// Update statuses for both players
+[player1, isMulti ? player2 : null].forEach(target => {
+if (!target) return;
+for (const k in target.statuses) {
+const s = target.statuses[k];
+if (s && s.duration > 0) {
+s.duration = Math.max(0, s.duration - dt);
+if (k === 'poison') { target.hp = Math.max(0, target.hp - (s.damage * dt / 1000)); if (target.hp <= 0) target.dead = true; }
+if (k === 'regen') { target.hp = Math.min(target.maxHp, target.hp + (s.rate * dt / 1000)); }
+if (k === 'shieldRegen') { target.shield = Math.min(target.maxShield, target.shield + (s.rate * dt / 1000)); }
+if (s.duration === 0) { if (k === 'speedBoost') s.multiplier = 1; if (k === 'slow') s.multiplier = 1; }
+}
+}
+});
+
+// Player movement
+updatePlayerInput();
+const spd1 = 0.12 * (player1.statuses.speedBoost.duration > 0 ? 1.5 : 1) * (player1.statuses.slow.duration > 0 ? player1.statuses.slow.multiplier : 1);
+player1.x += (mouse.x - player1.x) * spd1;
+const spd2 = 0.12 * (player2.statuses.speedBoost.duration > 0 ? 1.5 : 1) * (player2.statuses.slow.duration > 0 ? player2.statuses.slow.multiplier : 1);
+if (isMulti) {
+const targetX2 = player2.x + p2Input.x * 100; const targetY2 = player2.y + p2Input.y * 100;
+player2.x += (targetX2 - player2.x) * spd2; player2.y += (targetY2 - player2.y) * spd2;
 }
 
-/* render particles/popups */
-function renderParticlesAndPopups(ctx){
-  for(const p of particles){
-    ctx.globalAlpha = 1 - (p.age / p.life);
-    ctx.beginPath(); ctx.arc(p.x,p.y,p.sz,0,Math.PI*2); ctx.fillStyle = p.color; ctx.fill();
-    ctx.globalAlpha = 1;
-  }
-  ctx.font='18px Arial'; ctx.textAlign='center';
-  for(const pu of popups){ ctx.fillStyle = pu.color || '#fff'; ctx.fillText(pu.text, pu.x, pu.y); }
+// Spawn attacks
+if (performance.now() - game.lastSpawn > (game.spawnInterval * (0.5 + Math.random() * 0.7))) {
+game.lastSpawn = performance.now();
+spawnPatternForStage(game.stageKey);
 }
 
-/* applyImpact particle helper */
-function spawnImpact(x,y,hue){
-  const col = `hsl(${hue} 80% 60%)`;
-  for(let i=0;i<12;i++) spawnParticle(x,y,(Math.random()-0.5)*3,(Math.random()-0.5)*3,500,1+Math.random()*2,col,true);
+// Update attacks
+for (let i = game.attacks.length - 1; i >= 0; i--) {
+const a = game.attacks[i];
+if (a.update) a.update(dt);
+else { a.x += (a.vx || 0) * (dt / 16); a.y += (a.vy || 0) * (dt / 16); }
+if (a.dead || a._consumed || (a.life !== undefined && a.age > a.life)) game.attacks.splice(i, 1);
 }
 
-/* ================== main loop ================== */
-function mainLoop(t){
-  if(player.dead) return;
-  const dt = Math.min(40, t - lastTime); lastTime = t;
+// Update diggers
+for (let i = game.diggers.length - 1; i >= 0; i--) {
+const d = game.diggers[i]; d.update(dt);
+if (d.hp <= 0 || d.dead) { d.destroyGui(); game.diggers.splice(i, 1); showPopup(`${d.proto.name} Digger destroyed`, d.x, d.y, 1400, '#f55'); }
+}
+maybeSpawnDigger();
 
-  // clear
-  ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,W,H);
-  // screen shake
-  if(shakeTimer > 0){ ctx.translate((Math.random()-0.5)*shakeAmp, (Math.random()-0.5)*shakeAmp); shakeTimer = Math.max(0, shakeTimer - dt); }
+updateParticles(dt);
+maybeQueueUnicodeEvent(); updateUnicodeEvents();
 
-  // update statuses
-  for(const k in player.statuses){
-    const s = player.statuses[k];
-    if(s && s.duration && s.duration > 0){
-      s.duration = Math.max(0, s.duration - dt);
-      if(k === 'poison'){ player.hp = Math.max(0, player.hp - (s.damage * dt/1000)); if(player.hp<=0) player.dead = true; }
-      if(k === 'regen'){ player.hp = Math.min(player.maxHp, player.hp + (s.rate * dt/1000)); }
-      if(k === 'shieldRegen'){ player.shield = Math.min(player.maxShield, player.shield + (s.rate * dt/1000)); }
-      if(s.duration === 0){ if(k==='speedBoost') s.multiplier = 1; if(k==='slow') s.multiplier = 1; }
-    }
-  }
+// Render background
+const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#000'); g.addColorStop(1, '#001018'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
 
-  // player movement (follow mouse)
-  const spd = 0.12 * ((player.statuses.speedBoost.duration>0?1.5:1) * (player.statuses.slow.duration>0?0.6:1));
-  player.x += (mouse.x - player.x) * spd; player.y += (mouse.y - player.y) * spd;
-
-  // spawn attacks periodically (stage-based)
-  if(performance.now() - game.lastSpawn > (game.spawnInterval * (0.6 + Math.random()*0.8))){
-    game.lastSpawn = performance.now();
-    if(game.world === 'world1') spawnPatternForStage(game.stageKey);
-    else spawnPatternForStage(game.stageKey);
-  }
-
-  // update attacks array
-  for(let i=game.attacks.length-1;i>=0;i--){
-    const a = game.attacks[i];
-    if(a.update) a.update(dt); else { a.x += (a.vx||0)*(dt/16); a.y += (a.vy||0)*(dt/16); }
-    if(a.dead || a._consumed || (a.life!==undefined && a.life<=0) ) game.attacks.splice(i,1);
-  }
-
-  // update diggers
-  for(let i=game.diggers.length-1;i>=0;i--){
-    const d = game.diggers[i]; d.update(dt);
-    if(d.hp <= 0 || d.dead){ d.destroyGui(); game.diggers.splice(i,1); showPopup(`${d.proto.name} Digger destroyed`, d.x, d.y, 1400, '#f55'); }
-  }
-  // maybe spawn digger
-  maybeSpawnDigger();
-
-  // update particles/popups
-  updateParticles(dt);
-
-  // unicode event queue
-  maybeQueueUnicodeEvent(); updateUnicodeEvents();
-
-  // render
-  // background
-  const g = ctx.createLinearGradient(0,0,0,H); g.addColorStop(0,'#000'); g.addColorStop(1,'#001018'); ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
-
-  // attacks
-  for(const a of game.attacks){
-    if(a.render) a.render(ctx);
-    else { ctx.beginPath(); ctx.arc(a.x,a.y,a.r || 6,0,Math.PI*2); ctx.fillStyle = a.col || '#f55'; ctx.fill(); }
-  }
-
-  // diggers
-  for(const d of game.diggers) d.render(ctx);
-
-  // player
-  ctx.beginPath(); ctx.arc(player.x,player.y,player.r,0,Math.PI*2); ctx.fillStyle = player.hp>30 ? '#0f0' : 'orange'; ctx.fill();
-  if(player.shield > 0){ ctx.beginPath(); ctx.arc(player.x,player.y,player.r+6,0,Math.PI*2); ctx.strokeStyle='rgba(0,200,255,0.6)'; ctx.lineWidth=3; ctx.stroke(); }
-
-  // particles & popups
-  renderParticlesAndPopups(ctx);
-
-  // HUD update
-  document.getElementById('hp').innerHTML = `HP: ${Math.round(player.hp)}/${player.maxHp}<br>Shield: ${Math.round(player.shield)}/${player.maxShield}<br>Stage: ${stageLabel()}`;
-  document.getElementById('timer').textContent = game.timer.toFixed(1);
-  document.getElementById('status').textContent = `${game.attacks.length} attacks • ${game.diggers.length} diggers`;
-
-  // timer countdown & stage advance (20-second per stage enforced by spec)
-  game.timer -= dt/1000;
-  if(game.timer <= 0){
-    player.hp = Math.min(player.maxHp, player.hp + 12);
-    showPopup('Stage Clear!', cw, 60, 1400, '#ff0');
-    // advance to next key/unicode - for precoded mode we cycle natural order; for choice mode we keep same until changed
-    if(game.mode === 'precoded' || game.mode === 'precoded-uni'){
-      // increment index depending on world array
-      if(game.world === 'world1'){ game.stageIndex = (game.stageIndex+1) % keys.length; game.stageKey = keys[game.stageIndex]; spawnStageForKey(game.stageKey); }
-      else { const idx = uniChars.indexOf(game.stageKey); game.stageIndex = (idx+1) % uniChars.length; game.stageKey = uniChars[game.stageIndex]; spawnStageForUnicode(game.stageKey); }
-    } else {
-      // choice mode: do not auto-advance, just respawn current stage content once then continue
-      if(game.world === 'world1') spawnStageForKey(game.stageKey); else spawnStageForUnicode(game.stageKey);
-    }
-    game.timer = 20; // maximum 20-second stage length as spec
-    // progress unlock: if world1 stage completed several times, unlock world2
-    if(game.world === 'world1' && game.stageIndex >= 3){ progress.world2 = progress.world2 || true; saveProgress(); precodedUniBtn.classList.remove('locked'); }
-  }
-
-  // next frame
-  requestAnimationFrame(mainLoop);
+// Render attacks
+for (const a of game.attacks) {
+if (a.render) a.render(ctx);
+else { ctx.beginPath(); ctx.arc(a.x, a.y, a.r || a.size || 6, 0, Math.PI * 2); ctx.fillStyle = a.col || '#f55'; ctx.fill(); }
 }
 
-/* ========= helpers for stage spawns that call above factories ========= */
-function spawnPatternForStage(stageKey){
-  // if stageKey in keys -> world1; if in uniChars -> world2
-  if(keys.includes(stageKey)) spawnStageForKey(stageKey);
-  else if(uniChars.includes(stageKey)) spawnStageForUnicode(stageKey);
-  else spawnStageForKey(stageKey);
+// Render diggers
+for (const d of game.diggers) d.render(ctx);
+
+// Render players with skins
+const now = performance.now();
+currentSkin.render(ctx, player1.x, player1.y, player1.r, player1.hp, now, hurtTime);
+if (player1.shield > 0) { ctx.beginPath(); ctx.arc(player1.x, player1.y, player1.r + 6, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(0,200,255,0.6)'; ctx.lineWidth = 3; ctx.stroke(); }
+if (isMulti) {
+currentSkin.render(ctx, player2.x, player2.y, player2.r, player2.hp, now, hurtTime);
+if (player2.shield > 0) { ctx.beginPath(); ctx.arc(player2.x, player2.y, player2.r + 6, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(255,200,0,0.6)'; ctx.lineWidth = 3; ctx.stroke(); }
 }
 
-/* ======= menu buttons wiring ======= */
-precodedBtn.onclick = ()=>{ game.mode='precoded'; game.world='world1'; game.stageIndex=0; game.stageKey = keys[0]; game.timer = 8 + Math.random()*4; startGame('precoded','world1',keys[0]); }
-precodedUniBtn.onclick = ()=>{ if(!progress.world2){ startShake(300,8); showPopup('Locked', cw, ch-40, 1000, '#f55'); return; } game.mode='precoded-uni'; game.world='world2'; game.stageIndex=0; game.stageKey=uniChars[0]; startGame('precoded-uni','world2',uniChars[0]); }
-yourChoiceBtn.onclick = ()=>{ document.getElementById('menu').classList.add('hidden'); buildKeypad(); document.getElementById('menu').classList.remove('hidden'); /* open keypad is available in menu by default */ }
+renderParticlesAndPopups(ctx);
 
-/* key R restart */
-document.addEventListener('keydown', e=>{ if(e.key==='r' || e.key==='R'){ // reset game to menu and clear state
-  player.hp = player.maxHp; player.dead=false; game.attacks=[]; game.diggers.forEach(d=>d.destroyGui()); game.diggers=[]; game.mode='menu'; document.getElementById('menu').classList.remove('hidden'); document.getElementById('gameover').classList.add('hidden');
-}});
+// HUD
+const p1hp = `HP P1: ${Math.round(player1.hp)}/${player1.maxHp}`;
+const p2hp = isMulti ? `<br>HP P2: ${Math.round(player2.hp)}/${player2.maxHp}` : '';
+const sh1 = `<br>Shield P1: ${Math.round(player1.shield)}/${player1.maxShield}`;
+const sh2 = isMulti ? `<br>Shield P2: ${Math.round(player2.shield)}/${player2.maxShield}` : '';
+document.getElementById('hp').innerHTML = `${p1hp}${p2hp}<br>Credits: ${credits}${sh1}${sh2}<br>Stage: ${stageLabel()}`;
+document.getElementById('timer').textContent = game.timer.toFixed(1);
+document.getElementById('status').textContent = `${game.attacks.length} attacks • ${game.diggers.length} diggers`;
 
-/* start with menu shown */
+// Timer and advance
+game.timer -= dt / 1000;
+if (game.timer <= 0) {
+// Earn credits based on avg HP
+const avgHp = (player1.hp + (isMulti ? player2.hp : 0)) / (isMulti ? 200 : 100);
+const earned = Math.floor(15 + 25 * avgHp);
+credits += earned;
+saveProgress();
+showPopup(`+${earned} Credits! Stage Clear!`, cw, 60, 1400, '#ff0');
+// Advance
+if (game.mode === 'precoded' || game.mode === 'precoded-uni') {
+if (game.world === 'world1') { game.stageIndex = (game.stageIndex + 1) % keys.length; game.stageKey = keys[game.stageIndex]; }
+else { const idx = uniChars.indexOf(game.stageKey); game.stageIndex = (idx + 1) % uniChars.length; game.stageKey = uniChars[game.stageIndex]; }
+} else {
+// Choice: respawn current
+spawnStageForKey(game.stageKey);
+}
+// Unlock completed
+if (!completed[game.world].includes(game.stageKey)) {
+completed[game.world].push(game.stageKey);
+saveProgress();
+if (game.mode === 'choice') updateKeypadLocks();
+}
+// Progress unlock world2 after 5 stages in world1
+if (game.world === 'world1' && game.stageIndex >= 5) { progress.world2 = true; saveProgress(); precodedUniBtn.classList.remove('locked'); worldToggle.classList.remove('locked'); }
+game.timer = 20;
+player1.hp = Math.min(player1.maxHp, player1.hp + 15);
+if (isMulti) player2.hp = Math.min(player2.maxHp, player2.hp + 15);
+}
+
+requestAnimationFrame(mainLoop);
+}
+
+/* Menu wiring */
+precodedBtn.onclick = () => { startGame('precoded', 'world1', keys[0]); };
+precodedUniBtn.onclick = () => { if (!progress.world2) { startShake(300, 8); showPopup('Locked', cw, ch - 40, 1000, '#f55'); return; } startGame('precoded-uni', 'world2', uniChars[0]); };
+yourChoiceBtn.onclick = () => {
+game.mode = 'choice'; currentWorld = progress.world2 ? 'world2' : 'world1';
+document.getElementById('menu').classList.remove('hidden'); // Fixed: now properly enters choice mode with keypad visible
+updateKeypadLocks();
+};
+shopBtn.onclick = () => { updateSkinsList(); document.getElementById('shopmenu').classList.remove('hidden'); document.getElementById('menu').classList.add('hidden'); };
+multiToggle.onclick = () => { isMulti = !isMulti; multiToggle.textContent = isMulti ? 'Multi Player' : 'Single Player'; showPopup(isMulti ? 'Multi ON (WASD P2)' : 'Single ON', cw, ch + 20, 1000); };
+worldToggle.onclick = () => { if (currentWorld === 'world1' && !progress.world2) return; currentWorld = currentWorld === 'world1' ? 'world2' : 'world1'; updateKeypadLocks(); };
+backToMenu.onclick = () => { document.getElementById('shopmenu').classList.add('hidden'); document.getElementById('menu').classList.remove('hidden'); };
+
 document.getElementById('menu').classList.remove('hidden');
-
-/* lastTime setter and kick off small ambient animation when menu open */
-lastTime = performance.now();
-
-/* Final note: this file is designed to be pasted as three parts in order (1→2→3). Enjoy! */
 </script>
 </body>
 </html>
+</DOCUMENT>
+S
