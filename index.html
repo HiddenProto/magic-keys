@@ -1,1503 +1,1053 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<title>KEYBOARD DOOM — V3.1 (Revamped Architecture & WebRTC Fallback)</title>
-<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
-<script src="https://cdn.tailwindcss.com"></script>
-<style>
-/* Global Styles */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
-* { margin:0; padding:0; box-sizing:border-box; }
-body { background:#000; overflow:hidden; touch-action:none; font-family: 'Inter', sans-serif; }
-canvas { display:block; image-rendering:pixelated; cursor:none; }
-#hud { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; color:#fff; }
-.topleft { position:absolute; top:10px; left:10px; font-size:14px; text-shadow: 0 0 5px #0f0; }
-.centertop { position:absolute; top:10px; left:50%; transform:translateX(-50%); font-size:18px; font-weight:bold; color: #ffeb3b; text-shadow: 0 0 8px #ffeb3b; }
-.bottomcenter { position:absolute; bottom:10px; left:50%; transform:translateX(-50%); font-size:12px; opacity:.8; }
-.status { position:absolute; top:60px; left:10px; font-size:12px; text-shadow: 0 0 3px #fff; }
-/* Menu & Game Over */
-.menu, .gameover, .shop, .multiplayer-lobby {
-    position:absolute; top:0; left:0; width:100%; height:100%;
-    background:rgba(0,0,0,.95); backdrop-filter: blur(5px);
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-    color:#fff; transition: opacity 0.3s;
-}
-.hidden { opacity:0; pointer-events:none; position:absolute; }
-.menu h1, .shop h1, .multiplayer-lobby h1 {
-    font-size: 2.5rem; margin-bottom: 20px;
-    color: #00ff44; text-shadow: 0 0 10px #00ff44;
-    text-align: center;
-}
-.menu button, .shop button, .multiplayer-lobby button {
-    background: #1e1e1e; border: 2px solid #00ff44; color: #00ff44;
-    padding: 10px 20px; margin: 8px 0; border-radius: 8px;
-    cursor: pointer; font-size: 16px; font-weight: bold;
-    transition: all 0.2s ease-in-out;
-    box-shadow: 0 0 5px #00ff44;
-}
-.menu button:hover, .shop button:hover, .multiplayer-lobby button:hover {
-    background: #00ff44; color: #000; box-shadow: 0 0 15px #00ff44;
-    transform: translateY(-2px);
-}
-.menu button:disabled {
-    background: #333; border-color: #555; color: #888; cursor: not-allowed;
-    box-shadow: none; transform: none;
-}
-.error-msg { color: #f55; margin-top: 10px; font-weight: bold; }
-/* Keypad Grid (Now for Practice/Selection) */
-#keypad {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
-    gap: 8px;
-    width: 90vw;
-    max-width: 800px;
-    padding: 10px;
-    background: rgba(30, 30, 30, 0.8);
-    border: 1px solid #00ff44;
-    border-radius: 10px;
-    max-height: 40vh;
-    overflow-y: auto;
-    margin-top: 10px;
-}
-.key-btn {
-    text-align: center;
-    padding: 8px;
-    font-size: 14px;
-    background: #2a2a2a;
-    border: 1px solid #00ff44;
-    color: #00ff44;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.1s;
-}
-.key-btn:hover:not(.locked) {
-    background: #00ff44;
-    color: #000;
-}
-.key-btn.locked {
-    background: #444;
-    border-color: #555;
-    color: #888;
-    cursor: not-allowed;
-    box-shadow: none;
-    user-select: none;
-}
-.key-btn.current {
-    background: #ff5500;
-    border-color: #ff5500;
-    color: #fff;
-    box-shadow: 0 0 10px #ff5500;
-    animation: pulse 1s infinite alternate;
-}
-@keyframes pulse {
-    from { box-shadow: 0 0 10px #ff5500; }
-    to { box-shadow: 0 0 15px #ff5500; }
-}
-/* Skins Shop Specifics - Now with Legacy/V2 Tabs */
-.skin-card {
-    background: #222;
-    border: 1px solid #00ff44;
-    border-radius: 8px;
-    padding: 15px;
-    margin: 10px;
-    width: 250px;
-    text-align: center;
-    transition: transform 0.2s, box-shadow 0.2s;
-    box-shadow: 0 0 5px #00ff44;
-}
-.skin-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 0 15px #00ff44;
-}
-.skin-card h3 {
-    font-size: 1.2rem;
-    color: #ffeb3b;
-    margin-bottom: 5px;
-}
-.skin-card p {
-    font-size: 0.85rem;
-    color: #bbb;
-    min-height: 40px;
-    margin-bottom: 10px;
-}
-.skin-card .preview {
-    width: 40px;
-    height: 40px;
-    margin: 10px auto;
-    border: 1px solid #444;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #111;
-}
-.skin-catalog {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    max-height: 70vh;
-    overflow-y: auto;
-}
-#skinTabs { display: flex; justify-content: center; margin-bottom: 20px; }
-#skinTabs button { margin: 0 10px; padding: 10px 20px; }
-#skinTabs button.active { background: #00ff44; color: #000; }
-/* Multiplayer Lobby Specifics - Now with WebRTC SDP Areas */
-#roomCodeInput { background: #1e1e1e; border: 2px solid #00ff44; color: #00ff44; padding: 10px; margin: 10px; border-radius: 8px; font-size: 16px; text-align: center; width: 200px; }
-#hostSection { text-align: center; margin: 20px; }
-#roomCodeDisplay { font-size: 24px; font-weight: bold; color: #00ff44; background: #000; padding: 10px; border-radius: 8px; }
-#sdpArea { margin: 10px; width: 80%; height: 100px; background: #111; border: 1px solid #00ff44; color: #00ff44; padding: 10px; overflow-y: auto; }
-#webrtcFallback { color: #ffeb3b; font-size: 12px; margin-top: 10px; }
-/* Development Text */
-.dev-text {
-    position: absolute;
-    bottom: 10px;
-    font-size: 12px;
-    opacity: 0.7;
-    color: #00ff44;
-    text-shadow: 0 0 3px #00ff44;
-}
-.dev-left { left: 10px; }
-.dev-right { right: 10px; }
-/* Practice Mode Title */
-#practiceTitle { font-size: 1.5rem; color: #00ff44; margin-bottom: 10px; text-align: center; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lexi-Glitch Arena - V2 System</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Global Styling & Font (Inter) */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Space+Mono:wght@400;700&display=swap');
+        :root {
+            --primary-bg: #111827; /* Dark Slate */
+            --secondary-bg: #1f2937; /* Lighter Slate */
+            --accent-green: #10b981; /* Emerald Green */
+            --accent-yellow: #f59e0b; /* Amber */
+            --text-light: #f9fafb; /* White */
+            --text-mute: #9ca3af; /* Gray */
+            --border-color: #374151; /* Medium Gray */
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--primary-bg);
+            color: var(--text-light);
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* Console/Code-like Font for the Arena and Log */
+        .mono-font {
+            font-family: 'Space Mono', monospace;
+        }
+
+        /* UI Panel Styling */
+        .ui-panel {
+            background-color: var(--secondary-bg);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Custom Scrollbar for Logs */
+        .custom-scroll::-webkit-scrollbar {
+            width: 8px;
+        }
+        .custom-scroll::-webkit-scrollbar-track {
+            background: var(--secondary-bg);
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-green);
+        }
+
+        /* Button Hover Effects (Translated from old script requirement) */
+        .btn-hover {
+            transition: all 0.2s ease-in-out;
+            transform: scale(1);
+        }
+        .btn-hover:hover {
+            background-color: var(--accent-green);
+            color: var(--primary-bg);
+            box-shadow: 0 0 10px var(--accent-green);
+            transform: scale(1.02);
+        }
+        .btn-hover:active {
+            transform: scale(0.98);
+        }
+
+        /* Game Arena Canvas Styling */
+        #gameCanvas {
+            border: 2px solid var(--accent-green);
+            background-color: #000000;
+            cursor: crosshair;
+        }
+
+        /* Modal Backdrop */
+        .modal-backdrop {
+            background-color: rgba(0, 0, 0, 0.8);
+            z-index: 50;
+        }
+
+        /* Skin Card Hover Effect */
+        .skin-card:hover {
+            border-color: var(--accent-green);
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.7);
+            cursor: pointer;
+            transform: translateY(-2px);
+            transition: all 0.3s ease-in-out;
+        }
+
+        .skin-card-equipped {
+            border-color: var(--accent-yellow) !important;
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.8) !important;
+        }
+    </style>
 </head>
-<body>
-<!-- Canvas for Game Rendering -->
-<canvas id="gameCanvas"></canvas>
-<!-- Heads Up Display (HUD) - Now Shows Rounds Instead of Waves -->
-<div id="hud">
-    <div class="topleft">
-        ROUND: <span id="roundInfo">1</span> | HP: <span id="hp"></span> | SHIELD: <span id="shield"></span><br>
-        CREDITS: <span id="credits">0</span> | SCORE: <span id="score">0</span>
-    </div>
-    <div class="centertop">
-        <span id="currentKey">?</span> | <span id="timer">10.0</span>s
-    </div>
-    <div class="bottomcenter">
-        Press 'R' to return to menu (or 'R' at Game Over)
-    </div>
-    <div class="status" id="status"></div>
-</div>
-<!-- Main Menu -->
-<div id="menu" class="menu">
-    <h1>KEYBOARD DOOM</h1>
-    <p id="creditsNote" style="font-size:12px; opacity:0.7; margin-bottom:20px;">Development Assisted by HARP & REX</p>
-    <div id="main-menu-buttons">
-        <button id="endlessBtn">Endless Mode (Random Attacks)</button>
-        <button id="practiceBtn">Practice Mode</button>
-        <button id="multiplayerBtn">Multiplayer (WebRTC Fallback)</button>
-    </div>
-    <!-- Shop is placed below modes -->
-    <button id="skinsShopBtn">Skins Shop</button>
-    <button id="backToMenuBtn" style="display:none;">Back to Main Menu</button>
-    <input type="text" id="cheatInput" style="position:absolute; top:10px; right:10px; width:120px; height:30px; opacity:0.8; font-size:12px; border:1px solid #00ff44; background:rgba(0,0,0,0.7); color:#00ff44; text-align:center;" placeholder="Code..." maxlength="6">
-    <div id="keypad" class="hidden"></div>
-    <h2 id="practiceTitle" class="hidden" style="font-size:1.5rem; color:#00ff44; margin:10px 0;">Practice Mode - Select a Key to Practice</h2>
-    <!-- Development Texts -->
-    <div class="dev-text dev-left">Survive endless rounds – pure adrenaline!</div>
-</div>
-<!-- Skins Shop Modal - Now with Tabs for Legacy/V2 -->
-<div id="shop" class="shop hidden">
-    <h1>Skins Shop</h1>
-    <span class="text-xl mb-4 text-yellow-400">Your Credits: <span id="shopCredits">0</span></span>
-    <div id="skinTabs">
-        <button id="legacyTab" class="active">Legacy Skins</button>
-        <button id="v2Tab">V2 Skins (Realistic)</button>
-    </div>
-    <p style="text-align:center; opacity:0.8; color:#fff; margin-bottom:10px;">Hover over icon to preview!</p>
-    <div class="skin-catalog" id="skinCatalog">
-        <!-- Skin cards rendered here -->
-    </div>
-    <button id="shopBackBtn" class="mt-4">Back to Menu</button>
-    <!-- Development Texts -->
-    <div class="dev-text dev-left">Survive endless rounds – pure adrenaline!</div>
-</div>
-<!-- Multiplayer Lobby - WebRTC Fallback -->
-<div id="multiplayer-lobby" class="multiplayer-lobby hidden">
-    <h1>MULTIPLAYER LOBBY (WebRTC P2P)</h1>
-    <p style="text-align:center; opacity:0.8; color:#fff; margin-bottom:10px;">Host: Generate Offer SDP. Join: Paste Host's SDP.</p>
-    <button id="hostGameBtn">Host Game (Generate Offer)</button>
-    <div style="margin:20px;">
-        <textarea id="sdpInput" placeholder="Paste SDP here..." rows="4" style="width: 300px; background: #1e1e1e; border: 2px solid #00ff44; color: #00ff44;"></textarea>
-        <button id="joinGameBtn">Join Game (Set Remote SDP)</button>
-    </div>
-    <div id="hostSection" class="hidden">
-        <p>Your SDP (Share this with joiner):</p>
-        <textarea id="sdpOutput" readonly rows="4" style="width: 80%; background: #000; border: 1px solid #00ff44; color: #00ff44;"></textarea>
-        <button id="startGameBtn" class="hidden">Start Game</button>
-        <div id="webrtcFallback">WebRTC Connected: Waiting for sync...</div>
-    </div>
-    <button id="multiBackBtn">Back to Menu</button>
-    <div id="multiError" class="error-msg hidden"></div>
-</div>
-<!-- Game Over Screen -->
-<div id="gameover" class="gameover hidden">
-    <h1>GAME OVER</h1>
-    <p id="finalScore" class="text-xl mb-4 text-red-500"></p>
-    <p class="text-lg text-gray-300">Press 'R' to restart</p>
-</div>
-<!-- Milestone Screen (New: Replaces Victory for Endless) -->
-<div id="milestone" class="gameover hidden">
-    <h1>MILESTONE ACHIEVED!</h1>
-    <p id="milestoneMsg" class="text-xl mb-4 text-green-500"></p>
-    <p class="text-lg text-gray-300">Press any key to continue</p>
-</div>
-<!-- Popup for transient messages -->
-<div id="popup-container" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 100;"></div>
-<script>
-// ============================================
-// REVAMPED ARCHITECTURE OVERVIEW
-// ============================================
-// - New Class-Based Structure: Player, Attack, GameManager for better organization and optimization.
-// - Removed Firebase: All persistence via localStorage only. No network dependencies.
-// - New Round System: Endless survival with random 5-10s rounds. Each round picks a random key for unique attack pattern.
-// - No Win System: Replaced with milestones every 10 rounds (bonus credits, unlocks). Score-based progression.
-// - Multiplayer: WebRTC P2P fallback with manual SDP exchange (no server needed). Syncs rounds and positions.
-// - Skins: Legacy (original) + V2 (new realistic/complex renders with physics-like effects, particles).
-// - Optimizations: Object pooling for attacks, delta-time smoothing, reduced GC.
-// - UI Unchanged: All visuals, hovers, animations preserved. Buttons fixed by wrapping in DOMContentLoaded.
-// - Line Count: ~1250+ (with detailed comments/functions).
-// - Reliability: Error handling, fallbacks, verified logic flow (no infinite loops, proper cleanup).
-// ============================================
+<body class="flex flex-col h-screen p-4">
 
-// ============================================
-// CONSTANTS & CONFIGS
-// ============================================
-// Game Constants
-const MAX_HP = 100;
-const MAX_SHIELD = 100;
-const BASE_CREDITS_PER_MILESTONE = 100;
-const BONUS_CREDITS_PER_MILESTONE = 200;
-const ROUND_DURATION_MIN = 5000; // 5s
-const ROUND_DURATION_MAX = 10000; // 10s
-const MILESTONE_INTERVAL = 10; // Every 10 rounds
-const ATTACK_POOL_SIZE = 200; // Object pool for optimization
+    <!-- Header Section -->
+    <header class="mb-4 text-center">
+        <h1 class="text-3xl font-bold mono-font text-accent-green">LEXI-GLITCH ARENA</h1>
+        <p class="text-sm text-text-mute">Development Assisted by HARP & REX | V2 Core System</p>
+    </header>
 
-// Key Sets (Preserved for Unique Attacks)
-const ALL_KEYS = [
-    // Legacy World 1: Alphanumeric
-    'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
-    'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
-    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
-    // World 2: Symbols & Unicode
-    '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+', '-', '=',
-    '[', ']', '{', '}', '|', '\\', ';', ':', "'", '"', ',', '.', '<', '>', '?', '/',
-    'Space', 'Enter', 'Tab', 'Shift', 'Control', 'Alt', 'CapsLock', 'Escape', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
-    '→', '←', '▲', '▼', '☆', '★', '⚡', '∞', 'π', 'Ω', 'Σ', 'Φ',
-    '§', 'µ', '©', '®', '™', '€', '£', '¥', '¢', '°', '±', '÷', '×',
-    '≠', '≈', '≤', '≥', '∫', '∂', '∇', '√', '∛', '∜', '…', '‘', '’', '“', '”', '¶'
-];
+    <!-- Main Content Grid -->
+    <main class="flex-grow grid grid-cols-12 gap-4">
 
-// ============================================
-// CLASSES
-// ============================================
+        <!-- Left Panel: Game Status & Network -->
+        <div class="col-span-12 lg:col-span-3 flex flex-col space-y-4">
+            <!-- Game Status Panel -->
+            <div class="ui-panel p-4 rounded-lg flex-shrink-0">
+                <h2 class="text-xl font-bold mb-2 border-b border-border-color pb-1">STATUS</h2>
+                <div class="mono-font text-sm space-y-1">
+                    <p>Round Timer: <span id="roundTimer" class="text-accent-yellow">--</span>s</p>
+                    <p>Player ID: <span id="localUserId" class="text-accent-green">...</span></p>
+                    <p>Opponent ID: <span id="remoteUserId" class="text-accent-yellow">N/A</span></p>
+                    <p>Connection: <span id="connectionStatus" class="text-text-mute">DISCONNECTED</span></p>
+                    <p>Energy: <span id="playerEnergy" class="text-accent-green">100</span></p>
+                </div>
+            </div>
 
-// Class: Player - Manages position, health, skin rendering.
-class Player {
-    constructor() {
-        this.x = 0;
-        this.y = 0;
-        this.radius = 10;
-        this.speed = 4;
-        this.hp = MAX_HP;
-        this.maxHp = MAX_HP;
-        this.shield = 0;
-        this.dead = false;
-        this.credits = 0;
-        this.ownedSkins = ['default']; // FIXED: Initialize ownedSkins
-        this.equippedSkinId = 'default';
-        this.skinState = { // Dynamic state for skins
-            catNextChangeTime: 0,
-            catFace: 'owo',
-            periodicElement: { num: 1, symbol: 'H', weight: 1.008, color: '#add8e6', name: 'Hydrogen' },
-            particles: [], // For V2 complex skins
-            lastUpdate: 0
-        };
-    }
+            <!-- Network/WebRTC Control Panel -->
+            <div class="ui-panel p-4 rounded-lg flex-grow flex flex-col">
+                <h2 class="text-xl font-bold mb-2 border-b border-border-color pb-1">NETWORK (WebRTC P2P)</h2>
+                <div class="mono-font text-sm space-y-3 flex-grow">
+                    <button id="btnCreateOffer" class="btn-hover w-full py-2 bg-indigo-600 rounded-lg text-text-light font-bold">1. Create Offer</button>
+                    <button id="btnCreateAnswer" class="btn-hover w-full py-2 bg-teal-600 rounded-lg text-text-light font-bold" disabled>2. Create Answer</button>
 
-    // Method: Update - Handles movement (mouse/touch follow).
-    update(dt, mouseX, mouseY, canvasW, canvasH) {
-        this.x += (mouseX - this.x) * 0.1;
-        this.y += (mouseY - this.y) * 0.1;
-        this.x = Math.max(this.radius, Math.min(canvasW - this.radius, this.x));
-        this.y = Math.max(this.radius, Math.min(canvasH - this.radius, this.y));
-        this.updateSkinState(dt); // Update dynamic skin elements
-    }
+                    <label for="signalBox" class="block text-text-mute mt-2">Signal Data (Copy/Paste):</label>
+                    <textarea id="signalBox" rows="6" class="w-full bg-black border border-border-color p-2 text-accent-green text-xs rounded-lg custom-scroll" placeholder="Paste Offer/Answer here..."></textarea>
+                    <button id="btnProcessSignal" class="btn-hover w-full py-2 bg-gray-600 rounded-lg text-text-light font-bold">3. Process Signal</button>
 
-    // Method: UpdateSkinState - Manages animations for equipped skin.
-    updateSkinState(dt) {
-        const now = Date.now();
-        const skinId = this.equippedSkinId;
-        if (skinId === 'cat_txt') {
-            if (now > this.skinState.catNextChangeTime) {
-                this.skinState.catFace = this.skinState.catFace === 'owo' ? '-w-' : 'owo';
-                this.skinState.catNextChangeTime = now + (1000 + Math.random() * 1000);
-            }
-            // Low HP override
-            if (this.hp < this.maxHp * 0.3) {
-                this.skinState.catFace = ';w;';
-            }
-        } else if (skinId === 'periodic') {
-            if (Math.random() < 0.001) {
-                this.skinState.periodicElement = this.getRandomPeriodicElement();
-            }
-        } else if (skinId.startsWith('v2_')) { // V2 Skins: Particle systems
-            this.updateV2Particles(dt, now);
-        }
-        this.skinState.lastUpdate = now;
-    }
+                    <p id="dataChannelStatus" class="text-center pt-2 text-accent-yellow">Data Channel: Closed</p>
+                </div>
+            </div>
+        </div>
 
-    // Method: GetRandomPeriodicElement - Random element for periodic skin.
-    getRandomPeriodicElement() {
-        const elements = [
-            { num: 1, symbol: 'H', weight: 1.008, color: '#add8e6', name: 'Hydrogen' },
-            { num: 2, symbol: 'He', weight: 4.002, color: '#fffacd', name: 'Helium' },
-            { num: 6, symbol: 'C', weight: 12.011, color: '#3cb371', name: 'Carbon' },
-            { num: 8, symbol: 'O', weight: 15.999, color: '#f08080', name: 'Oxygen' },
-            { num: 11, symbol: 'Na', weight: 22.990, color: '#8a2be2', name: 'Sodium' },
-            { num: 17, symbol: 'Cl', weight: 35.453, color: '#90ee90', name: 'Chlorine' },
-            { num: 19, symbol: 'K', weight: 39.098, color: '#9370db', name: 'Potassium' },
-            { num: 26, symbol: 'Fe', weight: 55.845, color: '#bdb76b', name: 'Iron' },
-            { num: 29, symbol: 'Cu', weight: 63.546, color: '#b8860b', name: 'Copper' },
-            { num: 47, symbol: 'Ag', weight: 107.87, color: '#c0c0c0', name: 'Silver' },
-            { num: 79, symbol: 'Au', weight: 196.97, color: '#ffd700', name: 'Gold' },
-            { num: 80, symbol: 'Hg', weight: 200.59, color: '#cccccc', name: 'Mercury' }
+        <!-- Center Panel: Game Arena & Input -->
+        <div class="col-span-12 lg:col-span-6 flex flex-col space-y-4">
+            <!-- Game Arena Canvas -->
+            <div class="flex-grow flex items-center justify-center bg-black rounded-lg">
+                <canvas id="gameCanvas" width="800" height="600" class="w-full h-full max-h-[600px] rounded-lg"></canvas>
+            </div>
+
+            <!-- Player Input/Queue -->
+            <div class="ui-panel p-3 rounded-lg flex-shrink-0">
+                <label for="commandInput" class="text-sm text-text-mute block mb-1">Lexi-Command Input (Type to attack):</label>
+                <input type="text" id="commandInput" class="w-full h-10 bg-black border border-accent-green p-2 text-xl mono-font rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-green" maxlength="10" placeholder="Type letters/symbols...">
+                <p class="text-xs text-text-mute pt-1">Queue: <span id="attackQueue" class="text-accent-yellow mono-font">_ _ _</span></p>
+            </div>
+        </div>
+
+        <!-- Right Panel: Shop & Game Log -->
+        <div class="col-span-12 lg:col-span-3 flex flex-col space-y-4">
+            <!-- Shop/Skins Button -->
+            <button id="btnOpenShop" class="btn-hover w-full py-3 bg-accent-yellow text-primary-bg font-extrabold text-lg rounded-lg shadow-lg flex-shrink-0">
+                <span class="mr-2">SHOP</span> | CREDITS: <span id="playerCredits">0</span>
+            </button>
+
+            <!-- Game Log/Console Output -->
+            <div class="ui-panel p-4 rounded-lg flex-grow flex flex-col overflow-hidden">
+                <h2 class="text-xl font-bold mb-2 border-b border-border-color pb-1">GAME LOG</h2>
+                <div id="gameLog" class="mono-font text-xs space-y-1 overflow-y-auto custom-scroll flex-grow">
+                    <!-- Log messages will appear here -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal for Shop System -->
+    <div id="shopModal" class="fixed inset-0 modal-backdrop hidden items-center justify-center p-4" onclick="handleModalClick(event)">
+        <div class="ui-panel w-full max-w-4xl p-6 rounded-xl relative transform transition-all duration-300 scale-95 opacity-0" id="shopContent">
+            <h2 class="text-3xl font-bold mono-font mb-4 text-accent-yellow border-b border-border-color pb-2">LEXI-SKIN STORE</h2>
+            <p class="text-text-light mb-4">Current Credits: <span id="modalCredits" class="text-accent-green font-bold">0</span></p>
+
+            <div id="skinsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 custom-scroll max-h-96 overflow-y-auto pr-2">
+                <!-- Skin Cards will be injected here -->
+            </div>
+
+            <button onclick="closeShopModal()" class="btn-hover absolute top-3 right-3 text-2xl text-text-light hover:text-accent-yellow">
+                &times;
+            </button>
+        </div>
+    </div>
+
+    <script type="module">
+        // =================================================================
+        // GLOBAL CONSTANTS AND SETUP
+        // =================================================================
+        const CANVAS = document.getElementById('gameCanvas');
+        const CTX = CANVAS.getContext('2d');
+        const INPUT_FIELD = document.getElementById('commandInput');
+        const MAX_ENERGY = 100;
+        const FPS = 60;
+        const MS_PER_FRAME = 1000 / FPS;
+        const LOCAL_USER_ID = crypto.randomUUID().substring(0, 8); // Unique ID for P2P signaling
+
+        // Display User ID immediately
+        document.getElementById('localUserId').textContent = LOCAL_USER_ID;
+
+        // V1 (Legacy) and V2 (Complex/Realistic) Skins
+        const SKINS = [
+            // V1: Legacy Skins (Simple Visuals/Effects)
+            { id: 'S101', name: 'Legacy Byte', cost: 0, equipped: true, version: 'V1', color: '#0f0', effectDesc: 'Standard projectile speed, basic energy regen.' },
+            { id: 'S102', name: 'Glitch Stream', cost: 1500, equipped: false, version: 'V1', color: '#ff0', effectDesc: 'Slightly slower projectiles, high damage output.' },
+            { id: 'S103', name: 'Zero-Day', cost: 3000, equipped: false, version: 'V1', color: '#f00', effectDesc: 'Low health, but passive ability grants temporary invulnerability on kill.' },
+
+            // V2: Current (Realistic/Complex) Skins
+            { id: 'S201', name: 'HARP Protocol', cost: 5000, equipped: false, version: 'V2', color: '#00f', effectDesc: 'Defense-focused. Typing symbols grants temporary Shield HP.' },
+            { id: 'S202', name: 'REX Engine', cost: 7500, equipped: false, version: 'V2', color: '#f0f', effectDesc: 'Mobility-focused. Typing vowels increases movement speed for 3 seconds.' },
+            { id: 'S203', name: 'Phantom Key', cost: 10000, equipped: false, version: 'V2', color: '#fff', effectDesc: 'Stealth-focused. After 5 seconds of inactivity, become briefly invisible to opponent.' }
         ];
-        return elements[Math.floor(Math.random() * elements.length)];
-    }
 
-    // Method: UpdateV2Particles - Simulates physics for V2 skins (e.g., orbiting particles).
-    updateV2Particles(dt, now) {
-        // Simple particle update: orbit around player with damping
-        this.skinState.particles = this.skinState.particles.filter(p => p.life > 0);
-        this.skinState.particles.forEach(p => {
-            const angle = (now * 0.001) + p.offset;
-            p.x = Math.cos(angle) * p.radius + (Math.random() - 0.5) * 2; // Slight randomness
-            p.y = Math.sin(angle) * p.radius + (Math.random() - 0.5) * 2;
-            p.life -= dt / 1000;
-        });
-        // Respawn if low count
-        while (this.skinState.particles.length < 12) {
-            this.skinState.particles.push({
-                x: 0, y: 0, radius: 15 + Math.random() * 10,
-                offset: Math.random() * Math.PI * 2, life: 1
-            });
-        }
-    }
+        // Map of all characters to unique attack actions (The core unique mechanic)
+        // This object defines the attack logic for every possible keystroke.
+        const CHARACTER_ACTIONS = {
+            // Letters (A-Z) - Primary Attack/Defense
+            'a': { type: 'attack', power: 10, cost: 5, description: 'Alpha Strike: Standard projectile.' },
+            'b': { type: 'utility', power: 5, cost: 8, description: 'Barrier Field: Small, temporary shield.' },
+            'c': { type: 'attack', power: 12, cost: 6, description: 'C-Bomb: Medium damage, delayed explosion.' },
+            'd': { type: 'movement', power: 1, cost: 4, description: 'Dash: Short forward dash.' },
+            'e': { type: 'utility', power: 10, cost: 3, description: 'Energy Burst: Regenerate 10 Energy.' },
+            'f': { type: 'attack', power: 15, cost: 10, description: 'Flame Array: High damage, linear projectile.' },
+            'g': { type: 'utility', power: 0, cost: 5, description: 'Grapple: Pull opponent slightly closer.' },
+            'h': { type: 'attack', power: 8, cost: 5, description: 'Homing Missile: Low power, guaranteed hit (slow).' },
+            'i': { type: 'movement', power: 0, cost: 3, description: 'I-Frame: Brief moment of invulnerability.' },
+            'j': { type: 'utility', power: 0, cost: 5, description: 'Jitter: Briefly scramble opponent movement.' },
+            'k': { type: 'attack', power: 20, cost: 15, description: 'Kilo-Shot: Very high power, high cost.' },
+            'l': { type: 'utility', power: 5, cost: 7, description: 'Lifesteal: Deal small damage, heal 5 HP.' },
+            'm': { type: 'utility', power: 0, cost: 5, description: 'Mine Deploy: Deploy static proximity mine.' },
+            'n': { type: 'utility', power: 0, cost: 3, description: 'Nullify: Destroy nearest incoming projectile.' },
+            'o': { type: 'attack', power: 10, cost: 5, description: 'Orbital Strike: Area-of-effect marker.' },
+            'p': { type: 'attack', power: 7, cost: 4, description: 'Penetrator: Ignores 5 points of shield.' },
+            'q': { type: 'movement', power: 0, cost: 4, description: 'Quick-Shift: Teleport a short distance randomly.' },
+            'r': { type: 'utility', power: 0, cost: 5, description: 'Rebound: Reflect next incoming projectile.' },
+            's': { type: 'attack', power: 10, cost: 5, description: 'Shotgun Blast: Wide cone of low-power shots.' },
+            't': { type: 'utility', power: 0, cost: 3, description: 'Tempo Boost: Increase typing speed briefly.' },
+            'u': { type: 'utility', power: 0, cost: 5, description: 'Uplink: Increase Credits earned for 10s.' },
+            'v': { type: 'attack', power: 10, cost: 5, description: 'Vector Trace: Damage over time effect.' },
+            'w': { type: 'movement', power: 1, cost: 4, description: 'Warp: Controlled long-range movement.' },
+            'x': { type: 'utility', power: 0, cost: 10, description: 'X-Factor: Randomly trigger two other actions.' },
+            'y': { type: 'attack', power: 10, cost: 5, description: 'Y-Axis Beam: Vertical damage line.' },
+            'z': { type: 'utility', power: 0, cost: 5, description: 'Zero Lag: Remove all debuffs.' },
 
-    // Method: Render - Draws the player with equipped skin.
-    render(ctx) {
-        drawSkin(ctx, this.x, this.y, this.radius, this.equippedSkinId, this.skinState, this.hp, this.maxHp, gameManager.lastDamageTime);
-    }
+            // Numbers (0-9) - Resources/Status Effects
+            '0': { type: 'resource', power: 200, cost: 0, description: 'Code Zero: Gain 200 Credits.' },
+            '1': { type: 'status', power: 5, cost: 5, description: 'Status-1: Slow opponent movement.' },
+            '2': { type: 'status', power: 5, cost: 5, description: 'Status-2: Drain opponent energy.' },
+            '3': { type: 'resource', power: 10, cost: 0, description: 'Code 3: Full Energy Refill.' },
+            '4': { type: 'status', power: 5, cost: 5, description: 'Status-4: Opponent camera shake.' },
+            '5': { type: 'status', power: 5, cost: 5, description: 'Status-5: Temporary reverse controls.' },
+            '6': { type: 'resource', power: 500, cost: 0, description: 'Code Six: Gain 500 Credits.' },
+            '7': { type: 'status', power: 5, cost: 5, description: 'Status-7: Opponent weapon jam (cannot attack).' },
+            '8': { type: 'status', power: 5, cost: 5, description: 'Status-8: Opponent debuff stacking.' },
+            '9': { type: 'resource', power: 10, cost: 0, description: 'Code Nine: Small Health Boost (10 HP).' },
 
-    // Method: TakeDamage - Applies damage, handles shield/HP.
-    takeDamage(amount) {
-        let finalDamage = amount;
-        if (this.shield > 0) {
-            const absorbed = Math.min(this.shield, finalDamage);
-            this.shield -= absorbed;
-            finalDamage -= absorbed;
-        }
-        if (finalDamage > 0) {
-            this.hp -= finalDamage;
-            return true; // Damage taken
-        }
-        return false;
-    }
+            // Symbols/Punctuation - Utility/Complex Effects
+            '.': { type: 'utility', power: 0, cost: 10, description: 'Finalize: Execute the entire command queue immediately.' },
+            '!': { type: 'attack', power: 30, cost: 20, description: 'Exclamation: Devastating single hit (high cost).' },
+            '#': { type: 'defense', power: 25, cost: 15, description: 'Hash Shield: Large temporary shield.' },
+            '$': { type: 'resource', power: 0, cost: 0, description: 'Cash Out: Convert 5 Energy to 100 Credits.' },
+            '%': { type: 'status', power: 50, cost: 10, description: 'Percent Debuff: Reduce opponent damage output by 50% for 5s.' },
+            '^': { type: 'movement', power: 0, cost: 5, description: 'Uplift: Jump/boost movement.' },
+            '&': { type: 'utility', power: 0, cost: 10, description: 'Duplicate: Duplicate the previous action in the queue.' },
+            '*': { type: 'attack', power: 1, cost: 1, description: 'Star Scatter: Rapid fire low damage projectile.' },
+            '(': { type: 'utility', power: 0, cost: 5, description: 'Open Block: Start a sequence of buffered commands.' },
+            ')': { type: 'utility', power: 0, cost: 5, description: 'Close Block: Release the buffered command sequence.' },
+            '@': { type: 'attack', power: 5, cost: 5, description: 'At-Tag: Marks opponent for increased damage from next attack.' },
+            // Add more common symbols...
+            '/': { type: 'utility', power: 0, cost: 3, description: 'Divider: Clears one active debuff.' },
+            '?': { type: 'resource', power: 0, cost: 5, description: 'Question: Reveals opponent current Energy/HP briefly.' },
+            ';': { type: 'utility', power: 0, cost: 5, description: 'Separator: Allows two actions to be executed simultaneously.' },
+            ':': { type: 'utility', power: 0, cost: 5, description: 'Colon: Reduces cost of the next action by 50%.' },
+            '{': { type: 'defense', power: 10, cost: 5, description: 'Brace: Damage reduction for 2s.' },
+            '}': { type: 'defense', power: 10, cost: 5, description: 'Brace: Damage reduction for 2s.' },
+            '[': { type: 'defense', power: 10, cost: 5, description: 'Brace: Damage reduction for 2s.' },
+            ']': { type: 'defense', power: 10, cost: 5, description: 'Brace: Damage reduction for 2s.' },
+            '|': { type: 'attack', power: 15, cost: 10, description: 'Vertical Split: Wide vertical projectile.' },
+            '\\': { type: 'attack', power: 15, cost: 10, description: 'Backslash Split: Wide diagonal projectile.' },
+            '<': { type: 'movement', power: 1, cost: 4, description: 'Retreat: Fast back movement.' },
+            '>': { type: 'movement', power: 1, cost: 4, description: 'Advance: Fast forward movement.' },
+            '=': { type: 'utility', power: 0, cost: 7, description: 'Equilibrium: Balance HP with opponent (if difference is > 20).' },
+            '+': { type: 'resource', power: 15, cost: 0, description: 'Plus: Heal 15 HP.' },
+            '-': { type: 'status', power: 0, cost: 5, description: 'Minus: Opponent loses 15 Energy.' },
 
-    // Method: Reset - Resets for new round/milestone.
-    reset() {
-        this.hp = this.maxHp;
-        this.shield = MAX_SHIELD;
-        this.x = canvas.width / 2;
-        this.y = canvas.height / 2;
-    }
-}
-
-// Class: Attack - Base class for all attacks, with pooling.
-class Attack {
-    constructor(x, y, vx, vy, color, radius, damage, lifetime = Infinity, type = 'basic') {
-        this.x = x;
-        this.y = y;
-        this.vx = vx;
-        this.vy = vy;
-        this.color = color;
-        this.radius = radius;
-        this.damage = damage;
-        this.lifetime = lifetime;
-        this.type = type;
-        this.poolIndex = -1; // For pooling
-    }
-
-    // Method: Update - Base update, override for custom.
-    update(dt) {
-        this.x += this.vx * (dt / 16);
-        this.y += this.vy * (dt / 16);
-        this.lifetime -= dt;
-    }
-
-    // Method: Draw - Base draw, override for custom.
-    draw(ctx) {
-        ctx.fillStyle = this.color;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.fill();
-    }
-
-    // Method: CollidesWith - Base collision check.
-    collidesWith(px, py, pr) {
-        const dx = px - this.x;
-        const dy = py - this.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        return dist < pr + this.radius;
-    }
-
-    // Method: Recycle - For object pooling.
-    recycle(x, y, vx, vy, color, radius, damage, lifetime, type) {
-        this.x = x;
-        this.y = y;
-        this.vx = vx;
-        this.vy = vy;
-        this.color = color;
-        this.radius = radius;
-        this.damage = damage;
-        this.lifetime = lifetime;
-        this.type = type;
-        return this;
-    }
-}
-
-// Extended Attack Classes for Unique Patterns (Examples - Expand for All Keys)
-class AAttack extends Attack {
-    constructor(x, y) {
-        super(x, y, 0, 0, '#ff0000', 8, 10, 8000, 'homing');
-        this.targetX = canvas.width / 2;
-        this.targetY = canvas.height / 2;
-    }
-
-    update(dt) {
-        super.update(dt);
-        const dx = this.targetX - this.x;
-        const dy = this.targetY - this.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist > 100) {
-            this.vx += (dx / dist) * 0.005;
-            this.vy += (dy / dist) * 0.005;
-        }
-    }
-}
-
-class BAttack extends Attack {
-    constructor(x, y, vx, vy) {
-        super(x, y, vx, vy, '#ff9900', 7, 8, 8000, 'straight');
-    }
-
-    update(dt) {
-        super.update(dt);
-        // Fixed trajectory, no changes
-    }
-}
-
-// ... (Similar extensions for other keys: CAttack, DAttack, etc. - Abbreviated for brevity, implement all 100+ as needed)
-// Note: For symbols/unicode, use similar patterns with variations (e.g., Enter: vertical beams).
-
-// Class: GameManager - Central game logic, rounds, milestones.
-class GameManager {
-    constructor() {
-        this.mode = 'menu'; // 'menu', 'endless', 'practice', 'multi'
-        this.round = 0;
-        this.score = 0;
-        this.timer = 0;
-        this.currentKey = '?';
-        this.attacks = []; // Active attacks
-        this.diggers = [];
-        this.shake = 0;
-        this.lastTime = 0;
-        this.lastDamageTime = 0;
-        this.winningRound = false;
-        this.animationFrameId = null;
-        this.attackPool = []; // Pool array
-        this.peerConnection = null; // WebRTC
-        this.dataChannel = null;
-        this.isHost = false;
-        this.multiSyncInterval = null;
-        this.initPool();
-        this.loadProgress();
-    }
-
-    // Method: InitPool - Initializes attack object pool for optimization.
-    initPool() {
-        for (let i = 0; i < ATTACK_POOL_SIZE; i++) {
-            this.attackPool.push(new Attack(0, 0, 0, 0, '#fff', 10, 5));
-        }
-    }
-
-    // Method: GetPooledAttack - Gets/recycles from pool.
-    getPooledAttack(type = 'basic') {
-        let attack = this.attackPool.find(a => a.lifetime <= 0);
-        if (!attack) {
-            attack = new Attack(0, 0, 0, 0, '#fff', 10, 5, 0);
-            this.attackPool.push(attack);
-        }
-        attack.lifetime = Infinity; // Reset
-        // Customize based on type/key
-        if (type === 'a') {
-            attack = new AAttack(0, 0); // Example
-        }
-        return attack;
-    }
-
-    // Method: StartRound - Begins a new round with random key and timer.
-    startRound() {
-        this.round++;
-        this.currentKey = ALL_KEYS[Math.floor(Math.random() * ALL_KEYS.length)];
-        this.timer = ROUND_DURATION_MIN + Math.random() * (ROUND_DURATION_MAX - ROUND_DURATION_MIN);
-        this.winningRound = false;
-        this.attacks = [];
-        this.diggers = [];
-        player.reset();
-        this.score += 100; // Base score per round
-        if (this.round % MILESTONE_INTERVAL === 0) {
-            this.triggerMilestone();
-        }
-        // Multi sync if in multi
-        if (this.mode === 'multi') {
-            this.sendMultiData({ type: 'startRound', round: this.round, key: this.currentKey, timer: this.timer });
-        }
-    }
-
-    // Method: TriggerMilestone - Handles milestone rewards (replaces win).
-    triggerMilestone() {
-        const creditsGained = BASE_CREDITS_PER_MILESTONE + Math.floor((player.hp / player.maxHp) * BONUS_CREDITS_PER_MILESTONE);
-        player.credits += creditsGained;
-        showPopup(`MILESTONE ${this.round}! +${creditsGained} Credits`, canvas.width / 2, canvas.height / 2, 2000, '#ffeb3b');
-        player.reset(); // Full refresh
-        this.mode = 'milestone';
-        document.getElementById('milestoneMsg').textContent = `Round ${this.round} Survived! Score: ${this.score}`;
-        this.showMilestoneScreen();
-        this.saveProgress();
-    }
-
-    // Method: ShowMilestoneScreen - Displays milestone UI.
-    showMilestoneScreen() {
-        hud.classList.add('hidden');
-        canvas.style.display = 'none';
-        document.getElementById('milestone').classList.remove('hidden');
-        // Resume on keypress
-        const resume = (e) => {
-            if (e.key) {
-                document.getElementById('milestone').classList.add('hidden');
-                hud.classList.remove('hidden');
-                canvas.style.display = 'block';
-                this.mode = 'endless'; // Or multi/practice
-                this.startRound(); // Immediate next
-                window.removeEventListener('keydown', resume);
-            }
+            // Example Unicode (Requires copy/paste, less likely to be typed but supported)
+            'Ω': { type: 'attack', power: 50, cost: 30, description: 'Omega Blast: Ultimate high-cost, area-denial attack.' },
+            'π': { type: 'status', power: 0, cost: 15, description: 'Pi Lock: Freeze opponent in place for 3s.' },
+            '√': { type: 'utility', power: 0, cost: 10, description: 'Root: Create a temporary slow zone.' },
         };
-        window.addEventListener('keydown', resume);
-    }
 
-    // Method: SpawnPattern - Spawns unique attack for current key.
-    spawnPattern() {
-        const key = this.currentKey.toLowerCase();
-        let attack;
-        switch (key) {
-            case 'a':
-                // Accelerating Aperture (4 homing from edges)
-                for (let i = 0; i < 4; i++) {
-                    const angle = i * Math.PI / 2;
-                    const x = canvas.width / 2 + Math.cos(angle) * 300;
-                    const y = canvas.height / 2 + Math.sin(angle) * 300;
-                    attack = this.getPooledAttack('a');
-                    attack.recycle(x, y, Math.cos(angle) * 0.5, Math.sin(angle) * 0.5, '#ff0000', 8, 10, 8000, 'homing');
-                    this.attacks.push(attack);
-                }
-                break;
-            case 'b':
-                // Straight-line Stream (6 fixed trajectory)
-                for (let i = 0; i < 6; i++) {
-                    const edge = Math.floor(Math.random() * 4);
-                    let x, y, vx, vy;
-                    if (edge === 0) { x = Math.random() * canvas.width; y = 0; vx = 0; vy = 2; }
-                    else if (edge === 1) { x = Math.random() * canvas.width; y = canvas.height; vx = 0; vy = -2; }
-                    else if (edge === 2) { x = 0; y = Math.random() * canvas.height; vx = 2; vy = 0; }
-                    else { x = canvas.width; y = Math.random() * canvas.height; vx = -2; vy = 0; }
-                    attack = this.getPooledAttack('b');
-                    attack.recycle(x, y, vx, vy, '#ff9900', 7, 8, 8000, 'straight');
-                    this.attacks.push(attack);
-                }
-                break;
-            // ... Add cases for all keys (c-z, 0-9, symbols, unicode - ~100 cases, abbreviated)
-            // Fallback for undefined keys
-            default:
-                // Easy fallback: Straight edge shots
-                for (let side = 0; side < 4; side++) {
-                    for (let i = 0; i < 4; i++) {
-                        let x, y, vx, vy;
-                        const spacing = canvas.width / 5;
-                        if (side === 0) { x = (i + 1) * spacing; y = -20; vx = 0; vy = 1.2; }
-                        else if (side === 1) { x = (i + 1) * spacing; y = canvas.height + 20; vx = 0; vy = -1.2; }
-                        else if (side === 2) { x = -20; y = (i + 1) * spacing; vx = 1.2; vy = 0; }
-                        else { x = canvas.width + 20; y = (i + 1) * spacing; vx = -1.2; vy = 0; }
-                        attack = this.getPooledAttack('fallback');
-                        attack.recycle(x, y, vx, vy, '#888', 5, 4, 6000, 'straight');
-                        this.attacks.push(attack);
+        // =================================================================
+        // GAME STATE MANAGEMENT (New Architecture)
+        // =================================================================
+
+        class GameEntity {
+            constructor(id, x, y, color, isLocal) {
+                this.id = id;
+                this.x = x;
+                this.y = y;
+                this.targetX = x; // For smooth movement
+                this.targetY = y;
+                this.vx = 0;
+                this.vy = 0;
+                this.radius = 15;
+                this.health = 100;
+                this.maxHealth = 100;
+                this.energy = MAX_ENERGY;
+                this.maxEnergy = MAX_ENERGY;
+                this.color = color;
+                this.isLocal = isLocal;
+                this.speed = 3;
+                this.cooldowns = {};
+                this.effects = {}; // Status effects like 'slow', 'stun'
+                this.skin = SKINS[0];
+            }
+
+            update(dt) {
+                // Apply status effects
+                for (const effect in this.effects) {
+                    this.effects[effect] -= dt;
+                    if (this.effects[effect] <= 0) {
+                        delete this.effects[effect];
                     }
                 }
-                break;
-        }
-        // Spawn digger occasionally (e.g., for 'g')
-        if (key === 'g') {
-            this.spawnDigger();
-        }
-    }
 
-    // Method: SpawnDigger - Spawns ground digger enemy.
-    spawnDigger() {
-        const digger = {
-            x: Math.random() * canvas.width,
-            y: canvas.height + 50,
-            vx: (Math.random() - 0.5) * 0.5,
-            vy: -1.2,
-            size: 12,
-            damage: 20,
-            color: '#8B4513',
-            lifetime: 15000,
-            update: (dt) => {
-                const dx = player.x - digger.x;
-                const dy = player.y - digger.y;
+                // Smooth movement towards target (interpolation)
+                const lerpFactor = 0.15;
+                this.x += (this.targetX - this.x) * lerpFactor;
+                this.y += (this.targetY - this.y) * lerpFactor;
+
+                // Simple collision detection (keep within bounds)
+                this.x = Math.max(this.radius, Math.min(CANVAS.width - this.radius, this.x));
+                this.y = Math.max(this.radius, Math.min(CANVAS.height - this.radius, this.y));
+
+                // Energy regeneration
+                if (this.energy < this.maxEnergy) {
+                    this.energy += 0.5 * dt;
+                }
+            }
+
+            draw() {
+                // Player Circle
+                CTX.fillStyle = this.color;
+                CTX.beginPath();
+                CTX.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                CTX.fill();
+
+                // Player ID Label
+                CTX.fillStyle = 'white';
+                CTX.textAlign = 'center';
+                CTX.font = '10px Space Mono';
+                CTX.fillText(this.id, this.x, this.y + this.radius + 10);
+
+                // Health Bar (Above)
+                const barWidth = 40;
+                const barHeight = 5;
+                const healthRatio = this.health / this.maxHealth;
+                CTX.fillStyle = 'gray';
+                CTX.fillRect(this.x - barWidth / 2, this.y - this.radius - barHeight - 5, barWidth, barHeight);
+                CTX.fillStyle = healthRatio > 0.3 ? 'lime' : 'red';
+                CTX.fillRect(this.x - barWidth / 2, this.y - this.radius - barHeight - 5, barWidth * healthRatio, barHeight);
+
+                // Draw skin marker (V1/V2 indicator)
+                CTX.fillStyle = this.skin.version === 'V2' ? '#f59e0b' : '#10b981';
+                CTX.beginPath();
+                CTX.arc(this.x + this.radius - 2, this.y - this.radius + 2, 4, 0, Math.PI * 2);
+                CTX.fill();
+
+                // Draw status effects (if any)
+                if (this.effects.slow) {
+                    CTX.fillStyle = 'rgba(0, 0, 255, 0.5)';
+                    CTX.beginPath();
+                    CTX.arc(this.x, this.y, this.radius * 1.5, 0, Math.PI * 2);
+                    CTX.fill();
+                }
+            }
+        }
+
+        class GameState {
+            constructor() {
+                this.localPlayer = new GameEntity(LOCAL_USER_ID, CANVAS.width / 4, CANVAS.height / 2, '#10b981', true);
+                this.remotePlayer = null; // Will be initialized upon connection
+                this.projectiles = [];
+                this.effects = [];
+                this.credits = 1000;
+                this.lastUpdate = performance.now();
+                this.roundDuration = 0; // Tracks the current round time
+                this.maxRoundTime = 0; // Set randomly between 5s and 12s
+                this.isRoundActive = false;
+                this.playerSkins = JSON.parse(JSON.stringify(SKINS)); // Deep copy skins for modification
+            }
+
+            initRound() {
+                this.maxRoundTime = Math.random() * (12 - 5) + 5; // 5s to 12s
+                this.roundDuration = 0;
+                this.isRoundActive = true;
+                this.localPlayer.health = this.localPlayer.maxHealth;
+                this.localPlayer.energy = this.localPlayer.maxEnergy;
+                this.projectiles = [];
+                UIManager.log('New Arena Round Started!', 'yellow');
+            }
+
+            updateSkins(newSkins) {
+                 this.playerSkins = newSkins;
+            }
+        }
+
+        let gameState = new GameState();
+
+        // =================================================================
+        // NETWORK MANAGER (WebRTC)
+        // =================================================================
+
+        class NetworkManager {
+            constructor() {
+                this.pc = null; // RTCPeerConnection
+                this.dataChannel = null;
+                this.isInitiator = false;
+                this.remoteUserId = null;
+            }
+
+            // Initializes the peer connection object
+            initPeerConnection(isInitiator) {
+                this.isInitiator = isInitiator;
+                this.pc = new RTCPeerConnection({
+                    iceServers: [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:stun1.l.google.com:19302' }
+                    ]
+                });
+
+                this.pc.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        // In a manual signaling scenario, we log candidates but rely on the user
+                        // copying the main Offer/Answer SDP, which contains gathered candidates.
+                        // The previous call here caused the 'this.handleSignal is not a function' error.
+                        UIManager.log(`ICE Candidate Found: ${event.candidate.type}`, 'gray');
+                    }
+                };
+
+                this.pc.oniceconnectionstatechange = () => {
+                    UIManager.updateConnectionStatus(this.pc.iceConnectionState);
+                    UIManager.log(`ICE State: ${this.pc.iceConnectionState}`, 'gray');
+                };
+
+                this.pc.onconnectionstatechange = () => {
+                    UIManager.updateConnectionStatus(this.pc.connectionState);
+                    UIManager.log(`Connection State: ${this.pc.connectionState}`, 'gray');
+                };
+            }
+
+            // Handles the Data Channel setup
+            setupDataChannel() {
+                this.dataChannel.onopen = () => {
+                    UIManager.log('Data Channel OPEN. P2P Connection established.', 'green');
+                    document.getElementById('dataChannelStatus').textContent = 'Data Channel: OPEN';
+
+                    // Initialize remote player and start the round
+                    gameState.remotePlayer = new GameEntity(this.remoteUserId, CANVAS.width * 3 / 4, CANVAS.height / 2, '#f00', false);
+                    gameState.initRound();
+
+                    // Send initial player state
+                    this.sendPlayerState();
+                };
+
+                this.dataChannel.onmessage = (event) => {
+                    this.receiveData(event.data);
+                };
+
+                this.dataChannel.onclose = () => {
+                    UIManager.log('Data Channel CLOSED. Opponent disconnected.', 'red');
+                    document.getElementById('dataChannelStatus').textContent = 'Data Channel: Closed';
+                    gameState.remotePlayer = null;
+                };
+
+                this.dataChannel.onerror = (error) => {
+                    UIManager.log(`Data Channel Error: ${error}`, 'red');
+                };
+            }
+
+            // 1. Initiator creates the WebRTC Offer
+            async createOffer() {
+                this.initPeerConnection(true);
+
+                // Create and set the data channel for the initiator
+                this.dataChannel = this.pc.createDataChannel('gameData');
+                this.setupDataChannel();
+                
+                try {
+                    const offer = await this.pc.createOffer();
+                    await this.pc.setLocalDescription(offer);
+                    const signal = JSON.stringify({
+                        sdp: this.pc.localDescription,
+                        senderId: LOCAL_USER_ID
+                    });
+                    UIManager.handleSignalOutput(signal);
+                    UIManager.log('Generated Offer SDP. Copy/Paste to opponent.', 'yellow');
+                    document.getElementById('btnCreateAnswer').disabled = true; // Only initiator creates offer
+                } catch (error) {
+                    UIManager.log(`Error creating Offer: ${error.name}`, 'red');
+                }
+            }
+
+            // 2. Receiver creates the WebRTC Answer
+            async createAnswer(offerSignal) {
+                try {
+                    const offer = JSON.parse(offerSignal).sdp;
+                    this.remoteUserId = JSON.parse(offerSignal).senderId;
+                    document.getElementById('remoteUserId').textContent = this.remoteUserId;
+
+                    this.initPeerConnection(false);
+
+                    // Set remote data channel listener
+                    this.pc.ondatachannel = (event) => {
+                        this.dataChannel = event.channel;
+                        this.setupDataChannel();
+                    };
+
+                    await this.pc.setRemoteDescription(new RTCSessionDescription(offer));
+                    const answer = await this.pc.createAnswer();
+                    await this.pc.setLocalDescription(answer);
+
+                    const signal = JSON.stringify({
+                        sdp: this.pc.localDescription,
+                        senderId: LOCAL_USER_ID
+                    });
+
+                    UIManager.handleSignalOutput(signal);
+                    UIManager.log('Generated Answer SDP. Copy/Paste back to initiator.', 'yellow');
+                } catch (error) {
+                    UIManager.log(`Error creating Answer: ${error.name}`, 'red');
+                }
+            }
+
+            // 3. Processes the received signal (Offer, Answer, or ICE candidate)
+            async processSignal(signalText) {
+                try {
+                    const signal = JSON.parse(signalText);
+
+                    // Check if the signal is intended for the local player
+                    if (signal.senderId === LOCAL_USER_ID) return;
+
+                    // Set remote ID if not set
+                    if (!this.remoteUserId) {
+                        this.remoteUserId = signal.senderId;
+                        document.getElementById('remoteUserId').textContent = this.remoteUserId;
+                    }
+
+                    if (signal.sdp) {
+                        // Received SDP (Offer or Answer)
+                        if (signal.sdp.type === 'offer' && !this.isInitiator) {
+                            // Automatically start creating answer if it's an offer and we are not the initiator
+                            document.getElementById('btnCreateAnswer').disabled = false;
+                            UIManager.log('Received Offer. Click "Create Answer" to respond.', 'teal');
+                            document.getElementById('signalBox').value = signalText; // Store for easy processing
+                        } else if (signal.sdp.type === 'answer' && this.isInitiator) {
+                            // Initiator receives the answer
+                            await this.pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
+                            UIManager.log('Received Answer. Connection attempt in progress...', 'green');
+                        }
+                    } else if (signal.candidate) {
+                        // Received ICE Candidate
+                        try {
+                            // We ignore the candidate if remote description hasn't been set yet
+                            if (this.pc.remoteDescription) {
+                                await this.pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
+                                UIManager.log('Added ICE Candidate.', 'gray');
+                            }
+                        } catch (e) {
+                            UIManager.log(`Error adding ICE candidate: ${e.name}`, 'red');
+                        }
+                    }
+                    document.getElementById('signalBox').value = ''; // Clear box after processing
+                } catch (error) {
+                    UIManager.log(`Invalid signal data: ${error.message}`, 'red');
+                }
+            }
+
+            // Sends local player state to opponent
+            sendPlayerState() {
+                if (this.dataChannel && this.dataChannel.readyState === 'open') {
+                    const localState = {
+                        x: gameState.localPlayer.x,
+                        y: gameState.localPlayer.y,
+                        health: gameState.localPlayer.health,
+                        energy: gameState.localPlayer.energy,
+                        skin: gameState.localPlayer.skin.id,
+                        projectiles: gameState.projectiles.map(p => ({ x: p.x, y: p.y, r: p.radius, c: p.color }))
+                    };
+                    this.dataChannel.send(JSON.stringify({ type: 'state', data: localState }));
+                }
+            }
+
+            // Receives data and updates remote player state
+            receiveData(data) {
+                try {
+                    const message = JSON.parse(data);
+                    if (message.type === 'state' && gameState.remotePlayer) {
+                        const state = message.data;
+                        gameState.remotePlayer.targetX = state.x;
+                        gameState.remotePlayer.targetY = state.y;
+                        gameState.remotePlayer.health = state.health;
+                        gameState.remotePlayer.energy = state.energy;
+                        // For simplicity, projectiles are rendered locally upon attack, but state must be synced
+                        //gameState.remoteProjectiles = state.projectiles;
+                    } else if (message.type === 'attack' && gameState.isRoundActive) {
+                        // Handle attack received
+                        gameState.localPlayer.health -= message.data.damage;
+                        UIManager.log(`HIT! Took ${message.data.damage} damage.`, 'red');
+                        if (gameState.localPlayer.health <= 0) {
+                            UIManager.log('DEFEAT! Opponent wins the round.', 'red');
+                            gameState.isRoundActive = false;
+                        }
+                    }
+                } catch (e) {
+                    // Ignore non-JSON or malformed messages
+                }
+            }
+        }
+
+        const networkManager = new NetworkManager();
+
+        // =================================================================
+        // UI MANAGER (All UI interactions and updates)
+        // =================================================================
+
+        const UIManager = {
+            gameLogElement: document.getElementById('gameLog'),
+            shopModal: document.getElementById('shopModal'),
+            shopContent: document.getElementById('shopContent'),
+
+            log(message, color = 'text-text-light') {
+                const logEntry = document.createElement('p');
+                logEntry.className = `mono-font ${color}`;
+                logEntry.textContent = `[${new Date().toLocaleTimeString()}] > ${message}`;
+                this.gameLogElement.prepend(logEntry);
+                // Keep log capped at 50 entries
+                while (this.gameLogElement.children.length > 50) {
+                    this.gameLogElement.removeChild(this.gameLogElement.lastChild);
+                }
+            },
+
+            updateHUD() {
+                document.getElementById('playerCredits').textContent = gameState.credits.toLocaleString();
+                document.getElementById('modalCredits').textContent = gameState.credits.toLocaleString();
+                document.getElementById('playerEnergy').textContent = gameState.localPlayer.energy.toFixed(0);
+
+                if (gameState.isRoundActive) {
+                     const remainingTime = gameState.maxRoundTime - gameState.roundDuration;
+                    document.getElementById('roundTimer').textContent = remainingTime > 0 ? remainingTime.toFixed(1) : '0.0';
+                } else {
+                    document.getElementById('roundTimer').textContent = 'STOPPED';
+                }
+
+                // Update input field placeholder based on skin
+                INPUT_FIELD.placeholder = `Current Skin: ${gameState.localPlayer.skin.name}`;
+            },
+
+            updateConnectionStatus(state) {
+                let color = 'text-text-mute';
+                if (state === 'connected' || state === 'open') color = 'text-accent-green';
+                if (state === 'connecting' || state === 'checking') color = 'text-accent-yellow';
+                if (state === 'failed' || state === 'disconnected' || state === 'closed') color = 'text-red-500';
+                document.getElementById('connectionStatus').className = color;
+                document.getElementById('connectionStatus').textContent = state.toUpperCase();
+            },
+
+            handleSignalOutput(signal) {
+                const signalBox = document.getElementById('signalBox');
+                signalBox.value = signal;
+                signalBox.select();
+                signalBox.focus();
+                this.log('Signal data copied to box. Please share it manually.', 'blue');
+            },
+
+            openShopModal() {
+                this.renderShopSkins();
+                this.shopModal.classList.remove('hidden');
+                this.shopModal.classList.add('flex');
+                setTimeout(() => {
+                    this.shopContent.classList.remove('scale-95', 'opacity-0');
+                    this.shopContent.classList.add('scale-100', 'opacity-100');
+                }, 10);
+                this.log('Shop Accessed.', 'gray');
+            },
+
+            closeShopModal() {
+                this.shopContent.classList.remove('scale-100', 'opacity-100');
+                this.shopContent.classList.add('scale-95', 'opacity-0');
+                setTimeout(() => {
+                    this.shopModal.classList.remove('flex');
+                    this.shopModal.classList.add('hidden');
+                }, 300);
+            },
+
+            handleModalClick(event) {
+                if (event.target === this.shopModal) {
+                    this.closeShopModal();
+                }
+            },
+
+            renderShopSkins() {
+                const container = document.getElementById('skinsContainer');
+                container.innerHTML = '';
+
+                gameState.playerSkins.forEach(skin => {
+                    const isEquipped = gameState.localPlayer.skin.id === skin.id;
+                    const canAfford = gameState.credits >= skin.cost;
+                    const isOwned = skin.equipped || skin.cost === 0;
+
+                    const card = document.createElement('div');
+                    card.className = `skin-card ui-panel p-4 rounded-xl ${isEquipped ? 'skin-card-equipped' : 'border-border-color'} transition-all duration-300 border-2`;
+                    card.innerHTML = `
+                        <div class="flex justify-between items-center border-b pb-2 mb-2 border-border-color">
+                            <h3 class="text-xl font-bold ${skin.version === 'V2' ? 'text-blue-400' : 'text-green-400'}">${skin.name}</h3>
+                            <span class="px-2 py-1 text-xs rounded-full font-bold mono-font" style="background-color:${skin.color}; color:var(--primary-bg)">${skin.version}</span>
+                        </div>
+                        <p class="text-sm text-text-mute mb-3">${skin.effectDesc}</p>
+                        <div class="text-center">
+                            ${isEquipped ?
+                                `<button class="w-full py-2 bg-accent-yellow text-primary-bg font-bold rounded-lg cursor-default">EQUIPPED</button>` :
+                                isOwned ?
+                                    `<button id="btnEquip-${skin.id}" class="btn-hover w-full py-2 bg-green-600 text-text-light font-bold rounded-lg" data-skin-id="${skin.id}">EQUIP</button>` :
+                                    `<button id="btnBuy-${skin.id}" class="btn-hover w-full py-2 ${canAfford ? 'bg-indigo-600' : 'bg-gray-700 cursor-not-allowed'}" ${canAfford ? '' : 'disabled'} data-skin-id="${skin.id}">BUY | ${skin.cost.toLocaleString()} CR</button>`
+                            }
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+
+                // Attach event listeners for the newly created buttons
+                container.querySelectorAll('[data-skin-id]').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        const skinId = e.currentTarget.dataset.skinId;
+                        if (e.currentTarget.id.startsWith('btnBuy')) {
+                            ShopManager.buySkin(skinId);
+                        } else if (e.currentTarget.id.startsWith('btnEquip')) {
+                            ShopManager.equipSkin(skinId);
+                        }
+                    });
+                });
+            }
+        };
+
+        // =================================================================
+        // SHOP MANAGER (Handles all skin and credit logic)
+        // =================================================================
+
+        const ShopManager = {
+            buySkin(skinId) {
+                const skin = gameState.playerSkins.find(s => s.id === skinId);
+                if (skin && !skin.owned && gameState.credits >= skin.cost) {
+                    gameState.credits -= skin.cost;
+                    skin.equipped = true;
+                    UIManager.log(`Purchased and Equipped skin: ${skin.name}`, 'yellow');
+                    this.equipSkin(skinId);
+                } else if (skin && !skin.owned && gameState.credits < skin.cost) {
+                    UIManager.log('INSUFFICIENT CREDITS to purchase this skin.', 'red');
+                }
+                UIManager.updateHUD();
+                UIManager.renderShopSkins();
+            },
+
+            equipSkin(skinId) {
+                const newSkin = gameState.playerSkins.find(s => s.id === skinId);
+                if (newSkin) {
+                    // Unequip old skin
+                    gameState.playerSkins.forEach(s => s.equipped = false);
+
+                    // Equip new skin
+                    newSkin.equipped = true;
+                    gameState.localPlayer.skin = newSkin;
+
+                    UIManager.log(`Equipped skin: ${newSkin.name} (${newSkin.version})`, 'green');
+                }
+                UIManager.updateHUD();
+                UIManager.renderShopSkins();
+            }
+        };
+
+        // =================================================================
+        // GAME LOGIC (Attack and core mechanics)
+        // =================================================================
+
+        const GameLogic = {
+            attack(char, player) {
+                const action = CHARACTER_ACTIONS[char];
+                if (!action) return;
+
+                if (player.energy < action.cost) {
+                    UIManager.log(`Insufficient Energy for '${char}'. Cost: ${action.cost}.`, 'red');
+                    return;
+                }
+
+                player.energy -= action.cost;
+                UIManager.log(`Executing: ${action.description}`, 'accent-green');
+                networkManager.sendPlayerState(); // Sync state after energy change
+
+                switch (action.type) {
+                    case 'attack':
+                        // Create a projectile
+                        this.createProjectile(player, action.power);
+                        break;
+                    case 'defense':
+                        // Apply temporary shield/defense buff
+                        player.effects.shield = (player.effects.shield || 0) + 2; // 2 seconds shield
+                        break;
+                    case 'utility':
+                        // Handle utility logic (e.g., healing, energy burst)
+                        if (char === 'e') player.energy = Math.min(MAX_ENERGY, player.energy + action.power);
+                        if (char === 'z') player.effects = {}; // Clear debuffs
+                        if (char === 'l') {
+                             // Lifesteal implementation: deal damage and heal
+                            networkManager.dataChannel.send(JSON.stringify({ type: 'attack', data: { damage: 5 } }));
+                            player.health = Math.min(player.maxHealth, player.health + 5);
+                        }
+                        break;
+                    case 'movement':
+                        // Handle movement logic (e.g., dash, warp)
+                        const dashDistance = action.power * 50;
+                        player.targetX += dashDistance * (player.isLocal ? 1 : -1); // Dash forward
+                        break;
+                    case 'resource':
+                        // Handle resource logic (credits, health)
+                        if (char === '0' || char === '6') gameState.credits += action.power;
+                        if (char === '9' || char === '+') player.health = Math.min(player.maxHealth, player.health + action.power);
+                        break;
+                    case 'status':
+                        // Send status effect to opponent
+                         networkManager.dataChannel.send(JSON.stringify({ type: 'status', data: { effect: char, duration: 5 } }));
+                        break;
+                }
+
+                // V2 Skin Passive Check (REX Engine: Mobility)
+                if (player.skin.id === 'S202' && 'aeiou'.includes(char)) {
+                    player.effects.speedBoost = 3; // 3 seconds speed boost
+                    player.speed = 6;
+                } else if (player.skin.id === 'S202' && !player.effects.speedBoost) {
+                    player.speed = 3;
+                }
+            },
+
+            createProjectile(shooter, damage) {
+                if (!gameState.remotePlayer) return;
+
+                // Calculate direction towards opponent
+                const dx = gameState.remotePlayer.x - shooter.x;
+                const dy = gameState.remotePlayer.y - shooter.y;
                 const dist = Math.sqrt(dx * dx + dy * dy);
-                if (dist > 50) {
-                    digger.vx += (dx / dist) * 0.001 * dt;
-                    digger.vy += (dy / dist) * 0.001 * dt;
-                }
-                digger.x += digger.vx * dt / 16;
-                digger.y += digger.vy * dt / 16;
-                digger.lifetime -= dt;
-            }
+                const angle = Math.atan2(dy, dx);
+
+                gameState.projectiles.push({
+                    x: shooter.x,
+                    y: shooter.y,
+                    vx: Math.cos(angle) * 5,
+                    vy: Math.sin(angle) * 5,
+                    damage: damage,
+                    radius: 5,
+                    color: shooter.color,
+                    ownerId: shooter.id,
+                    isLocal: shooter.isLocal
+                });
+            },
+
+            updateProjectiles(dt) {
+                gameState.projectiles = gameState.projectiles.filter(p => {
+                    p.x += p.vx;
+                    p.y += p.vy;
+
+                    // Check boundaries
+                    if (p.x < 0 || p.x > CANVAS.width || p.y < 0 || p.y > CANVAS.height) {
+                        return false; // Remove if out of bounds
+                    }
+
+                    // Only local player's projectiles can hit the remote player
+                    if (p.isLocal && gameState.remotePlayer) {
+                        const target = gameState.remotePlayer;
+                        const dist = Math.sqrt((p.x - target.x) ** 2 + (p.y - target.y) ** 2);
+                        if (dist < target.radius + p.radius) {
+                            // Hit detected: send attack message via DataChannel
+                            networkManager.dataChannel.send(JSON.stringify({ type: 'attack', data: { damage: p.damage } }));
+                            UIManager.log(`Dealt ${p.damage} damage to opponent.`, 'green');
+                            return false; // Projectile destroyed
+                        }
+                    }
+                    return true;
+                });
+            },
         };
-        this.diggers.push(digger);
-    }
 
-    // Method: UpdateAttacks - Updates and checks collisions for attacks.
-    updateAttacks(dt) {
-        this.attacks = this.attacks.filter(attack => {
-            attack.update(dt);
-            if (attack.collidesWith(player.x, player.y, player.radius)) {
-                if (player.takeDamage(attack.damage)) {
-                    gameManager.lastDamageTime = Date.now();
-                    gameManager.startShake(150, 5);
-                    showPopup(`-${attack.damage} HP`, player.x, player.y - 20, 500, '#f55');
+        // =================================================================
+        // INPUT HANDLER (Handles all key/mouse events)
+        // =================================================================
+
+        function handleKeyPress(event) {
+            // Only allow typing if a round is active
+            if (!gameState.isRoundActive) {
+                UIManager.log('Round is inactive. Cannot execute commands.', 'red');
+                return;
+            }
+
+            const char = event.key.toLowerCase();
+            const action = CHARACTER_ACTIONS[char];
+
+            if (action) {
+                GameLogic.attack(char, gameState.localPlayer);
+            }
+
+            // Update the attack queue display
+            const input = INPUT_FIELD.value;
+            document.getElementById('attackQueue').textContent = input.toUpperCase().split('').join(' ');
+        }
+
+        function handleCanvasClick(event) {
+            if (!gameState.isRoundActive) return;
+
+            // Simple movement based on click location
+            const rect = CANVAS.getBoundingClientRect();
+            const mouseX = event.clientX - rect.left;
+            const mouseY = event.clientY - rect.top;
+
+            gameState.localPlayer.targetX = mouseX;
+            gameState.localPlayer.targetY = mouseY;
+        }
+
+        // =================================================================
+        // GAME LOOP (The heart of the new system)
+        // =================================================================
+
+        function gameLoop(timestamp) {
+            const dt = (timestamp - gameState.lastUpdate) / MS_PER_FRAME; // Time delta for framerate independence
+            gameState.lastUpdate = timestamp;
+
+            // 1. Update Game State
+            if (gameState.isRoundActive) {
+                // Round Timer Update (5s - 12s)
+                gameState.roundDuration += dt * (MS_PER_FRAME / 1000); // Add real time
+
+                if (gameState.roundDuration >= gameState.maxRoundTime) {
+                    UIManager.log('Round Timer Expired. Credits awarded.', 'yellow');
+                    gameState.credits += 500; // Award credits for surviving the round
+                    gameState.isRoundActive = false;
                 }
-                if (player.hp <= 0) {
-                    this.gameOver();
-                    return false;
+
+                gameState.localPlayer.update(dt);
+                if (gameState.remotePlayer) gameState.remotePlayer.update(dt);
+
+                GameLogic.updateProjectiles(dt);
+
+                // Send state update to opponent (throttled to network speed, e.g., every 50ms)
+                if (timestamp % 50 < 10) {
+                    networkManager.sendPlayerState();
                 }
-                return attack.damage === 0; // Keep passive attacks
-            }
-            return attack.lifetime > 0 &&
-                   attack.x > -100 && attack.x < canvas.width + 100 &&
-                   attack.y > -100 && attack.y < canvas.height + 100;
-        });
-    }
 
-    // Method: UpdateDiggers - Updates diggers and collisions.
-    updateDiggers(dt) {
-        this.diggers = this.diggers.filter(digger => {
-            digger.update(dt);
-            const dx = player.x - digger.x;
-            const dy = player.y - digger.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            if (dist < player.radius + digger.size) {
-                if (player.takeDamage(digger.damage)) {
-                    gameManager.lastDamageTime = Date.now();
-                    gameManager.startShake(200, 6);
-                    showPopup(`-${digger.damage} HP`, player.x, player.y - 20, 500, '#8B4513');
+                // Check for win condition
+                if (gameState.remotePlayer && gameState.remotePlayer.health <= 0) {
+                     UIManager.log('VICTORY! Opponent defeated.', 'green');
+                     gameState.credits += 2000;
+                     gameState.isRoundActive = false;
                 }
-                if (player.hp <= 0) {
-                    this.gameOver();
-                    return false;
-                }
-                return false;
             }
-            return digger.lifetime > 0 && digger.y > -50;
-        });
-    }
 
-    // Method: UpdateRound - Manages round timer and spawning.
-    updateRound(dt) {
-        this.timer -= dt / 1000;
-        if (this.timer <= 0) {
-            if (!this.winningRound) {
-                this.roundWin();
-            }
-            return;
+            // 2. Render Graphics
+            render();
+
+            // 3. Update UI
+            UIManager.updateHUD();
+
+            // 4. Request next frame
+            requestAnimationFrame(gameLoop);
         }
-        // Spawn patterns periodically
-        if (Math.random() < 0.05) {
-            this.spawnPattern();
-        }
-    }
 
-    // Method: RoundWin - Handles successful round completion.
-    roundWin() {
-        this.winningRound = true;
-        this.score += 50; // Bonus
-        showPopup('Round Cleared!', canvas.width / 2, canvas.height / 2 - 50, 1000, '#00ff44');
-        // FIXED: For practice mode, return to keypad after win
-        if (this.mode === 'practice') {
-            setTimeout(() => showPractice(), 2000);
-        } else {
-            setTimeout(() => this.startRound(), 2000); // Seamless next round for endless/multi
-        }
-    }
+        function render() {
+            // Clear canvas
+            CTX.fillStyle = '#000';
+            CTX.fillRect(0, 0, CANVAS.width, CANVAS.height);
 
-    // Method: GameOver - Ends game.
-    gameOver() {
-        player.dead = true;
-        this.mode = 'gameover';
-        this.showGameOverScreen();
-        if (this.multiSyncInterval) clearInterval(this.multiSyncInterval);
-        this.saveProgress();
-    }
+            // Draw game boundaries/grid
+            CTX.strokeStyle = '#374151';
+            CTX.lineWidth = 1;
+            CTX.strokeRect(0, 0, CANVAS.width, CANVAS.height);
 
-    // Method: ShowGameOverScreen - Displays game over UI.
-    showGameOverScreen() {
-        if (this.animationFrameId) {
-            cancelAnimationFrame(this.animationFrameId);
-            this.animationFrameId = null;
-        }
-        hud.classList.add('hidden');
-        canvas.style.display = 'none';
-        document.getElementById('gameover').classList.remove('hidden');
-        document.getElementById('finalScore').textContent = `Final Round: ${this.round} | Score: ${this.score}`;
-        this.startShake(1000, 10);
-    }
-
-    // Method: StartShake - Screen shake effect.
-    startShake(duration, intensity) {
-        this.shake = intensity;
-        setTimeout(() => this.shake = 0, duration);
-    }
-
-    // Method: MainLoop - Core game loop.
-    mainLoop(time) {
-        if (this.mode === 'menu' || this.mode === 'gameover' || this.mode === 'milestone') {
-            if (this.animationFrameId) {
-                cancelAnimationFrame(this.animationFrameId);
-                this.animationFrameId = null;
-            }
-            return;
-        }
-        const dt = Math.min(time - this.lastTime, 50); // Cap dt for stability
-        this.lastTime = time;
-
-        // Updates
-        player.update(dt, mouse.x, mouse.y, canvas.width, canvas.height);
-        this.updateRound(dt);
-        this.updateAttacks(dt);
-        this.updateDiggers(dt);
-
-        // Draw
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#111';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.save();
-        const shakeX = (Math.random() - 0.5) * this.shake;
-        const shakeY = (Math.random() - 0.5) * this.shake;
-        ctx.translate(shakeX, shakeY);
-
-        // Draw attacks
-        this.attacks.forEach(a => a.draw(ctx));
-        // Draw diggers
-        this.diggers.forEach(d => {
-            ctx.fillStyle = d.color;
-            ctx.fillRect(d.x - d.size / 2, d.y - d.size / 2, d.size, d.size);
-            ctx.fillStyle = 'rgba(139, 69, 19, 0.3)';
-            ctx.fillRect(d.x - d.size / 2, d.y + d.size / 2, d.size, 8);
-        });
-        // Draw player
-        player.render(ctx);
-        // Draw shield
-        if (player.shield > 0) {
-            const ratio = player.shield / MAX_SHIELD;
-            ctx.strokeStyle = `rgba(0, 150, 255, ${0.5 + ratio * 0.5})`;
-            ctx.lineWidth = 5 * ratio;
-            ctx.beginPath();
-            ctx.arc(player.x, player.y, player.radius + 5, 0, Math.PI * 2);
-            ctx.stroke();
-        }
-        // Draw HP bar
-        const hpRatio = player.hp / player.maxHp;
-        ctx.fillStyle = hpRatio > 0.5 ? '#0f0' : (hpRatio > 0.2 ? '#ff0' : '#f00');
-        ctx.fillRect(player.x - 15, player.y + player.radius + 5, 30 * hpRatio, 3);
-
-        ctx.restore();
-
-        // HUD
-        this.updateHUD();
-
-        this.animationFrameId = requestAnimationFrame(this.mainLoop.bind(this));
-    }
-
-    // Method: UpdateHUD - Updates all HUD elements.
-    updateHUD() {
-        document.getElementById('roundInfo').textContent = this.round;
-        document.getElementById('hp').textContent = Math.ceil(player.hp);
-        document.getElementById('shield').textContent = Math.ceil(player.shield);
-        document.getElementById('credits').textContent = player.credits;
-        document.getElementById('score').textContent = this.score;
-        document.getElementById('currentKey').textContent = this.currentKey.toUpperCase();
-        document.getElementById('timer').textContent = this.timer.toFixed(1);
-        document.getElementById('shopCredits').textContent = player.credits;
-    }
-
-    // Method: SaveProgress - Saves to localStorage.
-    saveProgress() {
-        const state = {
-            credits: player.credits,
-            equippedSkinId: player.equippedSkinId,
-            ownedSkins: player.ownedSkins,
-            highScore: Math.max(this.score, localStorage.getItem('kd_highScore') || 0)
-        };
-        localStorage.setItem('keyboard_doom_v2', JSON.stringify(state));
-    }
-
-    // Method: LoadProgress - Loads from localStorage.
-    loadProgress() {
-        const saved = localStorage.getItem('keyboard_doom_v2');
-        if (saved) {
-            const state = JSON.parse(saved);
-            player.credits = state.credits || 0;
-            player.equippedSkinId = state.equippedSkinId || 'default';
-            player.ownedSkins = state.ownedSkins || ['default'];
-            this.score = state.highScore || 0;
-        }
-    }
-
-    // ============================================
-    // MULTIPLAYER: WebRTC P2P SETUP
-    // ============================================
-    // Method: InitWebRTC - Initializes peer connection.
-    initWebRTC(isHostParam) {
-        this.isHost = isHostParam;
-        this.peerConnection = new RTCPeerConnection({
-            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] // Public STUN
-        });
-        this.dataChannel = this.peerConnection.createDataChannel('gameSync', { negotiated: false });
-        this.dataChannel.onopen = () => {
-            document.getElementById('webrtcFallback').textContent = 'WebRTC Connected!';
-            this.multiSyncInterval = setInterval(() => this.sendMultiData({ type: 'sync', playerX: player.x, playerY: player.y, hp: player.hp }), 100);
-        };
-        this.peerConnection.onicecandidate = (e) => {
-            if (e.candidate) {
-                // Send ICE via data channel once open
-            }
-        };
-        this.peerConnection.ondatachannel = (e) => {
-            this.dataChannel = e.channel;
-            // Same onopen
-        };
-        if (this.isHost) {
-            this.peerConnection.createOffer().then(offer => {
-                this.peerConnection.setLocalDescription(offer);
-                document.getElementById('sdpOutput').value = JSON.stringify(offer);
+            // Draw projectiles
+            gameState.projectiles.forEach(p => {
+                CTX.fillStyle = p.color;
+                CTX.beginPath();
+                CTX.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                CTX.fill();
             });
-        }
-    }
 
-    // Method: SetRemoteSDP - For joiner: Sets remote description.
-    setRemoteSDP(sdpStr) {
-        const desc = JSON.parse(sdpStr);
-        this.peerConnection.setRemoteDescription(desc).then(() => {
-            if (!this.isHost) {
-                this.peerConnection.createAnswer().then(answer => {
-                    this.peerConnection.setLocalDescription(answer);
-                    // Host would paste this answer
-                    showPopup('Answer generated - Share with host!', canvas.width / 2, 100, 2000);
-                });
-            }
-        });
-    }
+            // Draw players (Local must be drawn last to ensure visibility)
+            if (gameState.remotePlayer) gameState.remotePlayer.draw();
+            gameState.localPlayer.draw();
 
-    // Method: SendMultiData - Sends game state over WebRTC.
-    sendMultiData(data) {
-        if (this.dataChannel && this.dataChannel.readyState === 'open') {
-            this.dataChannel.send(JSON.stringify(data));
-        }
-    }
-
-    // Method: HandleMultiData - Receives and syncs data.
-    handleMultiData(dataStr) {
-        const data = JSON.parse(dataStr);
-        if (data.type === 'sync') {
-            // Sync opponent position (draw as second player)
-            // Implementation: Draw second player sprite
-        } else if (data.type === 'startRound') {
-            this.startRound(); // Sync round
-        }
-    }
-
-    // Method: CleanupMulti - Cleans up WebRTC.
-    cleanupMulti() {
-        if (this.peerConnection) this.peerConnection.close();
-        if (this.multiSyncInterval) clearInterval(this.multiSyncInterval);
-    }
-}
-
-// ============================================
-// SKINS SYSTEM (Legacy + V2)
-// ============================================
-// Legacy Skins (Original - Full list)
-const LEGACY_SKINS = [
-    { id: 'default', name: 'Base Dodecahedron', type: 'Static Glyph', price: 0, desc: 'The reliable geometry that protects you. Simple, robust, boring.', preview: '●', color: '#00ff44' },
-    { id: 'retro_term', name: 'Vintage Terminal', type: 'Pixel/Trail Effect', price: 800, desc: 'Renders the player as a flashing green cursor block, leaving behind a brief ghost trail of \'console output\' text.', preview: '█', color: '#00ff00' },
-    { id: 'star_map', name: 'Cosmic Starmap', type: 'Particle Cluster', price: 1800, desc: 'A swirling constellation of tiny stars that react to your movement.', preview: '✨', color: '#ffffff' },
-    { id: 'cat_txt', name: 'cat.txt', type: 'Animated Text', price: 1500, desc: 'A glitching, animated text box that communicates its status via classic emoticon faces (owo, -w-, ;w;).', preview: 'owo', color: '#ffb300' },
-    { id: 'shards', name: 'Flickering Shards', type: 'Dynamic Geometry', price: 2500, desc: 'The player breaks into small, flickering geometric shards when hit, unifying on recovery.', preview: '⬢', color: '#ff00ff' },
-    { id: 'periodic', name: 'Periodic Table', type: 'Styled Box/Text', price: 2200, desc: 'Transforms into a color-coded element block, showing atomic data.', preview: 'Au', color: '#00ffff' },
-    { id: 'dino_mode', name: 'Dinosaur Mode', type: 'Emoji', price: 500, desc: 'Transforms you into a majestic, low-cost dinosaur icon.', preview: '🦖', color: '#00cc00' },
-    { id: 'hex_burst', name: 'Hex Code Burst', type: 'Dynamic Geometry', price: 3500, desc: 'The player is drawn as a cluster of constantly changing 6-digit hexadecimal color codes (based on player HP/shield status).', preview: '#A3FF4B', color: '#ff00ff' },
-    { id: 'neon_glow', name: 'Neon Glow', type: 'Glowing Outline', price: 1200, desc: 'A pulsating neon outline that leaves a faint glow trail effect.', preview: '⟡', color: '#ff00ff' },
-    { id: 'glitch', name: 'Glitch Effect', type: 'Distorted Render', price: 1600, desc: 'Player render with RGB split and scanline distortion.', preview: '█', color: '#ff0000' },
-    { id: 'matrix_code', name: 'Matrix Code', type: 'Falling Code', price: 2000, desc: 'Surrounded by orbiting binary code digits.', preview: '01', color: '#00ff00' },
-    { id: 'plasma_orbs', name: 'Plasma Orbs', type: 'Orbital Particles', price: 2800, desc: 'Multiple plasma orbs orbiting the core with electric arcs.', preview: '⚡', color: '#ff1493' },
-    { id: 'cyber_grid', name: 'Cyber Grid', type: 'Wireframe', price: 900, desc: 'A holographic wireframe grid that rotates and pulses.', preview: '▱', color: '#00ffff' },
-    { id: 'firefly_swarm', name: 'Firefly Swarm', type: 'Swarming Lights', price: 1900, desc: 'A swarm of tiny fireflies that flicker and follow movement patterns.', preview: '🪰', color: '#ffff00' },
-    { id: 'void_portal', name: 'Void Portal', type: 'Swirling Vortex', price: 3200, desc: 'A dark portal that sucks in light and emits shadowy tendrils.', preview: '🌀', color: '#4b0082' },
-    { id: 'sunflare', name: 'Sunflare', type: 'Radiant Burst', price: 1400, desc: 'Solar flare effects with coronal mass ejections.', preview: '☀️', color: '#ffd700' },
-    { id: 'ice_crystal', name: 'Ice Crystal', type: 'Fractal Snow', price: 1100, desc: 'Growing ice fractals that shimmer with frost.', preview: '❄️', color: '#add8e6' },
-    { id: 'lava_flow', name: 'Lava Flow', type: 'Molten', price: 2300, desc: 'Slow-flowing lava with bubbling embers.', preview: '🌋', color: '#ff4500' },
-    { id: 'neural_net', name: 'Neural Net', type: 'Synaptic', price: 3000, desc: 'Interconnected neural nodes firing signals.', preview: '🧠', color: '#9370db' },
-    { id: 'quantum_flux', name: 'Quantum Flux', type: 'Waveform Interference', price: 3800, desc: 'Overlapping quantum waves that interfere and create probabilistic patterns.', preview: '⟐', color: '#8a2be2' },
-    { id: 'arcade_pixel', name: 'Arcade Pixel', type: 'Retro Sprite', price: 600, desc: '8-bit pixel art sprite with dithering and scanlines.', preview: '⬜', color: '#ff69b4' },
-    { id: 'steampunk_gear', name: 'Steampunk Gear', type: 'Mechanical', price: 1700, desc: 'Brass gears and pistons with steam exhaust effects.', preview: '⚙️', color: '#cd7f32' },
-    { id: 'bioluminescent', name: 'Bioluminescent', type: 'Organic Glow', price: 2100, desc: 'Glowing jellyfish-like tendrils that pulse with bioluminescence.', preview: '🌊', color: '#00ced1' },
-    { id: 'holo_cube', name: 'Holo Cube', type: '3D Projection', price: 2900, desc: 'Rotating holographic cube with wireframe edges.', preview: '⬞', color: '#87ceeb' },
-    { id: 'shadow_puppeteer', name: 'Shadow Puppeteer', type: 'Silhouette', price: 1300, desc: 'Dynamic shadow puppet that morphs shapes.', preview: '🖤', color: '#000000' },
-    { id: 'electric_arc', name: 'Electric Arc', type: 'Lightning', price: 2400, desc: 'Crackling electric arcs that chain between nodes.', preview: '⚡', color: '#ffff00' },
-    { id: 'flame_wisp', name: 'Flame Wisp', type: 'Ethereal Fire', price: 1500, desc: 'Floating flame wisps that trail embers.', preview: '🔥', color: '#ff4500' },
-    { id: 'thorn_vine', name: 'Thorn Vine', type: 'Organic Growth', price: 1800, desc: 'Twisting thorn vines that grow and retract.', preview: '🌿', color: '#228b22' },
-    { id: 'echo_waveform', name: 'Echo Waveform', type: 'Audio Visualizer', price: 2700, desc: 'Oscillating waveforms that echo with sound-like pulses.', preview: '∿', color: '#ff1493' },
-    { id: 'grok_xai', name: 'GROK x.AI', type: 'Animated Black Hole', price: 0, desc: 'A swirling black hole with orbiting particles, crafted with assistance from Grok xAI.', preview: '🕳️', color: '#ffffff' }
-];
-
-// V2 Skins (New Realistic/Complex - Full list for display)
-const V2_SKINS = [
-    { id: 'v2_mech_suit', name: 'Mech Suit V2', type: 'Armored Exoskeleton', price: 4000, desc: 'Realistic metallic suit with joint animations and recoil on damage.', preview: '🤖', color: '#a9a9a9' },
-    { id: 'v2_fluid_blob', name: 'Fluid Blob V2', type: 'Liquid Physics', price: 4500, desc: 'Amorphous blob that flows and splashes on movement, with viscosity simulation.', preview: '💧', color: '#00bfff' },
-    { id: 'v2_holo_projector', name: 'Holo Projector V2', type: '3D Hologram', price: 5000, desc: 'Projecting 3D model that rotates and clips through obstacles realistically.', preview: '🔮', color: '#87ceeb' },
-    { id: 'v2_neuro_link', name: 'Neuro Link V2', type: 'Brainwave Viz', price: 5500, desc: 'Neural network visualization with firing synapses based on HP levels.', preview: '🧠', color: '#9370db' },
-    { id: 'v2_quantum_cloud', name: 'Quantum Cloud V2', type: 'Particle Decoherence', price: 6000, desc: 'Cloud of probabilistic particles that phase in/out, with entanglement effects.', preview: '☁️', color: '#8a2be2' },
-    { id: 'v2_plasma_core', name: 'Plasma Core V2', type: 'Fusion Reactor', price: 6500, desc: 'Glowing plasma orb with containment field and flare ejections on low HP.', preview: '☢️', color: '#ff1493' },
-    { id: 'v2_shadow_clone', name: 'Shadow Clone V2', type: 'Illusion Duplicates', price: 7000, desc: 'Multiple shadow clones that mirror movements with fading trails.', preview: '👤', color: '#4b0082' },
-    { id: 'v2_energy_shield', name: 'Energy Shield V2', type: 'Force Field', price: 7500, desc: 'Dynamic energy barrier that absorbs hits and pulses with feedback.', preview: '🛡️', color: '#00ffff' },
-    { id: 'v2_bio_lum', name: 'Bio Lum V2', type: 'Organic Emitters', price: 8000, desc: 'Bioluminescent organisms that glow and swarm defensively.', preview: '🌱', color: '#00ff00' },
-    { id: 'v2_nano_swarm', name: 'Nano Swarm V2', type: 'Repair Drones', price: 8500, desc: 'Swarm of nanobots that repair HP over time with formation patterns.', preview: '🔬', color: '#ffd700' }
-];
-
-// Full Catalog
-const FULL_SKIN_CATALOG = [...LEGACY_SKINS, ...V2_SKINS];
-
-// Global: Player Instance
-const player = new Player();
-
-// Global: GameManager Instance
-const gameManager = new GameManager();
-
-// ============================================
-// RENDERING FUNCTIONS (Preserved Animations)
-// ============================================
-
-// Function: DrawSkin - Renders equipped skin (translated for new arch, same visuals).
-function drawSkin(drawCtx, x, y, radius, skinId, skinState, hp, maxHp, lastDamageTime) {
-    const skin = FULL_SKIN_CATALOG.find(s => s.id === skinId);
-    if (!skin) return;
-    const time = Date.now();
-    const pulse = 1 + Math.sin(time / 800) * 0.1;
-    const isDamaged = hp < maxHp * 0.5 || (lastDamageTime && time - lastDamageTime < 700);
-    drawCtx.save();
-    drawCtx.translate(x, y);
-    drawCtx.fillStyle = skin.color;
-    drawCtx.strokeStyle = '#fff';
-    drawCtx.lineWidth = 2;
-
-    // Legacy Skins (Same as original)
-    switch (skinId) {
-        case 'default':
-            drawCtx.beginPath();
-            drawCtx.arc(0, 0, radius, 0, Math.PI * 2);
-            drawCtx.fill();
-            drawCtx.stroke();
-            break;
-        case 'cat_txt':
-            drawCtx.font = 'bold 24px Inter';
-            drawCtx.textAlign = 'center';
-            drawCtx.fillText(skinState.catFace, 0, 8);
-            drawCtx.strokeText(skinState.catFace, 0, 8);
-            break;
-        // ... (All legacy cases - preserved, abbreviated for space)
-        case 'periodic':
-            const element = skinState.periodicElement;
-            const elementSize = 30 * pulse;
-            drawCtx.save();
-            drawCtx.scale(pulse, pulse);
-            drawCtx.translate(-elementSize / 2, -elementSize / 2);
-            drawCtx.fillStyle = element.color;
-            drawCtx.fillRect(0, 0, elementSize, elementSize);
-            drawCtx.strokeStyle = '#333';
-            drawCtx.strokeRect(0, 0, elementSize, elementSize);
-            drawCtx.font = '7px Inter';
-            drawCtx.fillStyle = '#333';
-            drawCtx.fillText(element.num.toString(), 2, 8);
-            drawCtx.font = 'bold 15px Inter';
-            drawCtx.textAlign = 'center';
-            drawCtx.fillText(element.symbol, elementSize / 2, elementSize / 2 + 5);
-            drawCtx.font = '6px Inter';
-            drawCtx.fillText(element.weight.toFixed(3), elementSize / 2, elementSize - 3);
-            drawCtx.restore();
-            break;
-        // Add other legacy renders as needed (e.g., retro_term, star_map, etc.)
-        default:
-            // Fallback for unhandled legacy
-            drawCtx.beginPath();
-            drawCtx.arc(0, 0, radius, 0, Math.PI * 2);
-            drawCtx.fill();
-            break;
-    }
-
-    // V2 Skins (New Complex Renders)
-    if (skinId.startsWith('v2_')) {
-        switch (skinId) {
-            case 'v2_mech_suit':
-                // Realistic mech: Draw armored plates with joints
-                drawCtx.fillStyle = '#a9a9a9';
-                drawCtx.fillRect(-radius, -radius, radius * 2, radius * 2); // Body
-                // Joints: Rotating arms/legs simulation
-                for (let i = 0; i < 4; i++) {
-                    const angle = (time * 0.002) + (i * Math.PI / 2);
-                    drawCtx.save();
-                    drawCtx.translate(0, 0);
-                    drawCtx.rotate(angle);
-                    drawCtx.fillStyle = '#808080';
-                    drawCtx.fillRect(radius * Math.cos(i * Math.PI / 2), radius * Math.sin(i * Math.PI / 2) - 5, 10, 10);
-                    drawCtx.restore();
-                }
-                // Recoil on damage
-                if (isDamaged) {
-                    drawCtx.globalAlpha = 0.5;
-                    drawCtx.fillStyle = '#ff0000';
-                    drawCtx.fillRect(-5, -5, 10, 10); // Spark
-                }
-                break;
-            case 'v2_fluid_blob':
-                // Fluid simulation: Wavy blob
-                drawCtx.beginPath();
-                for (let i = 0; i < 360; i += 10) {
-                    const rad = (i * Math.PI / 180);
-                    const wave = Math.sin(time * 0.005 + i * 0.1) * 3;
-                    const px = Math.cos(rad) * (radius + wave);
-                    const py = Math.sin(rad) * (radius + wave);
-                    if (i === 0) drawCtx.moveTo(px, py);
-                    else drawCtx.lineTo(px, py);
-                }
-                drawCtx.fill();
-                // Splash particles
-                skinState.particles.forEach(p => {
-                    drawCtx.fillStyle = 'rgba(0, 191, 255, 0.7)';
-                    drawCtx.fillRect(p.x, p.y, 2, 2);
-                });
-                break;
-            // ... Implement other V2 skins similarly with complex math/particles
-            default:
-                // Fallback V2: Enhanced particles
-                skinState.particles.forEach(p => {
-                    drawCtx.fillStyle = skin.color;
-                    drawCtx.globalAlpha = p.life;
-                    drawCtx.fillRect(p.x, p.y, 3, 3);
-                });
-                drawCtx.globalAlpha = 1;
-                break;
-        }
-    }
-
-    drawCtx.restore();
-}
-
-// Function: AnimatePreview - Hover animation for shop (same as original, adapted).
-function animatePreview(skinId, card) {
-    const previewCanvas = document.getElementById(`preview-${skinId}`);
-    if (!previewCanvas) return;
-    const pCtx = previewCanvas.getContext('2d');
-    let previewState = previewStates[skinId] || { catNextChangeTime: 0, catFace: 'owo', particles: [], periodicElement: player.getRandomPeriodicElement() };
-    previewStates[skinId] = previewState;
-    let lastPreviewTime = performance.now();
-    function previewLoop(currentTime) {
-        const dt = currentTime - lastPreviewTime;
-        lastPreviewTime = currentTime;
-        const pnow = Date.now();
-        // Update state (similar to player)
-        if (skinId === 'cat_txt') {
-            if (pnow > previewState.catNextChangeTime) {
-                previewState.catFace = previewState.catFace === 'owo' ? '-w-' : 'owo';
-                previewState.catNextChangeTime = pnow + (1000 + Math.random() * 1000);
-            }
-        } else if (skinId.startsWith('v2_')) {
-            // V2 preview particles
-            previewState.particles = previewState.particles.filter(p => p.life > 0);
-            previewState.particles.forEach(p => {
-                const angle = (pnow * 0.001) + p.offset;
-                p.x = Math.cos(angle) * p.radius;
-                p.y = Math.sin(angle) * p.radius;
-                p.life -= dt / 1000;
-            });
-            while (previewState.particles.length < 8) {
-                previewState.particles.push({ x: 0, y: 0, radius: 5 + Math.random() * 5, offset: Math.random() * Math.PI * 2, life: 1 });
+            // Draw round active overlay
+            if (!gameState.isRoundActive) {
+                 CTX.fillStyle = 'rgba(17, 24, 39, 0.9)'; // Dark overlay
+                 CTX.fillRect(0, 0, CANVAS.width, CANVAS.height);
+                 CTX.fillStyle = '#f59e0b';
+                 CTX.textAlign = 'center';
+                 CTX.font = '36px Space Mono';
+                 CTX.fillText('ARENA STANDBY (NO CONNECTION / ROUND ENDED)', CANVAS.width / 2, CANVAS.height / 2);
+                 CTX.font = '18px Inter';
+                 CTX.fillText('Initiate P2P Connection or wait for new round start.', CANVAS.width / 2, CANVAS.height / 2 + 40);
             }
         }
-        pCtx.clearRect(0, 0, 40, 40);
-        drawSkin(pCtx, 20, 20, 8, skinId, previewState, 100, 100, 0);
-        if (card.matches(':hover')) {
-            requestAnimationFrame(previewLoop);
-        } else {
-            drawStaticPreview(skinId);
-        }
-    }
-    requestAnimationFrame(previewLoop);
-}
 
-// Function: DrawStaticPreview - Static shop preview.
-function drawStaticPreview(skinId) {
-    const previewCanvas = document.getElementById(`preview-${skinId}`);
-    if (!previewCanvas) return;
-    const pCtx = previewCanvas.getContext('2d');
-    pCtx.clearRect(0, 0, 40, 40);
-    const skin = FULL_SKIN_CATALOG.find(s => s.id === skinId);
-    if (skin) {
-        pCtx.fillStyle = skin.color;
-        pCtx.font = 'bold 20px Inter';
-        pCtx.textAlign = 'center';
-        pCtx.textBaseline = 'middle';
-        pCtx.fillText(skin.preview, 20, 20);
-    }
-}
 
-// Global: Preview States
-let previewStates = {};
+        // =================================================================
+        // INITIALIZATION AND EVENT LISTENERS
+        // =================================================================
 
-// Function: ShowPopup - Transient message popup.
-function showPopup(text, x, y, duration, color = '#fff') {
-    const container = document.getElementById('popup-container');
-    const popup = document.createElement('div');
-    popup.style.cssText = `
-        position: absolute; left: ${x}px; top: ${y}px;
-        transform: translate(-50%, -50%);
-        padding: 5px 10px; background: ${color}; color: #000;
-        border-radius: 5px; font-size: 16px; font-weight: bold;
-        opacity: 1; transition: all 0.5s ease-out;
-        pointer-events: none; box-shadow: 0 0 10px rgba(0,0,0,0.5);
-    `;
-    popup.textContent = text;
-    container.appendChild(popup);
-    setTimeout(() => {
-        popup.style.opacity = '0';
-        popup.style.top = (y - 50) + 'px';
-        setTimeout(() => popup.remove(), 500);
-    }, duration);
-}
+        window.onload = function() {
+            // Set canvas size to fill container
+            const canvasContainer = CANVAS.parentElement;
+            CANVAS.width = canvasContainer.clientWidth;
+            CANVAS.height = 600; // Fixed height, fill width
 
-// ============================================
-// UI & EVENT HANDLERS (Fixed: Wrapped in DOMContentLoaded)
-// ============================================
+            // Center initial player position based on new width
+            gameState.localPlayer.x = CANVAS.width / 4;
+            gameState.localPlayer.y = CANVAS.height / 2;
 
-// DOM Elements
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-const hud = document.getElementById('hud');
-const menu = document.getElementById('menu');
-const gameover = document.getElementById('gameover');
-const milestone = document.getElementById('milestone');
-const shop = document.getElementById('shop');
-const multiplayerLobby = document.getElementById('multiplayer-lobby');
-const keypad = document.getElementById('keypad');
-const endlessBtn = document.getElementById('endlessBtn');
-const practiceBtn = document.getElementById('practiceBtn');
-const multiplayerBtn = document.getElementById('multiplayerBtn');
-const skinsShopBtn = document.getElementById('skinsShopBtn');
-const shopBackBtn = document.getElementById('shopBackBtn');
-const backToMenuBtn = document.getElementById('backToMenuBtn');
-const cheatInput = document.getElementById('cheatInput');
-const hostGameBtn = document.getElementById('hostGameBtn');
-const joinGameBtn = document.getElementById('joinGameBtn');
-const multiBackBtn = document.getElementById('multiBackBtn');
-const sdpInput = document.getElementById('sdpInput');
-const sdpOutput = document.getElementById('sdpOutput');
-const startGameBtn = document.getElementById('startGameBtn');
-const hostSection = document.getElementById('hostSection');
-const multiError = document.getElementById('multiError');
-const legacyTab = document.getElementById('legacyTab');
-const v2Tab = document.getElementById('v2Tab');
-const skinCatalog = document.getElementById('skinCatalog');
-const practiceTitle = document.getElementById('practiceTitle');
+            // Attach all UI button event listeners (fixing the previous issue)
+            document.getElementById('btnOpenShop').addEventListener('click', UIManager.openShopModal);
+            document.getElementById('gameCanvas').addEventListener('click', handleCanvasClick);
+            document.getElementById('commandInput').addEventListener('input', handleKeyPress);
 
-// Mouse/Touch
-let mouse = { x: 0, y: 0 };
-window.onmousemove = e => { mouse.x = e.clientX; mouse.y = e.clientY; };
-window.ontouchmove = e => {
-    if (e.touches.length > 0) {
-        mouse.x = e.touches[0].clientX;
-        mouse.y = e.touches[0].clientY;
-        e.preventDefault();
-    }
-};
-window.onresize = () => {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    player.x = canvas.width / 2;
-    player.y = canvas.height / 2;
-};
+            // WebRTC Button Listeners
+            document.getElementById('btnCreateOffer').addEventListener('click', () => networkManager.createOffer());
+            document.getElementById('btnCreateAnswer').addEventListener('click', () => networkManager.createAnswer(document.getElementById('signalBox').value));
+            document.getElementById('btnProcessSignal').addEventListener('click', () => networkManager.processSignal(document.getElementById('signalBox').value));
 
-// Function: ShowMenu - Shows main menu, stops loop.
-function showMenu() {
-    if (gameManager.animationFrameId) {
-        cancelAnimationFrame(gameManager.animationFrameId);
-        gameManager.animationFrameId = null;
-    }
-    gameManager.mode = 'menu';
-    gameManager.cleanupMulti();
-    hud.classList.add('hidden');
-    canvas.style.display = 'none';
-    menu.classList.remove('hidden');
-    gameover.classList.add('hidden');
-    milestone.classList.add('hidden');
-    shop.classList.add('hidden');
-    multiplayerLobby.classList.add('hidden');
-    document.getElementById('main-menu-buttons').style.display = '';
-    skinsShopBtn.style.display = '';
-    backToMenuBtn.style.display = 'none';
-    keypad.classList.add('hidden');
-    practiceTitle.classList.add('hidden');
-    gameManager.updateHUD();
-}
+            UIManager.log('Lexi-Glitch Arena Initialized. Ready for P2P connection.', 'green');
+            UIManager.log('Click on the black arena to move your avatar.', 'gray');
+            UIManager.log('V1 Skins: Original / V2 Skins: Realistic, Complex Abilities.', 'yellow');
 
-// Function: ShowPractice - Shows keypad for key selection (practice specific attack).
-function showPractice() {
-    gameManager.mode = 'practice';
-    gameManager.round = 0; // Reset for practice
-    hud.classList.add('hidden');
-    canvas.style.display = 'none';
-    menu.classList.remove('hidden');
-    document.getElementById('main-menu-buttons').style.display = 'none';
-    skinsShopBtn.style.display = 'none';
-    backToMenuBtn.style.display = '';
-    practiceTitle.classList.remove('hidden');
-    buildKeypad();
-}
-
-// Function: BuildKeypad - Builds keypad for practice (all keys unlocked for endless).
-function buildKeypad() {
-    keypad.innerHTML = '';
-    ALL_KEYS.forEach(k => {
-        const keybtn = document.createElement('div');
-        keybtn.className = 'key-btn';
-        keybtn.textContent = k.toUpperCase();
-        keybtn.onclick = () => {
-            gameManager.currentKey = k;
-            keypad.classList.add('hidden');
-            gameManager.mode = 'practice';
-            hud.classList.remove('hidden');
-            canvas.style.display = 'block';
-            gameManager.startRound(); // Single round practice
+            // Start the game loop
+            requestAnimationFrame(gameLoop);
         };
-        keypad.appendChild(keybtn);
-    });
-    keypad.classList.remove('hidden');
-}
 
-// Function: ShowSkinsShop - Shows shop with tabs.
-function showSkinsShop() {
-    menu.classList.add('hidden');
-    shop.classList.remove('hidden');
-    renderShopCatalog('legacy'); // Default tab
-}
-
-// Function: RenderShopCatalog - Renders skins for tab.
-function renderShopCatalog(tab = 'legacy') {
-    const skins = tab === 'legacy' ? LEGACY_SKINS : V2_SKINS;
-    skinCatalog.innerHTML = '';
-    skins.forEach(skin => {
-        const card = document.createElement('div');
-        card.className = 'skin-card';
-        card.innerHTML = `
-            <h3>${skin.name}</h3>
-            <div class="preview">
-                <canvas id="preview-${skin.id}" width="40" height="40"></canvas>
-            </div>
-            <p>${skin.desc}</p>
-            <div class="actions"></div>
-        `;
-        const actionsDiv = card.querySelector('.actions');
-        const isOwned = player.ownedSkins.includes(skin.id);
-        const isEquipped = player.equippedSkinId === skin.id;
-        if (isEquipped) {
-            actionsDiv.innerHTML = '<button disabled>EQUIPPED</button>';
-        } else if (isOwned) {
-            const equipBtn = document.createElement('button');
-            equipBtn.textContent = 'EQUIP';
-            equipBtn.onclick = () => equipSkin(skin.id);
-            actionsDiv.appendChild(equipBtn);
-        } else {
-            const purchaseBtn = document.createElement('button');
-            purchaseBtn.textContent = `BUY - ${skin.price} CR`;
-            purchaseBtn.disabled = player.credits < skin.price;
-            if (player.credits >= skin.price) {
-                purchaseBtn.onclick = () => purchaseSkin(skin.id, skin.price);
-            }
-            actionsDiv.appendChild(purchaseBtn);
-        }
-        card.onmouseenter = () => animatePreview(skin.id, card);
-        card.onmouseleave = () => drawStaticPreview(skin.id);
-        drawStaticPreview(skin.id);
-        skinCatalog.appendChild(card);
-    });
-}
-
-// Function: EquipSkin - Equips a skin.
-function equipSkin(skinId) {
-    player.equippedSkinId = skinId;
-    gameManager.saveProgress();
-    renderShopCatalog(legacyTab.classList.contains('active') ? 'legacy' : 'v2');
-    showPopup(`Equipped ${skinId}!`, canvas.width / 2, canvas.height / 2, 1000, '#00ff44');
-}
-
-// Function: PurchaseSkin - Purchases a skin.
-function purchaseSkin(skinId, price) {
-    if (player.credits >= price) {
-        player.credits -= price;
-        if (!player.ownedSkins) player.ownedSkins = [];
-        player.ownedSkins.push(skinId);
-        equipSkin(skinId);
-        gameManager.saveProgress();
-        gameManager.updateHUD();
-        showPopup(`Purchased & Equipped ${skinId}!`, canvas.width / 2, canvas.height / 2, 2000, '#ffeb3b');
-    } else {
-        showPopup('Not enough credits!', canvas.width / 2, canvas.height / 2, 1000, '#f55');
-    }
-}
-
-// Function: ShowMultiplayerLobby - Shows WebRTC lobby.
-function showMultiplayerLobby() {
-    menu.classList.add('hidden');
-    multiplayerLobby.classList.remove('hidden');
-    hostSection.classList.add('hidden');
-    multiError.classList.add('hidden');
-    sdpInput.value = '';
-}
-
-// Function: HostGame - Hosts via WebRTC.
-function hostGame() {
-    gameManager.initWebRTC(true);
-    hostSection.classList.remove('hidden');
-    startGameBtn.classList.remove('hidden');
-    showPopup('Share your SDP with joiner!', canvas.width / 2, 100, 2000);
-}
-
-// Function: JoinGame - Joins via SDP.
-function joinGame() {
-    const sdp = sdpInput.value.trim();
-    if (!sdp) {
-        showMultiError('Enter SDP!');
-        return;
-    }
-    gameManager.initWebRTC(false);
-    gameManager.setRemoteSDP(sdp);
-    hostSection.classList.remove('hidden');
-}
-
-// Function: StartMultiGame - Starts synced game.
-function startMultiGame() {
-    gameManager.mode = 'multi';
-    gameManager.startRound();
-    hud.classList.remove('hidden');
-    canvas.style.display = 'block';
-    multiplayerLobby.classList.add('hidden');
-    // Listen for data
-    gameManager.dataChannel.onmessage = (e) => gameManager.handleMultiData(e.data);
-}
-
-// Function: ShowMultiError - Shows error.
-function showMultiError(msg) {
-    multiError.textContent = msg;
-    multiError.classList.remove('hidden');
-    setTimeout(() => multiError.classList.add('hidden'), 3000);
-}
-
-// Tab Handlers - FIXED: Ensure render on click
-legacyTab.onclick = () => {
-    legacyTab.classList.add('active');
-    v2Tab.classList.remove('active');
-    renderShopCatalog('legacy');
-};
-v2Tab.onclick = () => {
-    v2Tab.classList.add('active');
-    legacyTab.classList.remove('active');
-    renderShopCatalog('v2');
-};
-
-// Cheat
-cheatInput.addEventListener('input', (e) => {
-    if (e.target.value.toLowerCase() === 'nexus7') {
-        FULL_SKIN_CATALOG.forEach(skin => {
-            if (!player.ownedSkins.includes(skin.id)) player.ownedSkins.push(skin.id);
+        // Handle window resize (responsive canvas)
+        window.addEventListener('resize', () => {
+            const canvasContainer = CANVAS.parentElement;
+            CANVAS.width = canvasContainer.clientWidth;
+            // Re-render immediately
+            render();
         });
-        player.credits = 999999;
-        gameManager.saveProgress();
-        e.target.value = '';
-        showPopup('Cheat Activated!', 100, 100, 1000, '#ffeb3b');
-    }
-});
-
-// Button Handlers (Fixed: In DOMContentLoaded)
-document.addEventListener('DOMContentLoaded', () => {
-    endlessBtn.onclick = () => {
-        gameManager.mode = 'endless';
-        gameManager.startRound();
-        menu.classList.add('hidden');
-        hud.classList.remove('hidden');
-        canvas.style.display = 'block';
-        gameManager.lastTime = performance.now();
-        gameManager.animationFrameId = requestAnimationFrame(gameManager.mainLoop.bind(gameManager));
-    };
-    practiceBtn.onclick = showPractice;
-    multiplayerBtn.onclick = showMultiplayerLobby;
-    skinsShopBtn.onclick = showSkinsShop;
-    shopBackBtn.onclick = () => { shop.classList.add('hidden'); menu.classList.remove('hidden'); };
-    backToMenuBtn.onclick = showMenu;
-    multiBackBtn.onclick = showMenu;
-    hostGameBtn.onclick = hostGame;
-    joinGameBtn.onclick = joinGame;
-    startGameBtn.onclick = startMultiGame;
-});
-
-// Global Key: R to menu
-document.addEventListener('keydown', e => {
-    if (e.key.toLowerCase() === 'r') {
-        showMenu();
-    }
-});
-
-// Initial Setup
-window.onload = () => {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    player.x = canvas.width / 2;
-    player.y = canvas.height / 2;
-    showMenu();
-    // WebRTC message listener (for data channel)
-    // Already handled in init
-};
-</script>
+    </script>
 </body>
 </html>
