@@ -1,4 +1,3 @@
-<DOCUMENT filename="broken keyboard doom 1.txt">
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -266,7 +265,7 @@ if (firebaseConfig) {
                 loadProgress();
             }
         }
-    });
+                }));
 } else {
     // If running outside the environment, use a fallback
     userId = 'local-user';
@@ -735,31 +734,31 @@ function drawSkin(drawCtx, x, y, radius, skinId, skinState, hp, maxHp, lastDamag
             const element = skinState && skinState.periodicElement || getRandomPeriodicElement();
             const elementSize = 30 * pulse;
             const elementBorderColor = '#333';
- 
+     
             drawCtx.save();
             drawCtx.scale(pulse, pulse);
             drawCtx.translate(-elementSize / (2 * pulse), -elementSize / (2 * pulse)); // Adjust for scale
- 
+     
             // 1. Draw Element Background and Border
             drawCtx.fillStyle = element.color || '#cccccc';
             drawCtx.fillRect(0, 0, elementSize / pulse, elementSize / pulse);
- 
+     
             drawCtx.strokeStyle = elementBorderColor;
             drawCtx.lineWidth = 1.5;
             drawCtx.strokeRect(0, 0, elementSize / pulse, elementSize / pulse);
- 
+     
             // 2. Draw Atomic Number (Top Left)
             drawCtx.font = `${7 * pulse}px Inter`;
             drawCtx.fillStyle = elementBorderColor;
             drawCtx.textAlign = 'left';
             drawCtx.fillText(element.num.toString(), 2, 8);
- 
+     
             // 3. Draw Symbol (Center)
             drawCtx.font = `bold ${15 * pulse}px Inter`;
             drawCtx.fillStyle = elementBorderColor;
             drawCtx.textAlign = 'center';
             drawCtx.fillText(element.symbol, (elementSize / (2 * pulse)), (elementSize / (2 * pulse)) + 5);
- 
+     
             // 4. Draw Atomic Weight (Bottom Center)
             drawCtx.font = `${6 * pulse}px Inter`;
             drawCtx.fillStyle = elementBorderColor;
@@ -767,7 +766,7 @@ function drawSkin(drawCtx, x, y, radius, skinId, skinState, hp, maxHp, lastDamag
             drawCtx.fillText(element.weight.toFixed(3), (elementSize / (2 * pulse)), elementSize / pulse - 3);
             drawCtx.restore();
             break;
- 
+     
         case 'dino_mode':
             drawCtx.font = 'bold 24px Inter';
             drawCtx.textAlign = 'center';
@@ -781,7 +780,7 @@ function drawSkin(drawCtx, x, y, radius, skinId, skinState, hp, maxHp, lastDamag
                 drawCtx.strokeRect(-radius, -radius, radius * 2, radius * 2);
             }
             break;
- 
+     
         case 'shards':
             if (isDamaged) {
                 // Flicker and draw as small scattered triangles
@@ -818,7 +817,7 @@ function drawSkin(drawCtx, x, y, radius, skinId, skinState, hp, maxHp, lastDamag
                 drawCtx.stroke();
             }
             break;
- 
+     
         case 'star_map':
             const starCount = 20;
             drawCtx.globalAlpha = 0.8;
@@ -1009,7 +1008,296 @@ function drawSkin(drawCtx, x, y, radius, skinId, skinState, hp, maxHp, lastDamag
                 if (len < 2) return;
                 drawCtx.beginPath();
                 drawCtx.moveTo(0, 0);
-                drawCtx.lineTo(Math.cos(angl...(truncated 13545 characters)...ade when "behind"
+                drawCtx.lineTo(Math.cos(angle) * len, Math.sin(angle) * len);
+                drawCtx.stroke();
+                drawBranch(len * 0.7, angle + 0.3);
+                drawBranch(len * 0.7, angle - 0.3);
+            }
+            drawBranch(radius, 0);
+            break;
+        case 'lava_flow':
+            // Bubbling blobs
+            drawCtx.fillStyle = skin.color;
+            for (let i = 0; i < 4; i++) {
+                const px = Math.sin(time * 0.003 + i) * 3;
+                const py = Math.cos(time * 0.002 + i) * 3;
+                drawCtx.beginPath();
+                drawCtx.arc(px, py, radius * 0.6, 0, Math.PI * 2);
+                drawCtx.fill();
+            }
+            // Embers
+            drawCtx.fillStyle = '#fff';
+            for (let i = 0; i < 5; i++) {
+                drawCtx.fillRect(Math.random() * radius * 2 - radius, Math.random() * radius * 2 - radius, 1, 1);
+            }
+            break;
+        case 'neural_net':
+            // Connected nodes with pulse and firing signals
+            drawCtx.save();
+            drawCtx.scale(pulse, pulse);
+            drawCtx.fillStyle = '#000';
+            drawCtx.beginPath();
+            drawCtx.arc(0, 0, radius / pulse, 0, Math.PI * 2);
+            drawCtx.fill();
+            drawCtx.fillStyle = skin.color;
+            const nodes = [];
+            for (let i = 0; i < 6; i++) {
+                const angle = i * Math.PI / 3;
+                const r = (radius * 0.5) / pulse;
+                const nx = Math.cos(angle) * r;
+                const ny = Math.sin(angle) * r;
+                nodes.push({x: nx, y: ny});
+                // Pulsing nodes
+                const nodeAlpha = 0.5 + Math.sin(time * 0.01 + i) * 0.5;
+                drawCtx.globalAlpha = nodeAlpha;
+                drawCtx.beginPath();
+                drawCtx.arc(nx, ny, 3, 0, Math.PI * 2);
+                drawCtx.fill();
+                // Firing signals: random connections
+                if (Math.random() > 0.7) {
+                    const target = nodes[(i + 1 + Math.floor(Math.random() * 3)) % 6];
+                    drawCtx.strokeStyle = skin.color;
+                    drawCtx.lineWidth = 1;
+                    drawCtx.globalAlpha = nodeAlpha * 0.5;
+                    drawCtx.beginPath();
+                    drawCtx.moveTo(0, 0);
+                    drawCtx.lineTo(target.x, target.y);
+                    drawCtx.stroke();
+                }
+                drawCtx.globalAlpha = 1;
+            }
+            drawCtx.restore();
+            break;
+        case 'quantum_flux':
+            // Wave interference
+            drawCtx.strokeStyle = skin.color;
+            drawCtx.lineWidth = 1;
+            for (let i = 0; i < 5; i++) {
+                const offset = i * 10 + time * 0.01;
+                drawCtx.beginPath();
+                for (let j = 0; j < 360; j += 5) {
+                    const rad = j * Math.PI / 180;
+                    const wave = Math.sin(rad + offset) * 5;
+                    const px = Math.cos(rad) * (radius + wave);
+                    const py = Math.sin(rad) * (radius + wave);
+                    if (j === 0) drawCtx.moveTo(px, py);
+                    else drawCtx.lineTo(px, py);
+                }
+                drawCtx.closePath();
+                drawCtx.stroke();
+            }
+            break;
+        case 'arcade_pixel':
+            // Pixelated sprite
+            drawCtx.imageSmoothingEnabled = false;
+            drawCtx.fillStyle = skin.color;
+            for (let px = -radius; px < radius; px += 4) {
+                for (let py = -radius; py < radius; py += 4) {
+                    if (Math.random() > 0.5) drawCtx.fillRect(px, py, 4, 4);
+                }
+            }
+            // Scanlines
+            drawCtx.strokeStyle = '#000';
+            drawCtx.lineWidth = 1;
+            for (let i = 0; i < radius * 2; i += 2) {
+                drawCtx.beginPath();
+                drawCtx.moveTo(-radius, i - radius);
+                drawCtx.lineTo(radius, i - radius);
+                drawCtx.stroke();
+            }
+            break;
+        case 'steampunk_gear':
+            // Gears with steam particles
+            drawCtx.fillStyle = '#cd7f32';
+            drawCtx.beginPath();
+            for (let i = 0; i < 12; i++) {
+                const angle = i * Math.PI / 6;
+                drawCtx.lineTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
+            }
+            drawCtx.closePath();
+            drawCtx.fill();
+            // Rotate
+            drawCtx.save();
+            drawCtx.rotate(time * 0.005);
+            drawCtx.strokeStyle = '#8b4513';
+            drawCtx.lineWidth = 2;
+            drawCtx.beginPath();
+            drawCtx.arc(0, 0, radius, 0, Math.PI * 2);
+            drawCtx.stroke();
+            drawCtx.restore();
+            // Add steam particles
+            for (let p = 0; p < 5; p++) {
+                const px = Math.cos(time * 0.01 + p * 1.5) * (radius + 10);
+                const py = Math.sin(time * 0.01 + p * 1.5) * (radius + 10);
+                const steamAlpha = 0.3 + Math.sin(time * 0.02 + p) * 0.2;
+                drawCtx.fillStyle = `rgba(255,255,255,${steamAlpha})`;
+                drawCtx.beginPath();
+                drawCtx.arc(px, py, 2 + Math.sin(time * 0.015 + p) * 1, 0, Math.PI * 2);
+                drawCtx.fill();
+            }
+            break;
+        case 'bioluminescent':
+            // Pulsing tendrils
+            for (let i = 0; i < 8; i++) {
+                const angle = i * Math.PI / 4 + Math.sin(time * 0.005) * 0.1;
+                const len = radius + Math.sin(time * 0.01 + i) * 10;
+                drawCtx.strokeStyle = skin.color;
+                drawCtx.lineWidth = 2;
+                drawCtx.globalAlpha = 0.8 + Math.sin(time * 0.02 + i) * 0.2;
+                drawCtx.beginPath();
+                drawCtx.moveTo(0, 0);
+                drawCtx.lineTo(Math.cos(angle) * len, Math.sin(angle) * len);
+                drawCtx.stroke();
+            }
+            drawCtx.globalAlpha = 1;
+            break;
+        case 'holo_cube':
+            // 3D cube projection
+            drawCtx.strokeStyle = skin.color;
+            drawCtx.lineWidth = 2;
+            const rotX = time * 0.001;
+            const rotY = time * 0.002;
+            const cosX = Math.cos(rotX), sinX = Math.sin(rotX);
+            const cosY = Math.cos(rotY), sinY = Math.sin(rotY);
+            const verts = [
+                [-10, -10, -10], [10, -10, -10], [10, 10, -10], [-10, 10, -10],
+                [-10, -10, 10], [10, -10, 10], [10, 10, 10], [-10, 10, 10]
+            ].map(v => ({
+                x: v[0] * cosY - v[2] * sinY,
+                y: (v[1] * cosX - v[2] * sinX) * 20,
+                z: v[0] * sinY + v[2] * cosY
+            }));
+            // Draw edges (simplified)
+            const edges = [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]];
+            edges.forEach(e => {
+                drawCtx.beginPath();
+                drawCtx.moveTo(verts[e[0]].x + radius / 2, verts[e[0]].y + radius / 2);
+                drawCtx.lineTo(verts[e[1]].x + radius / 2, verts[e[1]].y + radius / 2);
+                drawCtx.stroke();
+            });
+            break;
+        case 'shadow_puppeteer':
+            // Morphing shadow
+            const morph = Math.sin(time / 1000);
+            drawCtx.fillStyle = '#000';
+            drawCtx.globalAlpha = 0.8;
+            drawCtx.beginPath();
+            drawCtx.ellipse(0, 0, radius * (1 + morph * 0.5), radius * (1 - morph * 0.3), 0, 0, Math.PI * 2);
+            drawCtx.fill();
+            drawCtx.globalAlpha = 1;
+            break;
+        case 'electric_arc':
+            // Arcing lightning
+            drawCtx.strokeStyle = skin.color;
+            drawCtx.lineWidth = 3;
+            drawCtx.globalAlpha = 0.7;
+            for (let i = 0; i < 3; i++) {
+                const startAngle = i * Math.PI * 2 / 3;
+                const endAngle = startAngle + Math.PI;
+                const midX = Math.cos(startAngle + Math.PI / 2) * radius * 0.5;
+                const midY = Math.sin(startAngle + Math.PI / 2) * radius * 0.5;
+                drawCtx.beginPath();
+                drawCtx.moveTo(Math.cos(startAngle) * radius, Math.sin(startAngle) * radius);
+                drawCtx.quadraticCurveTo(midX + (Math.random()-0.5)*10, midY + (Math.random()-0.5)*10, Math.cos(endAngle) * radius, Math.sin(endAngle) * radius);
+                drawCtx.stroke();
+            }
+            drawCtx.globalAlpha = 1;
+            break;
+        case 'flame_wisp':
+            // Floating flames
+            for (let i = 0; i < 5; i++) {
+                const angle = i * Math.PI * 2 / 5 + time * 0.004;
+                const r = radius * 0.3 + Math.sin(time * 0.01 + i) * 5;
+                drawCtx.fillStyle = `rgba(255, 69, 0, ${0.6 + Math.sin(time * 0.03 + i) * 0.4})`;
+                drawCtx.beginPath();
+                drawCtx.arc(Math.cos(angle) * r, Math.sin(angle) * r, 3, 0, Math.PI * 2);
+                drawCtx.fill();
+            }
+            break;
+        case 'thorn_vine':
+            // FIXED: Enhanced expansion/randomness/jitter/hue variation for chaotic organic feel
+            drawCtx.lineWidth = 3;
+            for (let i = 0; i < 4; i++) {
+                const baseAngle = i * Math.PI / 2;
+                const twist = Math.sin(time * 0.005) * 0.2;
+                const angle = baseAngle + twist;
+                // Greater/random expansion per vine
+                let len = radius * (0.8 + Math.random() * 1.2);
+                len *= (1 + (Math.random() - 0.5) * 0.3); // Jitter
+                len *= (0.5 + 0.5 * Math.sin(time * 0.008 + i)); // Retraction sin
+                // Hue variation for alternation
+                const hueVar = Math.sin(time * 0.015 + i) * 20; // +/- 20 hue
+                const colorAlt = `hsl(${120 + hueVar}, 60%, ${30 + Math.sin(time * 0.01 + i) * 10}%)`; // Green base with var
+                drawCtx.strokeStyle = colorAlt;
+                drawCtx.globalAlpha = 0.7 + Math.sin(time * 0.015 + i) * 0.3;
+                drawCtx.beginPath();
+                drawCtx.moveTo(0, 0);
+                // Sin wave with per-segment random offset
+                for (let seg = 0; seg < 10; seg++) {
+                    const prog = seg / 10;
+                    let waveX = Math.sin(prog * Math.PI * 4 + time * 0.01) * 2;
+                    let waveY = Math.cos(prog * Math.PI * 4 + time * 0.01) * 2;
+                    waveX += (Math.random() - 0.5) * 3; // Per-segment random offset
+                    waveY += (Math.random() - 0.5) * 3;
+                    const px = Math.cos(angle) * len * prog + waveX;
+                    const py = Math.sin(angle) * len * prog + waveY;
+                    if (seg === 0) drawCtx.moveTo(px, py);
+                    else drawCtx.lineTo(px, py);
+                }
+                drawCtx.stroke();
+            }
+            drawCtx.globalAlpha = 1;
+            break;
+        case 'echo_waveform':
+            // Oscillating waveforms: draw horizontal bars with vertical sine modulation
+            drawCtx.strokeStyle = skin.color;
+            drawCtx.lineWidth = 2;
+            const numWaves = 4;
+            for (let i = 0; i < numWaves; i++) {
+                const yOffset = (i - numWaves / 2) * (radius / 2);
+                const phase = time * 0.008 + i * Math.PI / 2;
+                drawCtx.beginPath();
+                for (let x = -radius; x <= radius; x += 2) {
+                    const waveHeight = Math.sin(x * 0.1 + phase) * (radius * 0.3);
+                    const y = yOffset + waveHeight;
+                    if (x === -radius) drawCtx.moveTo(x, y);
+                    else drawCtx.lineTo(x, y);
+                }
+                // Close the wave with a subtle curve back
+                drawCtx.lineTo(radius, yOffset);
+                drawCtx.lineTo(-radius, yOffset);
+                drawCtx.closePath();
+                drawCtx.stroke();
+            }
+            // Add echo pulses: expanding rings
+            for (let p = 0; p < 2; p++) {
+                const pulseRadius = (time * 0.005 + p * Math.PI * 2) % (radius * 2);
+                drawCtx.globalAlpha = 1 - (pulseRadius / (radius * 2));
+                drawCtx.beginPath();
+                drawCtx.arc(0, 0, pulseRadius, 0, Math.PI * 2);
+                drawCtx.stroke();
+            }
+            drawCtx.globalAlpha = 1;
+            break;
+        case 'grok_xai':
+            // Black hole: black circle with white outline
+            drawCtx.beginPath();
+            drawCtx.arc(0, 0, radius, 0, Math.PI * 2);
+            drawCtx.fillStyle = '#000';
+            drawCtx.fill();
+            drawCtx.strokeStyle = '#fff';
+            drawCtx.lineWidth = 2;
+            drawCtx.stroke();
+            // Spinning white circles orbiting, with alpha variation to simulate going behind
+            const numOrbs = 6;
+            const orbRadius = 3;
+            const orbitRadius = radius + 8;
+            const speed = 0.005;
+            for (let i = 0; i < numOrbs; i++) {
+                const angle = (time * speed) + (i * Math.PI * 2 / numOrbs);
+                const px = Math.cos(angle) * orbitRadius;
+                const py = Math.sin(angle) * orbitRadius;
+                // Simulate depth: alpha varies to fade when "behind"
                 const behindFactor = Math.sin(angle);
                 drawCtx.globalAlpha = (behindFactor + 1) / 2 * 0.8 + 0.2; // 0.2 (behind) to 1 (front)
                 drawCtx.beginPath();
@@ -1024,14 +1312,14 @@ function drawSkin(drawCtx, x, y, radius, skinId, skinState, hp, maxHp, lastDamag
 }
 function renderPlayerSkin(dt) {
     const now = Date.now();
-    // FIXED: Cat blink cycle to 1-1.5s duration loop
+    // FIXED: Cat blink cycle to random 1-2s duration loop
     if (player.equippedSkinId === 'cat_txt') {
         if (!player.skinState.catNextChangeTime) {
-            player.skinState.catNextChangeTime = now + (1000 + Math.random() * 500);
+            player.skinState.catNextChangeTime = now + (1000 + Math.random() * 1000);
         }
         if (now > player.skinState.catNextChangeTime) {
             player.skinState.catFace = (player.skinState.catFace === 'owo') ? '-w-' : 'owo';
-            player.skinState.catNextChangeTime = now + (1000 + Math.random() * 500);
+            player.skinState.catNextChangeTime = now + (1000 + Math.random() * 1000);
         }
         // Damage/Low HP State (Override)
         const lowHp = player.hp < player.maxHp * 0.3;
@@ -1041,7 +1329,7 @@ function renderPlayerSkin(dt) {
             player.skinState.catNextChangeTime = now + 3000; // Hold for 3s during damage
         } else if (player.skinState.catFace === ';w;') {
             player.skinState.catFace = 'owo';
-            player.skinState.catNextChangeTime = now + (1000 + Math.random() * 500);
+            player.skinState.catNextChangeTime = now + (1000 + Math.random() * 1000);
         }
     }
     if (player.equippedSkinId === 'periodic') {
@@ -1087,11 +1375,11 @@ function animatePreview(skinId, card) {
         // Update state for dynamic skins
         if (skinId === 'cat_txt') {
             if (!previewState.catNextChangeTime) {
-                previewState.catNextChangeTime = pnow + (1000 + Math.random() * 500);
+                previewState.catNextChangeTime = pnow + (1000 + Math.random() * 1000);
             }
             if (pnow > previewState.catNextChangeTime) {
                 previewState.catFace = (previewState.catFace === 'owo') ? '-w-' : 'owo';
-                previewState.catNextChangeTime = pnow + (1000 + Math.random() * 500);
+                previewState.catNextChangeTime = pnow + (1000 + Math.random() * 1000);
             }
             // No damage in preview
         }
@@ -1151,7 +1439,7 @@ function spawn_A_attack() { // A: Accelerating Aperture (Homing to Center)
         const vx = Math.cos(angle) * 0.5;
         const vy = Math.sin(angle) * 0.5;
         game.attacks.push({
-            ...createAttack(x, y, vx, vy, '#ff0000', 8, 10, 8000),
+            ..createAttack(x, y, vx, vy, '#ff0000', 8, 10, 8000), {
             update: function(dt) {
                 // Accelerate towards center
                 const dx = cw / 2 - this.x;
@@ -1165,7 +1453,7 @@ function spawn_A_attack() { // A: Accelerating Aperture (Homing to Center)
                 this.y += this.vy * dt;
                 this.lifetime -= dt;
             }
-        });
+                }));
     }
 }
 function spawn_B_attack() { // B: Straight-line Stream (Fixed Trajectory)
@@ -1189,12 +1477,12 @@ function spawn_B_attack() { // B: Straight-line Stream (Fixed Trajectory)
         const vx = (dx / dist) * speed;
         const vy = (dy / dist) * speed;
         game.attacks.push({
-            ...createAttack(x, y, vx, vy, '#ff9900', 7, 8, 8000),
+            ..createAttack(x, y, vx, vy, '#ff9900', 7, 8, 8000),
             // Minimal update: just handle the lifetime. vx/vy remain constant.
             update: function(dt) {
                 this.lifetime -= dt;
             }
-        });
+                }));
     }
 }
 function spawn_C_attack() { // C: Angular Sweep (Rotating Laser Grid)
@@ -1220,51 +1508,51 @@ function spawn_C_attack() { // C: Angular Sweep (Rotating Laser Grid)
             width: thickness,
             length: laserLength,
             angle: initialAngle,
- 
+     
             update: function(dt) {
                 // Rotate the laser line
                 this.angle += angularSpeed * dt;
                 this.lifetime -= dt;
             },
- 
+     
             draw: function(drawCtx) {
                 drawCtx.save();
                 drawCtx.translate(this.x, this.y);
                 drawCtx.rotate(this.angle);
- 
+         
                 // Draw beam as a long, centered rectangle
                 drawCtx.fillStyle = this.color;
                 drawCtx.globalAlpha = 0.6;
                 drawCtx.fillRect(-this.length / 2, -this.width / 2, this.length, this.width);
                 drawCtx.globalAlpha = 1;
- 
+         
                 // Draw a pulsing core effect
                 const coreRadius = this.width / 2;
                 drawCtx.fillStyle = '#fff';
                 drawCtx.beginPath();
                 drawCtx.arc(0, 0, coreRadius * (1 + Math.sin(Date.now() / 100) * 0.2), 0, Math.PI * 2);
                 drawCtx.fill();
- 
+         
                 drawCtx.restore();
             },
- 
+     
             isColliding: function(px, py, pr) {
                 // Check if the player is within the rotating beam area
                 const dx = px - this.x;
                 const dy = py - this.y;
- 
+         
                 // Inverse rotation of player coordinates
                 const cosA = Math.cos(-this.angle);
                 const sinA = Math.sin(-this.angle);
- 
+         
                 const rotatedY = dx * sinA + dy * cosA;
- 
+         
                 // Check collision only against the width of the beam
                 const halfWidth = this.width / 2;
- 
+         
                 return rotatedY + pr > -halfWidth && rotatedY - pr < halfWidth;
             }
-        });
+                }));
     }
 }
 function spawn_D_attack() { // D: Drift Net (Slow, Wide Swarm - 1 Damage)
@@ -1278,12 +1566,12 @@ function spawn_D_attack() { // D: Drift Net (Slow, Wide Swarm - 1 Damage)
         const x = -50;
         const y = (i / count) * ch + yOffset;
         game.attacks.push({
-            ...createAttack(x, y, speed, 0, '#0099ff', 4, 1, 10000), // Damage set to 1
+            ..createAttack(x, y, speed, 0, '#0099ff', 4, 1, 10000), // Damage set to 1
             update: function(dt) {
                 // No change in trajectory, just lifetime
                 this.lifetime -= dt;
             }
-        });
+                }));
     }
 }
 // --- NEW ATTACKS: E, F, and G ---
@@ -1317,7 +1605,7 @@ function spawn_E_attack() { // E: Echo Wave (Oscillating Corridors)
             return px + pr > this.x - this.width / 2 &&
                    px - pr < this.x + this.width / 2;
         }
-    });
+                }));
     // Wall 2 (Right)
     game.attacks.push({
         x: cw * 3 / 4, y: ch / 2, vx: 0, vy: 0,
@@ -1337,7 +1625,7 @@ function spawn_E_attack() { // E: Echo Wave (Oscillating Corridors)
         const y = ch / 2;
         const speed = 1.2 + Math.random();
         game.attacks.push({
-            ...createAttack(x, y, 0, speed, '#fff', 5, 8, 8000), // Moderate damage
+            ..createAttack(x, y, 0, speed, '#fff', 5, 8, 8000), // Moderate damage
             update: function(dt) {
                 // Reverse direction when hitting top/bottom
                 if (this.y < 0 || this.y > ch) {
@@ -1345,7 +1633,7 @@ function spawn_E_attack() { // E: Echo Wave (Oscillating Corridors)
                 }
                 this.lifetime -= dt;
             }
-        });
+                }));
     }
 }
 function spawn_F_attack() { // F: Focal Point Grid (Converge and Burst)
@@ -1371,7 +1659,7 @@ function spawn_F_attack() { // F: Focal Point Grid (Converge and Burst)
         const vx = (dx / dist) * speed;
         const vy = (dy / dist) * speed;
         game.attacks.push({
-            ...createAttack(x, y, vx, vy, '#00ffff', 6, 12, 12000), // Medium-high damage
+            ..createAttack(x, y, vx, vy, '#00ffff', 6, 12, 12000), // Medium-high damage
             focusX: focusX,
             focusY: focusY,
             state: 'inbound', // 'inbound' or 'outbound'
@@ -1391,25 +1679,20 @@ function spawn_F_attack() { // F: Focal Point Grid (Converge and Burst)
                 }
                 this.lifetime -= dt;
             }
-        });
+                }));
     }
 }
-function spawn_G_attack() { // FIXED: Changed G attack to slow horizontal barrage (easier, no diggers)
-    const cw = canvas.width, ch = canvas.height;
-    const count = 4;
-    const speed = 0.5; // Very slow
-    for (let i = 0; i < count; i++) {
-        const y = (i + 1) * ch / (count + 1);
-        game.attacks.push({
-            ...createAttack(-20, y, speed, 0, '#8B4513', 8, 5, 10000),
-            update: function(dt) {
-                this.x += this.vx * dt / 16;
-                this.lifetime -= dt;
+function spawn_G_attack() { // FIXED: Nerfed G attack (reduced diggers/stagger for playability)
+    // Spawn 2 diggers with longer stagger
+    for (let i = 0; i < 2; i++) {
+        setTimeout(() => {
+            if (game.mode !== 'menu' && game.mode !== 'gameover' && game.mode !== 'checkpoints' && game.mode !== 'multi') {
+                spawnDigger();
             }
-        });
+        }, i * 1200); // Stagger by 1200ms
     }
     // Visual cue
-    showPopup('SLOW BARRAGE!', canvas.width / 2, canvas.height - 50, 1500, '#8B4513');
+    showPopup('DIGGERS INCOMING!', canvas.width / 2, canvas.height - 50, 1500, '#8B4513');
 }
 function spawn_H_attack() { // H: Horizontal Barrage (Waves of horizontal lines)
     const cw = canvas.width, ch = canvas.height;
@@ -1421,12 +1704,12 @@ function spawn_H_attack() { // H: Horizontal Barrage (Waves of horizontal lines)
                 for (let i = 0; i < 6; i++) {
                     const y = wave * (ch / (numWaves + 1));
                     game.attacks.push({
-                        ...createAttack(-20, y, speed, 0, '#ff4444', 6, 6, 8000),
-                        update: function(dt) {
+                        ..createAttack(-20, y, speed, 0, '#ff4444', 6, 6, 8000), {
+            update: function(dt) {
                             this.x += this.vx * dt / 16;
                             this.lifetime -= dt;
                         }
-                    });
+                }));
                 }
             }
         }, wave * 1000);
@@ -1457,7 +1740,7 @@ function spawn_I_attack() { // I: Interlocking Rings (Expanding concentric circl
                 const dist = Math.sqrt((px - this.x)**2 + (py - this.y)**2);
                 return Math.abs(dist - this.ringRadius) < pr + this.radius;
             }
-        });
+                }));
     }
 }
 function spawn_Z_attack() { // Z: Zonal Collapse (Zig-zag)
@@ -1470,7 +1753,7 @@ function spawn_Z_attack() { // Z: Zonal Collapse (Zig-zag)
         const vx = Math.cos(angle) * 3;
         const vy = Math.sin(angle) * 3;
         game.attacks.push({
-            ...createAttack(x, y, vx, vy, '#00ffcc', 6, 15, 6000),
+            ..createAttack(x, y, vx, vy, '#00ffcc', 6, 15, 6000),
             state: 0, // 0: out, 1: zig-zag in
             maxDist: 300,
             update: function(dt) {
@@ -1487,7 +1770,7 @@ function spawn_Z_attack() { // Z: Zonal Collapse (Zig-zag)
                 }
                 this.lifetime -= dt;
             }
-        });
+                }));
     }
 }
 // Unique Attack Functions - World 2 Examples
@@ -1520,7 +1803,7 @@ function spawn_Enter_attack() { // Enter: The Hard Commit (Vertical Beams)
                        py + pr > this.y - this.height / 2 &&
                        py - pr < this.y + this.height / 2;
             }
-        });
+                }));
     }
 }
 function spawn_ArrowRight_attack() { // ArrowRight: Directional Current
@@ -1530,7 +1813,7 @@ function spawn_ArrowRight_attack() { // ArrowRight: Directional Current
         const y = Math.random() * ch;
         const speed = 1 + Math.random();
         game.attacks.push({
-            ...createAttack(x, y, speed, 0, '#00bfff', 5, 5, 8000),
+            ..createAttack(x, y, speed, 0, '#00bfff', 5, 5, 8000),
             baseVx: speed,
             update: function(dt) {
                 // Persistent force field pushes right
@@ -1540,7 +1823,7 @@ function spawn_ArrowRight_attack() { // ArrowRight: Directional Current
                 if (this.x > cw + 100) this.lifetime = 0;
                 this.lifetime -= dt;
             }
-        });
+                }));
     }
 }
 const UNIQUE_ATTACK_REGISTRY = {
@@ -1551,7 +1834,7 @@ const UNIQUE_ATTACK_REGISTRY = {
     'd': spawn_D_attack,
     'e': spawn_E_attack, // <-- NEW E
     'f': spawn_F_attack, // <-- NEW F
-    'g': spawn_G_attack, // <-- FIXED: Changed G to slow barrage
+    'g': spawn_G_attack, // <-- FIXED: Nerfed G
     'h': spawn_H_attack, // <-- NEW H: To avoid fallback duplication
     'i': spawn_I_attack, // <-- NEW I: To avoid fallback duplication
     'z': spawn_Z_attack,
@@ -1598,11 +1881,11 @@ function spawnPatternForStage(stageKey) {
                     vy = 0;
                 }
                 game.attacks.push({
-                    ...createAttack(x, y, vx, vy, '#888888', 5, 4, 6000),
-                    update: function(dt) {
+                    ..createAttack(x, y, vx, vy, '#888888', 5, 4, 6000), {
+            update: function(dt) {
                         this.lifetime -= dt;
                     }
-                });
+                }));
             }
         }
     }
@@ -1698,7 +1981,7 @@ function startGame(playMode, world, stageKey) {
     }
     // For cat, init next change if needed
     if (player.equippedSkinId === 'cat_txt' && !player.skinState.catNextChangeTime) {
-        player.skinState.catNextChangeTime = Date.now() + (1000 + Math.random() * 500);
+        player.skinState.catNextChangeTime = Date.now() + (1000 + Math.random() * 1000);
     }
     // Hide menus and show game elements
     menu.classList.add('hidden');
@@ -1771,11 +2054,6 @@ function nextStage() {
 function gameWin() {
     if (game.winning) return; // Prevent multiple calls
     game.winning = true;
-    // FIXED: Explicitly cancel animation frame during transition to prevent freeze
-    if (game.animationFrameId) {
-        cancelAnimationFrame(game.animationFrameId);
-        game.animationFrameId = null;
-    }
     // 1. Credit Calculation
     const hpRatio = player.hp / player.maxHp;
     const creditsGained = BASE_CREDITS + Math.floor(hpRatio * BONUS_CREDITS);
@@ -1945,7 +2223,7 @@ function mainLoop(time) {
             ctx.arc(attack.x, attack.y, attack.radius || 10, 0, Math.PI * 2);
             ctx.fill();
         }
-    });
+                }));
     // Draw Diggers
     game.diggers.forEach(digger => {
         ctx.fillStyle = digger.color;
@@ -2047,11 +2325,11 @@ function renderShopCatalog() {
         } else {
             const purchaseBtn = document.createElement('button');
             const canAfford = player.credits >= skin.price;
- 
+     
             purchaseBtn.textContent = `BUY - ${skin.price} CR`;
             purchaseBtn.disabled = !canAfford;
             purchaseBtn.classList.toggle('disabled', !canAfford);
- 
+     
             if (canAfford) {
                 purchaseBtn.onclick = () => purchaseSkin(skin.id, skin.price);
             } else {
@@ -2096,13 +2374,13 @@ cheatInput.addEventListener('input', (e) => {
             if (!progress.ownedSkins.includes(skin.id)) {
                 progress.ownedSkins.push(skin.id);
             }
-        });
+                }));
         player.credits = 999999;
         progress.credits = player.credits;
         saveProgress();
         e.target.value = '';
     }
-});
+                }));
 // --- EVENT LISTENERS AND INITIALIZATION ---
 let mouse = { x: 0, y: 0 };
 window.onmousemove = e => { mouse.x = e.clientX; mouse.y = e.clientY; };
@@ -2143,7 +2421,7 @@ document.addEventListener('keydown', e => {
         game.winning = false;
         showMenu(); // Use the dedicated function to clean up and transition
     }
-});
+                }));
 // Initial Setup
 window.onload = function () {
     window.onresize(); // Set initial canvas size
@@ -2151,4 +2429,4 @@ window.onload = function () {
 };
 </script>
 </body>
-</html></DOCUMENT>
+</html>
