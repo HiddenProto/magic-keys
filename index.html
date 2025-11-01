@@ -2,1676 +2,3107 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>TYPING TITANS: KEYBOARD ARENA — V2 System (Team Mode Enabled)</title>
+<title>KEYBOARD DOOM — V2.9 (Canvas Previews, Dragon Reflect, Unique Post-K Attacks, Troll Audio)</title>
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="https://www.youtube.com/iframe_api"></script>
 <style>
-/* Global Styles (Preserved from Original Script) */
+/* Global Styles */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
 * { margin:0; padding:0; box-sizing:border-box; }
 body { background:#000; overflow:hidden; touch-action:none; font-family: 'Inter', sans-serif; }
 canvas { display:block; image-rendering:pixelated; cursor:none; }
-/* Game UI Overlays */
 #hud { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; color:#fff; }
 .topleft { position:absolute; top:10px; left:10px; font-size:14px; text-shadow: 0 0 5px #0f0; }
-.topright { position:absolute; top:10px; right:10px; font-size:14px; text-shadow: 0 0 5px #0f0; } /* Adjusted position for teammate/boss HP */
 .centertop { position:absolute; top:10px; left:50%; transform:translateX(-50%); font-size:18px; font-weight:bold; color: #ffeb3b; text-shadow: 0 0 8px #ffeb3b; }
-.bottomcenter { position:absolute; bottom:10px; left:50%; transform:translateX(-50%); display:flex; gap:10px; }
-/* Main Menu and Panels */
-.menu-panel {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 90%;
-    max-width: 500px;
-    padding: 20px;
-    background: #111;
-    border: 3px solid #333;
-    border-radius: 12px;
-    box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
-    color: #fff;
+.bottomcenter { position:absolute; bottom:10px; left:50%; transform:translateX(-50%); font-size:12px; opacity:.8; }
+.status { position:absolute; top:60px; left:10px; font-size:12px; text-shadow: 0 0 3px #fff; }
+.controls { position:absolute; bottom:40px; left:50%; transform:translateX(-50%); font-size:10px; color: #ff0000; text-shadow: 0 0 3px #ff0000; }
+
+/* Menu & Game Over */
+.menu, .gameover, .shop, .multiplayer-lobby {
+    position:absolute; top:0; left:0; width:100%; height:100%;
+    background:rgba(0,0,0,.95); backdrop-filter: blur(5px);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    color:#fff; transition: opacity 0.3s;
+}
+.hidden { opacity:0; pointer-events:none; position:absolute; }
+
+.menu h1, .shop h1, .multiplayer-lobby h1 {
+    font-size: 2.5rem; margin-bottom: 20px;
+    color: #00ff44; text-shadow: 0 0 10px #00ff44;
     text-align: center;
-    z-index: 1000;
 }
-.menu-panel h1 {
-    font-size: 28px;
-    font-weight: bold;
-    color: #0f0;
-    text-shadow: 0 0 10px #0f0;
-    margin-bottom: 20px;
+.menu button, .shop button, .multiplayer-lobby button {
+    background: #1e1e1e; border: 2px solid #00ff44; color: #00ff44;
+    padding: 10px 20px; margin: 8px 0; border-radius: 8px;
+    cursor: pointer; font-size: 16px; font-weight: bold;
+    transition: all 0.2s ease-in-out;
+    box-shadow: 0 0 5px #00ff44;
 }
-.menu-button {
-    width: 100%;
-    padding: 15px;
-    margin-bottom: 10px;
-    background: #005500;
-    color: #fff;
-    border: 2px solid #00ff00;
-    border-radius: 8px;
-    font-size: 16px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
-    box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
-    text-transform: uppercase;
-}
-.menu-button:hover {
-    background: #007700;
-    box-shadow: 0 0 15px #00ff00;
-}
-.menu-button:active {
-    transform: scale(0.98);
-}
-.skin-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: 15px;
-    max-height: 400px;
-    overflow-y: auto;
-    padding: 10px;
-    border: 1px solid #333;
-    border-radius: 8px;
-    background: #0a0a0a;
-}
-.skin-item {
-    padding: 10px;
-    border: 2px solid #333;
-    border-radius: 8px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.2s;
-    position: relative;
-    overflow: hidden;
-}
-.skin-item:hover {
-    box-shadow: 0 0 15px #0ff;
+.menu button:hover, .shop button:hover, .multiplayer-lobby button:hover {
+    background: #00ff44; color: #000; box-shadow: 0 0 15px #00ff44;
     transform: translateY(-2px);
 }
-.skin-item.equipped {
-    border-color: #0ff;
-    box-shadow: 0 0 20px #0ff;
-    background: #1a1a1a;
+.menu button:disabled {
+    background: #333; border-color: #555; color: #888; cursor: not-allowed;
+    box-shadow: none; transform: none;
 }
-.skin-item.locked {
-    filter: grayscale(100%);
-    opacity: 0.5;
-    cursor: default;
-}
-.skin-preview {
-    font-size: 48px;
-    margin-bottom: 5px;
-    height: 50px;
-    line-height: 50px;
-}
-.skin-name {
-    font-size: 14px;
-    font-weight: bold;
-    color: #fff;
-}
-.skin-price {
-    font-size: 12px;
-    color: #ff0;
-}
-.skin-status {
-    font-size: 12px;
-    color: #0f0;
-}
-.currency-display {
-    font-size: 20px;
-    font-weight: bold;
-    color: #ff0;
-    margin-bottom: 15px;
-    text-shadow: 0 0 5px #ff0;
-}
-/* Health and Shields (HUD) */
-.health-bar-container {
-    width: 200px;
-    height: 20px;
-    background: #333;
-    border: 2px solid #fff;
-    border-radius: 5px;
-    overflow: hidden;
-}
-.health-bar {
-    height: 100%;
-    background: linear-gradient(to right, #f00, #ff0);
-    transition: width 0.3s;
-}
-.shield-bar {
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 100%;
-    background: rgba(0, 191, 255, 0.6);
-    transition: width 0.3s;
-}
-/* Chat/Multiplayer Overlay */
-#multiplayer-overlay {
-    position: absolute;
-    bottom: 0;
-    right: 0;
-    width: 300px;
-    height: 200px;
-    background: rgba(0, 0, 0, 0.8);
-    border-top: 2px solid #0f0;
-    border-left: 2px solid #0f0;
-    display: flex;
-    flex-direction: column;
-    padding: 5px;
-    z-index: 100;
-}
-#chat-messages {
-    flex-grow: 1;
-    overflow-y: auto;
-    color: #fff;
-    font-size: 12px;
-    padding: 5px;
-    margin-bottom: 5px;
-}
-#chat-input-container {
-    display: flex;
-}
-#chat-input {
-    flex-grow: 1;
-    padding: 5px;
-    background: #333;
-    color: #fff;
-    border: none;
-}
-#chat-send {
-    padding: 5px 10px;
-    background: #0f0;
-    color: #000;
-    border: none;
-    cursor: pointer;
-}
-/* Utility */
-.hidden { display: none !important; }
-.text-flair { color: #ffeb3b; text-shadow: 0 0 5px #ffeb3b; }
-.text-error { color: #f00; text-shadow: 0 0 5px #f00; }
-.text-success { color: #0f0; text-shadow: 0 0 5px #0f0; }
+.error-msg { color: #f55; margin-top: 10px; font-weight: bold; }
 
-/* Custom Boss Styling */
-.health-boss .health-bar {
-    background: linear-gradient(to right, #800000, #ff4500);
+/* Cheat Code GUI */
+#cheat-gui {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 10;
 }
+#cheat-input {
+    background: #111;
+    border: 1px solid #00ff44;
+    color: #00ff44;
+    padding: 5px 8px;
+    font-size: 12px;
+    border-radius: 4px;
+    width: 80px;
+}
+#cheat-input:focus {
+    outline: none;
+    box-shadow: 0 0 5px #00ff44;
+}
+
+/* Keypad Grid (Your Choice Mode) */
+#keypad {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+    gap: 8px;
+    width: 90vw;
+    max-width: 800px;
+    padding: 10px;
+    background: rgba(30, 30, 30, 0.8);
+    border: 1px solid #00ff44;
+    border-radius: 10px;
+    max-height: 40vh;
+    overflow-y: auto;
+    margin-top: 10px;
+}
+.key-btn {
+    text-align: center;
+    padding: 8px;
+    font-size: 14px;
+    background: #2a2a2a;
+    border: 1px solid #00ff44;
+    color: #00ff44;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.1s;
+}
+.key-btn:hover:not(.locked) {
+    background: #00ff44;
+    color: #000;
+}
+.key-btn.locked {
+    background: #444;
+    border-color: #555;
+    color: #888;
+    cursor: not-allowed;
+    box-shadow: none;
+    user-select: none;
+}
+.key-btn.current {
+    background: #ff5500;
+    border-color: #ff5500;
+    color: #fff;
+    box-shadow: 0 0 10px #ff5500;
+    animation: pulse 1s infinite alternate;
+}
+@keyframes pulse {
+    from { box-shadow: 0 0 10px #ff5500; }
+    to { box-shadow: 0 0 15px #ff5500; }
+}
+
+/* Skins Shop Specifics */
+.skin-card {
+    background: #222;
+    border: 1px solid #00ff44;
+    border-radius: 8px;
+    padding: 15px;
+    margin: 10px;
+    width: 250px;
+    text-align: center;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 0 5px #00ff44;
+    position: relative;
+}
+.skin-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 0 15px #00ff44;
+}
+.skin-card h3 {
+    font-size: 1.2rem;
+    color: #ffeb3b;
+    margin-bottom: 5px;
+}
+.skin-card p {
+    font-size: 0.85rem;
+    color: #bbb;
+    min-height: 40px;
+    margin-bottom: 10px;
+}
+.skin-card .preview {
+    font-size: 30px;
+    line-height: 1;
+    margin: 10px 0;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: skinPreviewPulse 2s infinite alternate; /* Add subtle animation to previews */
+}
+@keyframes skinPreviewPulse {
+    from { opacity: 0.8; transform: scale(1); }
+    to { opacity: 1; transform: scale(1.05); }
+}
+.skin-catalog {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-height: 70vh;
+    overflow-y: auto;
+}
+.buff-tag {
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    background: linear-gradient(to right, red, orange, yellow, green, blue, indigo, violet);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+#main-menu-buttons.hidden { display: none; }
+#skinsShopBtn { display: block; }
 </style>
 </head>
 <body>
 
-<div id="app" class="relative w-screen h-screen">
-    <canvas id="canvas" class="w-full h-full"></canvas>
+<!-- Canvas for Game Rendering -->
+<canvas id="gameCanvas"></canvas>
 
-    <!-- Main Menu Panel -->
-    <div id="menu" class="menu-panel">
-        <h1>TYPING TITANS: KEYBOARD ARENA</h1>
-        <p class="mb-5 text-gray-400">Battle the key or challenge a friend.</p>
+<!-- YouTube Player (Hidden) -->
+<div id="ytplayer" style="position:absolute; top:-1000px; left:-1000px;"></div>
 
-        <div id="solo-section" class="mb-5">
-            <h2 class="text-xl text-flair mb-3">Solo Training</h2>
-            <button id="precodedBtn" class="menu-button">Start Arena (Solo V1)</button>
-            <button id="precodedUniBtn" class="menu-button">Start Arena (Solo V2 - Unicode)</button>
-        </div>
-
-        <div id="multiplayer-section" class="mb-5">
-            <h2 class="text-xl text-flair mb-3">Multiplayer Arena (WebRTC)</h2>
-            <button id="multiplayerDuelBtn" class="menu-button bg-red-800 border-red-500 hover:bg-red-900">1V1 DUEL (Opponent HP)</button>
-            <button id="multiplayerTeamBtn" class="menu-button bg-purple-800 border-purple-500 hover:bg-purple-900">2V1 TEAM ARENA (Boss HP)</button>
-        </div>
-
-        <button id="skinsShopBtn" class="menu-button bg-blue-800 border-blue-500 hover:bg-blue-900">Skins Shop</button>
-
-        <div class="mt-8 text-xs text-gray-500">
-            Development Assisted by <span class="text-green-500 font-bold">HARP & REX</span>
-        </div>
+<!-- Heads Up Display (HUD) -->
+<div id="hud">
+    <div class="topleft">
+        WAVE: <span id="waveInfo">1-1</span> | HP: <span id="hp"></span> | SHIELD: <span id="shield"></span><br>
+        CREDITS: <span id="credits">0</span>
     </div>
-
-    <!-- Skins Shop Panel -->
-    <div id="shop" class="menu-panel hidden">
-        <h1 class="text-blue-400">ARENA SKINS SHOP</h1>
-        <div class="currency-display mb-3">
-            <span id="playerMoney"></span> Gold
-        </div>
-        <div id="skin-grid" class="skin-grid mb-5">
-            <!-- Skin items will be injected here by JavaScript -->
-        </div>
-        <button id="shopBackBtn" class="menu-button bg-gray-600 border-gray-400 hover:bg-gray-700">Back to Menu</button>
+    <div class="centertop">
+        <span id="stageKey">A</span> | <span id="timer">20.0</span>s
     </div>
-
-    <!-- Multiplayer Lobby Panel -->
-    <div id="multiplayer-lobby" class="menu-panel hidden">
-        <h1 id="lobby-title" class="text-red-400">WebRTC LOBBY</h1>
-        <p class="text-sm text-gray-400 mb-5" id="lobby-description">Start a peer-to-peer connection for a real 1v1 duel or 2v1 team fight.</p>
-
-        <div id="lobby-state" class="p-3 mb-5 border border-red-500 rounded text-left bg-gray-800">
-            <p id="rtc-status" class="text-sm">Status: <span class="text-flair">Idle</span></p>
-            <p class="text-sm">Your Peer ID (Copy/Paste):</p>
-            <input type="text" id="local-peer-id" readonly class="w-full p-2 mt-1 text-xs bg-gray-900 border border-red-700 rounded text-red-300 select-all" value="Generating ID..." />
-        </div>
-
-        <p class="text-sm text-gray-400 mb-2">Enter Opponent's Peer ID:</p>
-        <input type="text" id="remote-peer-id" placeholder="Paste ID here..." class="w-full p-3 mb-3 bg-gray-700 border border-red-700 rounded text-white" />
-
-        <button id="connectBtn" class="menu-button bg-red-800 border-red-500 hover:bg-red-900">CONNECT & START</button>
-        <button id="lobbyBackBtn" class="menu-button bg-gray-600 border-gray-400 hover:bg-gray-700 mt-2">Back to Menu</button>
+    <div class="bottomcenter">
+        Press 'R' to return to menu (or 'R' at Game Over)
     </div>
-
-    <!-- In-Game Heads-Up Display (HUD) -->
-    <div id="hud" class="hidden">
-        <!-- PLAYER 1 (Self) -->
-        <div class="topleft flex flex-col items-start gap-1">
-            <div id="player-status-title" class="font-bold text-flair">YOU</div>
-            <div class="health-bar-container">
-                <div id="player-health-bar" class="health-bar" style="width: 100%;">
-                    <div id="player-shield-bar" class="shield-bar" style="width: 0%;"></div>
-                </div>
-            </div>
-            <div id="player-hp-text">100 HP</div>
-        </div>
-
-        <!-- PLAYER 2 (Opponent / Boss / Teammate) -->
-        <div class="topright flex flex-col items-end gap-1">
-            <div id="opponent-status-title" class="font-bold text-red-500">OPPONENT</div>
-            <div class="health-bar-container" id="opponent-health-container">
-                <div id="opponent-health-bar" class="health-bar" style="width: 100%;">
-                    <div id="opponent-shield-bar" class="shield-bar" style="width: 0%;"></div>
-                </div>
-            </div>
-            <div id="opponent-hp-text">100 HP / 0 SHD</div>
-        </div>
-
-        <!-- Center Message & Timer -->
-        <div class="centertop">
-            <div id="center-message">WELCOME TO THE ARENA!</div>
-            <div id="round-timer" class="text-2xl text-red-500 mt-2"></div>
-        </div>
-
-        <!-- Typing Input -->
-        <div class="bottomcenter p-4 bg-gray-900 bg-opacity-90 rounded-t-xl border-t-4 border-green-500 shadow-2xl">
-            <div class="flex flex-col items-center">
-                <div id="target-word" class="text-4xl font-mono mb-2 text-white"></div>
-                <input type="text" id="typing-input" class="p-3 text-center text-xl font-mono bg-black text-green-400 border-2 border-green-500 rounded-md w-96 focus:outline-none focus:border-green-300" placeholder="Type the word above..." autocomplete="off" autofocus />
-            </div>
-        </div>
-    </div>
-
-    <!-- Multiplayer Chat Overlay -->
-    <div id="multiplayer-overlay" class="hidden">
-        <div id="chat-messages"></div>
-        <div id="chat-input-container">
-            <input type="text" id="chat-input" placeholder="Type a message..." />
-            <button id="chat-send">Send</button>
-        </div>
-    </div>
-
+    <div class="status" id="status"></div>
+    <div class="controls" id="skinControls" style="display:none;"></div>
 </div>
 
+<!-- Main Menu -->
+<div id="menu" class="menu">
+    <h1>KEYBOARD DOOM</h1>
+    <div id="main-menu-buttons">
+        <button id="precodedBtn">World 1: Precoded (A-Z, 0-9)</button>
+        <button id="precodedUniBtn">World 2: Precoded (Symbols & Unicode)</button>
+        <button id="yourChoiceBtn">Your Choice Mode (Keypad)</button>
+    </div>
+
+    <!-- Shop is placed below modes -->
+    <button id="skinsShopBtn">Skins Shop</button>
+    <button id="audioToggle">Audio: OFF</button>
+
+    <!-- Cheat Code GUI -->
+    <div id="cheat-gui">
+        <input type="text" id="cheat-input" placeholder="Code..." maxlength="10">
+    </div>
+
+    <div id="keypad" class="hidden"></div>
+</div>
+
+<!-- Skins Shop Modal -->
+<div id="shop" class="shop hidden">
+    <h1>Skins Shop</h1>
+    <span class="text-xl mb-4 text-yellow-400">Your Credits: <span id="shopCredits">0</span></span>
+    <div class="skin-catalog" id="skinCatalog">
+        <!-- Skin cards rendered here -->
+    </div>
+    <button id="shopBackBtn" class="mt-4">Back to Menu</button>
+</div>
+
+<!-- Game Over Screen -->
+<div id="gameover" class="gameover hidden">
+    <h1>GAME OVER</h1>
+    <p id="finalScore" class="text-xl mb-4 text-red-500"></p>
+    <p class="text-lg text-gray-300">Press 'R' to restart</p>
+</div>
+
+<!-- Popup for transient messages (used instead of alert) -->
+<div id="popup-container" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 100;"></div>
+
 <script type="module">
-// =========================================================================
-// FIREBASE/GLOBAL VARS (Kept for Canvas Compatibility)
-// =========================================================================
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+// --- FIREBASE IMPORTS AND SETUP (For future expansion/persistence) ---
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-// =========================================================================
-// CORE GAME CONSTANTS, SKINS, AND WORD DICTIONARIES
-// =========================================================================
+const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'keyboard-doom-v2';
+let db, auth;
+let userId = 'anon'; // Placeholder, will be updated by auth listener
 
-// --- Game Settings ---
-const MAX_HEALTH = 100;
-const BOSS_HEALTH = 500; // Team mode boss HP
-const ROUND_MIN_DURATION = 5000; // 5 seconds
-const ROUND_MAX_DURATION = 12000; // 12 seconds
-const BASE_ATTACK_DAMAGE = 10;
-const BOSS_ATTACK_DAMAGE = 25; // Boss hits harder
-const SHIELD_AMOUNT = 20;
+if (firebaseConfig) {
+    const app = initializeApp(firebaseConfig);
+    db = getFirestore(app);
+    auth = getAuth(app);
 
-// --- Skins Data (Legacy and V2) ---
-const ALL_SKINS = [
-    // Legacy Skins (Original Script)
-    { id: 'default', name: 'Default Skin', icon: '◻️', price: 0, equipped: true, type: 'Legacy', complexity: 'V1' },
-    { id: 'red', name: 'Crimson Key', icon: '🔴', price: 50, equipped: false, type: 'Legacy', complexity: 'V1' },
-    { id: 'blue', name: 'Cerulean Core', icon: '🔵', price: 50, equipped: false, type: 'Legacy', complexity: 'V1' },
-    { id: 'green', name: 'Emerald Cipher', icon: '🟢', price: 50, equipped: false, type: 'Legacy', complexity: 'V1' },
-    { id: 'yellow', name: 'Golden Glyph', icon: '🟡', price: 100, equipped: false, type: 'Legacy', complexity: 'V1' },
-    { id: 'flame', name: 'Inferno Touch', icon: '🔥', price: 200, equipped: false, type: 'Legacy', complexity: 'V1' },
-    { id: 'ice', name: 'Frost Rune', icon: '🧊', price: 200, equipped: false, type: 'Legacy', complexity: 'V1' },
-    { id: 'neon', name: 'Neon Arc', icon: '⚡', price: 300, equipped: false, type: 'Legacy', complexity: 'V1' },
-    { id: 'skull', name: 'Doom Skull', icon: '💀', price: 500, equipped: false, type: 'Legacy', complexity: 'V1' },
-    // V2 Skins (More Realistic/Complex)
-    { id: 'circuit', name: 'Circuit Board', icon: '⚙️', price: 800, equipped: false, type: 'V2', complexity: 'V2' },
-    { id: 'matrix', name: 'Digital Rain', icon: '💻', price: 1000, equipped: false, type: 'V2', complexity: 'V2' },
-    { id: 'crystal', name: 'Aether Crystal', icon: '💎', price: 1200, equipped: false, type: 'V2', complexity: 'V2' },
-    { id: 'cosmic', name: 'Cosmic Rift', icon: '🌌', price: 1500, equipped: false, type: 'V2', complexity: 'V2' },
-];
-
-// --- Word Dictionary ---
-const WORD_DICTIONARY = [
-    'attack', 'shield', 'heal', 'blast', 'code', 'type', 'key', 'run', 'fix', 'win',
-    'keyboard', 'terminal', 'compiler', 'protocol', 'database', 'executor', 'variable', 'function',
-    '#include', '$money', '^power', '&ampersand', '!error', '@user', '%percent', 'ñam', 'ßeta', '€uro',
-];
-
-// =========================================================================
-// UTILITY FUNCTIONS (Load/Save Progress)
-// =========================================================================
-
-/**
- * Loads player progress (money, owned skins, equipped skin) from localStorage.
- * @returns {object} The player's progress data.
- */
-function loadProgress() {
-    try {
-        const savedProgress = localStorage.getItem('typingTitansProgress');
-        if (savedProgress) {
-            const progress = JSON.parse(savedProgress);
-            // Ensure all skins exist in the progress object for new updates
-            ALL_SKINS.forEach(skin => {
-                if (!progress.skins.find(s => s.id === skin.id)) {
-                    progress.skins.push({ id: skin.id, owned: skin.price === 0 });
+    onAuthStateChanged(auth, async (user) => {
+        if (user) {
+            userId = user.uid;
+            console.log("Firebase Authenticated. User ID:", userId);
+            loadProgress();
+        } else {
+            console.log("Firebase Not Authenticated, signing in anonymously.");
+            try {
+                if (typeof __initial_auth_token !== 'undefined') {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
                 }
-            });
-            return progress;
+            } catch (error) {
+                console.error("Firebase Auth Error:", error);
+                userId = crypto.randomUUID(); // Fallback to random ID
+                loadProgress();
+            }
         }
-    } catch (e) {
-        console.error("Error loading progress from localStorage:", e);
+    });
+} else {
+    // If running outside the environment, use a fallback
+    userId = 'local-user';
+    console.warn("Firebase config not found. Running in local fallback mode.");
+    loadProgress();
+}
+
+
+// --- YT PLAYER ---
+let ytPlayer = null;
+let speedInterval = null;
+
+function onYouTubeIframeAPIReady() {
+    console.log('YouTube IFrame API Ready');
+}
+
+function changeSpeed() {
+    if (ytPlayer && ytPlayer.getPlayerState() === 1) {
+        const rate = 0.5 + Math.random() * 1.5; // Min 0.5, Max 2.0
+        ytPlayer.setPlaybackRate(rate);
     }
-    // Default starting progress
-    return {
-        money: 50, // Starting money for new players
-        equippedSkinId: 'default',
-        skins: ALL_SKINS.map(s => ({
-            id: s.id,
-            owned: s.price === 0, // Only default skins are owned initially
-        }))
+}
+
+
+// --- CORE GAME CONSTANTS & CONFIGURATIONS ---
+
+// World Segregation - World 1: Alphanumeric (36 stages)
+const WORLD1_KEYS = [
+    'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
+    'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
+    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'
+];
+
+// World 2 - Symbols, Functional Keys, and Unicodes (79+ stages)
+const WORLD2_SYMBOLS = [
+    '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+', '-', '=',
+    '[', ']', '{', '}', '|', '\\', ';', ':', "'", '"', ',', '.', '<', '>', '?', '/',
+    'Space', 'Enter', 'Tab', 'Shift', 'Control', 'Alt', 'CapsLock', 'Escape', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'
+];
+const WORLD2_UNICODE = [
+    '→', '←', '▲', '▼', '☆', '★', '⚡', '∞', 'π', 'Ω', 'Σ', 'Φ',
+    '§', 'µ', '©', '®', '™', '€', '£', '¥', '¢', '°', '±', '÷', '×',
+    '≠', '≈', '≤', '≥', '∫', '∂', '∇', '√', '∛', '∜', '…', '‘', '’', '“', '”', '¶'
+];
+const WORLD2_FULL = [...WORLD2_SYMBOLS, ...WORLD2_UNICODE];
+
+const MAX_HP = 100;
+const MAX_SHIELD = 50;
+const BASE_CREDITS = 50;
+const BONUS_CREDITS = 150; // Max credits per win is BASE + BONUS = 200
+
+// --- PERIODIC TABLE DATA FOR SKIN ---
+const PERIODIC_ELEMENT_DATA = [
+    { num: 1, symbol: 'H', weight: 1.008, color: '#add8e6', name: 'Hydrogen' }, // Non-metal
+    { num: 2, symbol: 'He', weight: 4.002, color: '#fffacd', name: 'Helium' }, // Noble gas
+    { num: 6, symbol: 'C', weight: 12.011, color: '#3cb371', name: 'Carbon' }, // Non-metal
+    { num: 8, symbol: 'O', weight: 15.999, color: '#f08080', name: 'Oxygen' }, // Non-metal
+    { num: 11, symbol: 'Na', weight: 22.990, color: '#8a2be2', name: 'Sodium' }, // Alkali metal
+    { num: 17, symbol: 'Cl', weight: 35.453, color: '#90ee90', name: 'Chlorine' }, // Halogen
+    { num: 19, symbol: 'K', weight: 39.098, color: '#9370db', name: 'Potassium' }, // Alkali metal
+    { num: 26, symbol: 'Fe', weight: 55.845, color: '#bdb76b', name: 'Iron' }, // Transition metal
+    { num: 29, symbol: 'Cu', weight: 63.546, color: '#b8860b', name: 'Copper' }, // Transition metal
+    { num: 47, symbol: 'Ag', weight: 107.87, color: '#c0c0c0', name: 'Silver' }, // Transition metal
+    { num: 79, symbol: 'Au', weight: 196.97, color: '#ffd700', name: 'Gold' }, // Transition metal
+    { num: 80, symbol: 'Hg', weight: 200.59, color: '#cccccc', name: 'Mercury' }, // Transition metal
+];
+
+function getRandomPeriodicElement() {
+    return PERIODIC_ELEMENT_DATA[Math.floor(Math.random() * PERIODIC_ELEMENT_DATA.length)];
+}
+
+
+// --- GAME STATE AND PROGRESS OBJECTS ---
+const player = {
+    x: 0, y: 0, radius: 10, speed: 4,
+    hp: MAX_HP, maxHp: MAX_HP, shield: 0, maxShield: MAX_SHIELD,
+    dead: false,
+    credits: 0,
+    equippedSkinId: 'default',
+    skinState: { // For dynamic skins
+        catBlinkTimer: 0,
+        catBlinkDuration: 1200,
+        catFace: 'owo',
+        periodicElement: PERIODIC_ELEMENT_DATA[0], // Initialize with H
+        arcadeFlicker: [], // For arcade skin flicker states
+        grokAngle: 0, // For grok skin rotation
+        dragonShieldAngle: 0, // For v2_dragon spinning shield
+        retroBlinkTime: 0,
+        whiteHoleActive: false, // White hole state
+        whiteHoleTimer: 0
+    }
+};
+
+const game = {
+    mode: 'menu', // 'menu', 'precoded', 'precoded-uni', 'yourchoice'
+    world: 'world1', // 'world1', 'world2', 'choice'
+    keyset: null,
+    stageIndex: 0,
+    stageKey: 'A',
+    timer: 0,
+    score: 0,
+    attacks: [],
+    diggers: [],
+    shake: 0,
+    lastTime: 0,
+    animationFrameId: null, // To store the ID of requestAnimationFrame
+    lastDamageTime: 0,
+    inChoiceMode: false,
+    whiteHole: null // White hole entity
+};
+
+let progress = {
+    world1: false, // World completion flag
+    world2: false, // World completion flag
+    // Fixed: Initial unlocked keys limited to a,b,c
+    unlockedKeys: ['a', 'b', 'c'], 
+    completedKeys: [],
+    ownedSkins: ['default', 'retro_term', 'star_map', 'cat_txt', 'shards', 'periodic', 'dino_mode', 'hex_burst', 'neon_glow', 'glitch', 'matrix_code', 'plasma_orbs', 'cyber_grid', 'firefly_swarm', 'crystal_facet', 'void_portal', 'sunflare', 'ice_crystal', 'lava_flow', 'neural_net', 'quantum_flux', 'arcade_pixel', 'steampunk_gear', 'bioluminescent', 'holo_cube', 'shadow_puppeteer', 'electric_arc', 'flame_wisp', 'thorn_vine', 'echo_waveform', 'arcade', 'grok_xai'],
+    equippedSkinId: 'default',
+    credits: 0
+};
+
+// --- DOM ELEMENTS ---
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const hud = document.getElementById('hud');
+const menu = document.getElementById('menu');
+const gameover = document.getElementById('gameover');
+const shop = document.getElementById('shop');
+const keypad = document.getElementById('keypad');
+const skinControls = document.getElementById('skinControls');
+
+const precodedBtn = document.getElementById('precodedBtn');
+const precodedUniBtn = document.getElementById('precodedUniBtn');
+const yourChoiceBtn = document.getElementById('yourChoiceBtn');
+const skinsShopBtn = document.getElementById('skinsShopBtn');
+const shopBackBtn = document.getElementById('shopBackBtn');
+
+
+// --- AUDIO TROLL ---
+let isAudioOn = false;
+let audioTimeouts = [];
+function toggleAudio() {
+    isAudioOn = !isAudioOn;
+    document.getElementById('audioToggle').textContent = `Audio: ${isAudioOn ? 'ON' : 'OFF'}`;
+    if (!isAudioOn) {
+        audioTimeouts.forEach(clearTimeout);
+        audioTimeouts = [];
+        if (speedInterval) {
+            clearInterval(speedInterval);
+            speedInterval = null;
+        }
+        if (ytPlayer) {
+            ytPlayer.pauseVideo();
+        }
+        return;
+    }
+    // YT Song
+    if (!ytPlayer) {
+        if (typeof YT === 'undefined') {
+            showPopup('YouTube API not ready!', canvas.width / 2, canvas.height / 2, 2000, '#f55');
+            return;
+        }
+        ytPlayer = new YT.Player('ytplayer', {
+            height: '0',
+            width: '0',
+            videoId: 'OeemN2xFD6g',
+            playerVars: {
+                'playsinline': 1,
+                'autoplay': 1,
+                'controls': 0,
+                'loop': 1,
+                'playlist': 'OeemN2xFD6g'
+            },
+            events: {
+                'onReady': function(event) {
+                    event.target.playVideo();
+                    changeSpeed();
+                    speedInterval = setInterval(changeSpeed, 5000 + Math.random() * 5000);
+                },
+                'onStateChange': function(event) {
+                    if (event.data === YT.PlayerState.ENDED) {
+                        event.target.playVideo();
+                    }
+                }
+            }
+        });
+    } else {
+        ytPlayer.playVideo();
+        changeSpeed();
+        speedInterval = setInterval(changeSpeed, 5000 + Math.random() * 5000);
+    }
+    // Legacy beep (disabled if YT)
+    // const audioCtx = ... (commented out)
+}
+
+
+// --- CHEAT CODE GUI ---
+document.addEventListener('DOMContentLoaded', () => {
+    const cheatInput = document.getElementById('cheat-input');
+    cheatInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            const code = cheatInput.value.toLowerCase().trim();
+            if (code === 'nexus7') {
+                // Unlock everything
+                progress.ownedSkins = SKIN_CATALOG.map(s => s.id);
+                player.credits = 1000000;
+                progress.credits = 1000000;
+                progress.unlockedKeys = [...WORLD1_KEYS, ...WORLD2_FULL];
+                progress.completedKeys = [...WORLD1_KEYS, ...WORLD2_FULL];
+                progress.world1 = true;
+                progress.world2 = true;
+                saveProgress();
+                updateHUD();
+                showPopup('NEXUS7 ACTIVATED! All Unlocked + 1M Credits!', canvas.width / 2, canvas.height / 2, 3000, '#00ff00');
+                if (shop.classList.contains('hidden') === false) {
+                    renderShopCatalog(); // Refresh if in shop
+                }
+                cheatInput.value = '';
+            } else {
+                showPopup('Invalid Code!', canvas.width / 2, canvas.height / 2 + 100, 1000, '#f55');
+                cheatInput.value = '';
+            }
+        }
+    });
+
+    // Audio toggle
+    document.getElementById('audioToggle').onclick = toggleAudio;
+});
+
+
+// --- FIREBASE PERSISTENCE FUNCTIONS ---
+function getProgressRef() {
+    return doc(db, "artifacts", appId, "users", userId, "progress", "state");
+}
+
+async function saveProgress() {
+    if (db && userId) {
+        progress.equippedSkinId = player.equippedSkinId; // Save equipped skin
+        progress.unlockedKeys = Array.from(new Set(progress.unlockedKeys)); // Ensure unique keys
+        progress.completedKeys = Array.from(new Set(progress.completedKeys));
+        progress.credits = player.credits; // Ensure credits are saved
+        try {
+            await setDoc(getProgressRef(), progress);
+        } catch(e) {
+            console.error("Error saving progress:", e);
+        }
+    } else {
+        localStorage.setItem(appId + '_progress', JSON.stringify(progress));
+        localStorage.setItem(appId + '_credits', player.credits.toString());
+        localStorage.setItem(appId + '_equippedSkin', player.equippedSkinId);
+    }
+}
+
+async function loadProgress() {
+    // Attempt to load from Firestore first
+    if (db && userId) {
+        try {
+            const docSnap = await getDoc(getProgressRef());
+            if (docSnap.exists()) {
+                progress = docSnap.data();
+                player.equippedSkinId = progress.equippedSkinId || 'default';
+                player.credits = progress.credits || 0;
+            } else {
+                console.log("No progress found, initializing new state.");
+                progress.credits = player.credits;
+                await saveProgress();
+            }
+        } catch (e) {
+            console.error("Error loading progress, falling back to local storage:", e);
+            loadProgressLocal();
+        }
+    } else {
+        loadProgressLocal();
+    }
+    applySkinBuffs();
+    updateHUD();
+}
+
+function loadProgressLocal() {
+    const localProgress = localStorage.getItem(appId + '_progress');
+    const localCredits = localStorage.getItem(appId + '_credits');
+    const localSkin = localStorage.getItem(appId + '_equippedSkin');
+
+    if (localProgress) {
+        progress = JSON.parse(localProgress);
+    }
+    if (localCredits) {
+        player.credits = parseInt(localCredits);
+    }
+    if (localSkin) {
+        player.equippedSkinId = localSkin;
+    }
+}
+
+function applySkinBuffs() {
+    const skin = SKIN_CATALOG.find(s => s.id === player.equippedSkinId);
+    if (skin && skin.buffs) {
+        player.maxHp = MAX_HP * (skin.buffs.hpMult || 1) + (skin.buffs.extraHp || 0);
+        player.maxShield = MAX_SHIELD * (skin.buffs.shieldMult || 1) + (skin.buffs.extraShield || 0);
+    } else {
+        player.maxHp = MAX_HP;
+        player.maxShield = MAX_SHIELD;
+    }
+    player.hp = Math.min(player.hp, player.maxHp);
+    player.shield = Math.min(player.shield, player.maxShield);
+}
+
+// --- UTILITY AND DRAWING FUNCTIONS ---
+
+function showPopup(text, x, y, duration, color = '#fff') {
+    const container = document.getElementById('popup-container');
+    const popup = document.createElement('div');
+    popup.style.cssText = `
+        position: absolute;
+        left: ${x}px;
+        top: ${y}px;
+        transform: translate(-50%, -50%);
+        padding: 5px 10px;
+        background: ${color};
+        color: #000;
+        border-radius: 5px;
+        font-size: 16px;
+        font-weight: bold;
+        opacity: 1;
+        transition: all 0.5s ease-out;
+        pointer-events: none;
+        box-shadow: 0 0 10px rgba(0,0,0,0.5);
+    `;
+    popup.textContent = text;
+    container.appendChild(popup);
+
+    setTimeout(() => {
+        popup.style.opacity = '0';
+        popup.style.top = (y - 50) + 'px';
+        setTimeout(() => popup.remove(), 500);
+    }, duration);
+}
+
+function updateHUD() {
+    const keyset = game.mode === 'yourchoice' ? game.keyset : (game.world === 'world1' ? WORLD1_KEYS : WORLD2_FULL);
+    const waveNumber = game.stageIndex + 1;
+    const totalWaves = keyset ? keyset.length : 0;
+    let worldDisplay = '';
+
+    if (game.world === 'world1') worldDisplay = '1';
+    else if (game.world === 'world2') worldDisplay = '2';
+    else if (game.mode === 'yourchoice') worldDisplay = 'C'; // Choice Mode
+
+    document.getElementById('waveInfo').textContent = `${worldDisplay}-${waveNumber} / ${totalWaves}`;
+    document.getElementById('hp').textContent = Math.ceil(player.hp);
+    document.getElementById('shield').textContent = Math.ceil(player.shield);
+    document.getElementById('credits').textContent = player.credits;
+    document.getElementById('stageKey').textContent = game.stageKey.toUpperCase(); // Show key in caps
+    document.getElementById('timer').textContent = game.timer.toFixed(1);
+    document.getElementById('shopCredits').textContent = player.credits; // Update shop display
+
+    // Show controls for specific skins
+    const skin = SKIN_CATALOG.find(s => s.id === player.equippedSkinId);
+    if (skin && skin.controls) {
+        skinControls.textContent = skin.controls;
+        skinControls.style.display = 'block';
+    } else {
+        skinControls.style.display = 'none';
+    }
+}
+
+function startShake(duration, intensity) {
+    game.shake = intensity;
+    setTimeout(() => game.shake = 0, duration);
+}
+
+// --- PLAYER AND SKIN LOGIC ---
+
+// Skin Catalog (Debuffed regen rates halved, unique V2 buffs, modified dragon)
+const SKIN_CATALOG = [
+    { id: 'default', name: 'Base Dodecahedron', type: 'Static Glyph', price: 0, desc: 'The reliable geometry that protects you. Simple, robust, boring.', preview: '●', color: '#00ff44' },
+    { id: 'retro_term', name: 'Vintage Terminal', type: 'Pixel/Trail Effect', price: 800, desc: 'Renders the player as a flashing green cursor block, leaving behind a brief ghost trail of \'console output\' text.', preview: '█', color: '#00ff00' },
+    { id: 'star_map', name: 'Cosmic Starmap', type: 'Particle Cluster', price: 1800, desc: 'A swirling constellation of tiny stars that react to your movement.', preview: '✨', color: '#ffffff' }, 
+    { id: 'cat_txt', name: 'cat.txt', type: 'Animated Text', price: 1500, desc: 'A glitching, animated text box that communicates its status via classic emoticon faces (owo, -w-, ;w;).', preview: 'owo', color: '#ffb300' },
+    { id: 'shards', name: 'Flickering Shards', type: 'Dynamic Geometry', price: 2500, desc: 'The player breaks into small, flickering geometric shards when hit, unifying on recovery.', preview: '⬢', color: '#ff00ff' }, 
+    { id: 'periodic', name: 'Periodic Table', type: 'Styled Box/Text', price: 2200, desc: 'Transforms into a color-coded element block, showing atomic data.', preview: 'Au', color: '#00ffff' },
+    { id: 'dino_mode', name: 'Dinosaur Mode', type: 'Emoji', price: 500, desc: 'Transforms you into a majestic, low-cost dinosaur icon.', preview: '🦖', color: '#00cc00' }, 
+    { id: 'hex_burst', name: 'Hex Code Burst', type: 'Dynamic Geometry', price: 3500, desc: 'The player is drawn as a cluster of constantly changing 6-digit hexadecimal color codes (based on player HP/shield status).', preview: '#A3FF4B', color: '#ff00ff' },
+    { id: 'neon_glow', name: 'Neon Glow', type: 'Glowing Outline', price: 1200, desc: 'A pulsating neon outline that leaves a faint glow trail effect.', preview: '⟡', color: '#ff00ff' },
+    { id: 'glitch', name: 'Glitch Effect', type: 'Distorted Render', price: 1600, desc: 'Player render with RGB split and scanline distortion.', preview: '█', color: '#ff0000' },
+    { id: 'matrix_code', name: 'Matrix Code', type: 'Falling Code', price: 2000, desc: 'Surrounded by orbiting binary code digits.', preview: '01', color: '#00ff00' },
+    { id: 'plasma_orbs', name: 'Plasma Orbs', type: 'Orbital Particles', price: 2800, desc: 'Multiple plasma orbs orbiting the core with electric arcs.', preview: '⚡', color: '#ff1493' },
+    { id: 'cyber_grid', name: 'Cyber Grid', type: 'Wireframe', price: 900, desc: 'A holographic wireframe grid that rotates and pulses.', preview: '▱', color: '#00ffff' },
+    { id: 'firefly_swarm', name: 'Firefly Swarm', type: 'Swarming Lights', price: 1900, desc: 'A swarm of tiny fireflies that flicker and follow movement patterns.', preview: '🪰', color: '#ffff00' },
+    { id: 'crystal_facet', name: 'Crystal Facet', type: 'Prismatic', price: 2600, desc: 'Multi-faceted crystal that refracts light into rainbows.', preview: '💎', color: '#7fffd4' },
+    { id: 'void_portal', name: 'Void Portal', type: 'Swirling Vortex', price: 3200, desc: 'A dark portal that sucks in light and emits shadowy tendrils.', preview: '🌀', color: '#4b0082' },
+    { id: 'sunflare', name: 'Sunflare', type: 'Radiant Burst', price: 1400, desc: 'Solar flare effects with coronal mass ejections.', preview: '☀️', color: '#ffd700' },
+    { id: 'ice_crystal', name: 'Ice Crystal', type: 'Fractal Snow', price: 1100, desc: 'Growing ice fractals that shimmer with frost.', preview: '❄️', color: '#add8e6' },
+    { id: 'lava_flow', name: 'Lava Flow', type: 'Molten', price: 2300, desc: 'Slow-flowing lava with bubbling embers.', preview: '🌋', color: '#ff4500' },
+    { id: 'neural_net', name: 'Neural Net', type: 'Synaptic', price: 3000, desc: 'Interconnected neural nodes firing signals.', preview: '🧠', color: '#9370db' },
+    { id: 'quantum_flux', name: 'Quantum Flux', type: 'Waveform Interference', price: 3800, desc: 'Overlapping quantum waves that interfere and create probabilistic patterns.', preview: '⟐', color: '#8a2be2' },
+    { id: 'arcade_pixel', name: 'Arcade Pixel', type: 'Retro Sprite', price: 600, desc: '8-bit pixel art sprite with dithering and scanlines.', preview: '⬜', color: '#ff69b4' },
+    { id: 'steampunk_gear', name: 'Steampunk Gear', type: 'Mechanical', price: 1700, desc: 'Brass gears and pistons with steam exhaust effects.', preview: '⚙️', color: '#cd7f32' },
+    { id: 'bioluminescent', name: 'Bioluminescent', type: 'Organic Glow', price: 2100, desc: 'Glowing jellyfish-like tendrils that pulse with bioluminescence.', preview: '🌊', color: '#00ced1' },
+    { id: 'holo_cube', name: 'Holo Cube', type: '3D Projection', price: 2900, desc: 'Rotating holographic cube with wireframe edges.', preview: '⬞', color: '#87ceeb' },
+    { id: 'shadow_puppeteer', name: 'Shadow Puppeteer', type: 'Silhouette', price: 1300, desc: 'Dynamic shadow puppet that morphs shapes.', preview: '🖤', color: '#000000' },
+    { id: 'electric_arc', name: 'Electric Arc', type: 'Lightning', price: 2400, desc: 'Crackling electric arcs that chain between nodes.', preview: '⚡', color: '#ffff00' },
+    { id: 'flame_wisp', name: 'Flame Wisp', type: 'Ethereal Fire', price: 1500, desc: 'Floating flame wisps that trail embers.', preview: '🔥', color: '#ff4500' },
+    { id: 'thorn_vine', name: 'Thorn Vine', type: 'Organic Growth', price: 1800, desc: 'Twisting thorn vines that grow and retract.', preview: '🌿', color: '#228b22' },
+    { id: 'echo_waveform', name: 'Echo Waveform', type: 'Audio Visualizer', price: 2700, desc: 'Oscillating waveforms that echo with sound-like pulses.', preview: '∿', color: '#ff1493' },
+    { id: 'arcade', name: 'Arcade', type: 'Pixel Grid', price: 15000, desc: 'A 4x4 grid of fuzzy, semi-transparent squares alternating between orange and wine red, with random flickers and a bright bottom scanline.', preview: '⬜', color: '#ff69b4', buffs: {hpMult: 1.1, shieldMult: 1.05} },
+    { id: 'grok_xai', name: 'Grok x.AI', type: 'Orbital Black Hole', price: 25000, desc: 'A central black hole with orbiting circles that shift from white to gray to black based on position around the event horizon, granting enhanced shields.', preview: '●', color: '#000000', buffs: {shieldMult: 1.5, regenRate: 0.005} }, // Halved
+    // V2 Skins (Unique buffs, halved regen)
+    { id: 'v2_nebula', name: 'V2 Nebula Vortex', type: 'Cosmic Swirl', price: 22000, desc: 'A breathtaking nebula vortex with swirling colors and particle bursts, visually stunning with +30% HP and slow shield regen.', preview: '🌌', color: '#8a2be2', buffs: {hpMult: 1.3, regenRate: 0.0075} }, // Halved
+    { id: 'v2_photon', name: 'V2 Photon Storm', type: 'Energy Cascade', price: 18000, desc: 'Cascading photons in a radiant storm, impressive light refractions with extra shields.', preview: '☄️', color: '#ffd700', buffs: {extraShield: 50, shieldMult: 1.2} },
+    { id: 'v2_chrono', name: 'V2 Chrono Rift', type: 'Temporal Distortion', price: 24000, desc: 'Rifting time waves with echoing distortions, elite visuals and HP boost.', preview: '⌛', color: '#4169e1', buffs: {hpMult: 1.4, extraHp: 30} },
+    { id: 'v2_singularity', name: 'V2 Singularity Core', type: 'Gravitational Pull', price: 28000, desc: 'A pulling singularity with warped space effects, awe-inspiring with moderate regen.', preview: '🕳️', color: '#000', buffs: {regenRate: 0.01, shieldMult: 1.3} }, // Halved
+    { id: 'v2_aurora', name: 'V2 Aurora Veil', type: 'Polar Lights', price: 20000, desc: 'Dancing aurora veils with spectral dances, beautiful buffs for endurance.', preview: '🌈', color: '#00ffff', buffs: {hpMult: 1.25, extraHp: 20, regenRate: 0.004} }, // Halved
+    { id: 'v2_fusion', name: 'V2 Fusion Reactor', type: 'Plasma Containment', price: 26000, desc: 'Contained fusion with energy flares, reactor glows impressively with shield overcharge.', preview: '☢️', color: '#ff4500', buffs: {shieldMult: 1.6, extraShield: 30} },
+    { id: 'v2_ethereal', name: 'V2 Ethereal Phantom', type: 'Ghostly Projections', price: 19000, desc: 'Phantom projections with spectral trails, hauntingly beautiful with HP regen.', preview: '👻', color: '#dda0dd', buffs: {hpMult: 1.2, regenRate: 0.006} }, // Halved
+    { id: 'v2_dragon', name: 'V2 Dragonfire', type: 'Mythic Flames', price: 28000, desc: 'Code-drawn dragon with roaring flames and scales, epic visuals with dual buffs and spinnable red shield (Q/E) that reflects attacks.', preview: 'D', color: '#ff0000', buffs: {extraHp: 40, extraShield: 40}, controls: 'Q: Spin Shield Left | E: Spin Shield Right' },
+    { id: 'v2_nexus', name: 'V2 Nexus Prism', type: 'Dimensional Refraction', price: 27000, desc: 'Prismatic nexus bending dimensions, refractive splendor with max endurance.', preview: '🔷', color: '#ff00ff', buffs: {hpMult: 1.5, shieldMult: 1.4} },
+    { id: 'v2_apex', name: 'V2 Apex Predator', type: 'Bio-Luminescent Hunt', price: 30000, desc: 'Predatory form with hunting pulses, ferocious design with ultimate regen.', preview: '🦈', color: '#008000', buffs: {regenRate: 0.009, extraHp: 50} }, // Halved
+    // Additional Skins
+    { id: 'v2_cosmic', name: 'V2 Cosmic Entity', type: 'Galactic Form', price: 31000, desc: 'A cosmic being with embedded galaxies and stellar flares, ultimate visual complexity with balanced buffs.', preview: '🌟', color: '#ffffff', buffs: {hpMult: 1.6, shieldMult: 1.5} },
+    { id: 'v2_chaos', name: 'V2 Chaos Engine', type: 'Fractal Chaos', price: 29000, desc: 'Ever-evolving fractal patterns of chaos, intricate and mesmerizing with regen focus.', preview: '🌀', color: '#ff1493', buffs: {regenRate: 0.0125, extraShield: 60} }, // Halved
+    { id: 'v2_eternal', name: 'V2 Eternal Flame', type: 'Infinite Inferno', price: 32000, desc: 'An eternal flame core with layered fire rings and ember storms, supreme endurance design.', preview: '🔥', color: '#ff4500', buffs: {hpMult: 1.7, extraHp: 70} }
+];
+
+function renderPlayerSkin(ctx, x, y, radius, skinId, dt, skinState, hp, maxHp) {
+    const skin = SKIN_CATALOG.find(s => s.id === skinId);
+    if (!skin) return;
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.fillStyle = skin.color;
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+
+    switch (skinId) {
+        case 'default':
+            ctx.beginPath();
+            ctx.arc(0, 0, radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            break;
+
+        case 'cat_txt':
+            // Fixed Blink/Idle Animation
+            let catBlinkTimer = skinState.catBlinkTimer || 0;
+            let catBlinkDuration = skinState.catBlinkDuration || 1200;
+            catBlinkTimer += dt;
+            let catFace = skinState.catFace || 'owo';
+            if (catBlinkTimer > catBlinkDuration) {
+                catFace = (catFace === 'owo') ? '-w-' : 'owo';
+                skinState.catFace = catFace;
+                catBlinkTimer = 0;
+                catBlinkDuration = 1200 + Math.random() * 300;
+            }
+            skinState.catBlinkTimer = catBlinkTimer;
+            skinState.catBlinkDuration = catBlinkDuration;
+
+            // Damage/Low HP State (Override)
+            if (hp < maxHp * 0.3) {
+                catFace = ';w;';
+            }
+
+            ctx.font = 'bold 24px Inter';
+            ctx.textAlign = 'center';
+            ctx.fillText(catFace, 0, 8);
+            ctx.strokeText(catFace, 0, 8);
+            break;
+
+        case 'periodic':
+            const element = skinState.periodicElement || PERIODIC_ELEMENT_DATA[0];
+            const elementSize = 30;
+            const elementBorderColor = '#333';
+            
+            ctx.save();
+            ctx.translate(-elementSize / 2, -elementSize / 2); // Center the box
+            
+            // 1. Draw Element Background and Border
+            ctx.fillStyle = element.color || '#cccccc';
+            ctx.fillRect(0, 0, elementSize, elementSize);
+            
+            ctx.strokeStyle = elementBorderColor;
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(0, 0, elementSize, elementSize);
+            
+            // 2. Draw Atomic Number (Top Left)
+            ctx.font = '7px Inter';
+            ctx.fillStyle = elementBorderColor;
+            ctx.textAlign = 'left';
+            ctx.fillText(element.num.toString(), 2, 8);
+            
+            // 3. Draw Symbol (Center)
+            ctx.font = 'bold 15px Inter';
+            ctx.fillStyle = elementBorderColor;
+            ctx.textAlign = 'center';
+            ctx.fillText(element.symbol, elementSize / 2, elementSize / 2 + 5);
+            
+            // 4. Draw Atomic Weight (Bottom Center)
+            ctx.font = '6px Inter';
+            ctx.fillStyle = elementBorderColor;
+            ctx.textAlign = 'center';
+            ctx.fillText(element.weight.toFixed(3), elementSize / 2, elementSize - 3);
+
+            ctx.restore();
+            break;
+            
+        case 'dino_mode': 
+            ctx.font = 'bold 24px Inter';
+            ctx.textAlign = 'center';
+            ctx.fillText('🦖', 0, 8);
+            break;
+
+        case 'retro_term':
+            // Fixed animated cursor: blinking bars
+            const retroBlinkTime = (skinState.retroBlinkTime || 0) + dt;
+            skinState.retroBlinkTime = retroBlinkTime % 1000;
+            const blinkOn = Math.floor(retroBlinkTime / 500) % 2 === 0;
+
+            ctx.fillStyle = '#000';
+            ctx.fillRect(-radius, -radius, radius * 2, radius * 2);
+            ctx.fillStyle = '#00ff00';
+            // Left bar (static)
+            ctx.fillRect(-radius, -radius, 2, radius * 2);
+            // Right bar (blinking)
+            if (blinkOn) {
+                ctx.fillRect(radius - 2, -radius, 2, radius * 2);
+            }
+            // Top and bottom lines for block feel
+            ctx.fillRect(-radius, -radius, radius * 2, 2);
+            ctx.fillRect(-radius, radius - 2, radius * 2, 2);
+            break;
+            
+        case 'shards': 
+            const isDamaged = hp < maxHp * 0.5;
+            if (isDamaged) {
+                // Flicker and draw as small scattered triangles
+                if (Math.floor(Date.now() / 50) % 2 === 0) {
+                    ctx.globalAlpha = 0.6;
+                }
+                for(let i=0; i<5; i++) {
+                    const angle = i * Math.PI / 2.5;
+                    ctx.save();
+                    ctx.rotate(angle);
+                    ctx.translate(Math.random()*4 - 2, Math.random()*4 - 2);
+                    ctx.beginPath();
+                    ctx.moveTo(radius, 0);
+                    ctx.lineTo(radius * -0.5, radius * 0.866);
+                    ctx.lineTo(radius * -0.5, radius * -0.866);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.restore();
+                }
+                ctx.globalAlpha = 1;
+            } else {
+                // Draw as a solid hexagon when healthy
+                ctx.beginPath();
+                for (let i = 0; i < 6; i++) {
+                    const angle = Math.PI / 3 * i;
+                    const rx = radius * Math.cos(angle);
+                    const ry = radius * Math.sin(angle);
+                    if (i === 0) ctx.moveTo(rx, ry);
+                    else ctx.lineTo(rx, ry);
+                }
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+            }
+            break;
+            
+        case 'star_map': 
+            const starCount = 20;
+            ctx.globalAlpha = 0.8;
+            for (let i = 0; i < starCount; i++) {
+                // Simple sine-wave movement for twinkling/swirling
+                const angle = (i * 0.3) + (Date.now() * 0.001);
+                const r = radius * 0.8 + Math.sin(Date.now() * 0.005 + i) * 2;
+                const starSize = 1 + Math.random() * 1.5;
+                ctx.fillRect(Math.cos(angle) * r, Math.sin(angle) * r, starSize, starSize);
+            }
+            ctx.globalAlpha = 1;
+            break;
+
+
+        case 'hex_burst':
+            const baseColor = (hp > 50) ? '#00FF00' : (hp > 20 ? '#FFFF00' : '#FF0000');
+            const pulse = Math.sin(Date.now() / 300) * 0.3 + 0.7;
+            ctx.fillStyle = baseColor;
+            ctx.globalAlpha = pulse;
+            ctx.beginPath();
+            ctx.arc(0, 0, radius * 0.7 * pulse, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+
+            // Draw small hex codes around the player
+            for(let i=0; i<6; i++) {
+                const angle = i * Math.PI / 3 + Date.now() * 0.001;
+                const offset = radius * 1.5;
+                const hexCode = Math.floor(Math.random()*16777215).toString(16).padStart(6, '0').toUpperCase();
+                ctx.font = '8px Inter';
+                ctx.fillText('#' + hexCode, Math.cos(angle) * offset, Math.sin(angle) * offset);
+            }
+            break;
+
+        case 'neon_glow':
+            ctx.shadowColor = skin.color;
+            ctx.shadowBlur = 10 + Math.sin(Date.now() / 200) * 3;
+            ctx.strokeStyle = skin.color;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(0, 0, radius, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+            break;
+
+        case 'glitch':
+            // RGB split effect
+            ctx.save();
+            ctx.translate(1, 0);
+            ctx.fillStyle = '#f00';
+            ctx.beginPath();
+            ctx.arc(0, 0, radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            ctx.save();
+            ctx.translate(-1, 0);
+            ctx.fillStyle = '#00f';
+            ctx.beginPath();
+            ctx.arc(0, 0, radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            ctx.fillStyle = '#0f0';
+            ctx.beginPath();
+            ctx.arc(0, 0, radius, 0, Math.PI * 2);
+            ctx.fill();
+            break;
+
+        case 'matrix_code':
+            // Orbiting binary digits
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(0, 0, radius * 0.8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = skin.color;
+            ctx.font = '6px monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            for (let i = 0; i < 6; i++) {
+                const angle = (i * Math.PI / 3) + (Date.now() * 0.002);
+                const r = radius + 6 + i * 2;
+                const char = Math.random() > 0.5 ? '0' : '1';
+                ctx.fillText(char, Math.cos(angle) * r, Math.sin(angle) * r);
+            }
+            break;
+
+        case 'plasma_orbs':
+            // Orbiting orbs with arcs
+            for (let i = 0; i < 3; i++) {
+                const angle = (i * Math.PI * 2 / 3) + (Date.now() * 0.003);
+                const r = radius + 10;
+                ctx.beginPath();
+                ctx.arc(Math.cos(angle) * r, Math.sin(angle) * r, 2, 0, Math.PI * 2);
+                ctx.fill();
+                // Arc to center
+                ctx.strokeStyle = skin.color;
+                ctx.lineWidth = 0.5;
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(Math.cos(angle) * r, Math.sin(angle) * r);
+                ctx.stroke();
+            }
+            break;
+
+        case 'cyber_grid':
+            // Rotating wireframe
+            ctx.save();
+            ctx.rotate(Date.now() * 0.001);
+            ctx.strokeStyle = skin.color;
+            ctx.lineWidth = 0.5;
+            for (let i = -1; i <= 1; i++) {
+                for (let j = -1; j <= 1; j++) {
+                    if (i === 0 && j === 0) continue;
+                    ctx.beginPath();
+                    ctx.moveTo(i * radius, j * radius);
+                    ctx.lineTo(0, 0);
+                    ctx.stroke();
+                }
+            }
+            ctx.restore();
+            break;
+
+        case 'firefly_swarm':
+            // Flickering dots
+            ctx.globalAlpha = 0.7;
+            for (let i = 0; i < 10; i++) {
+                const angle = i * 0.4 + Date.now() * 0.004;
+                const r = radius * 0.5 + Math.sin(Date.now() * 0.01 + i) * 3;
+                const alpha = 0.5 + Math.sin(Date.now() * 0.02 + i) * 0.5;
+                ctx.globalAlpha = alpha;
+                ctx.fillRect(Math.cos(angle) * r, Math.sin(angle) * r, 1, 1);
+            }
+            ctx.globalAlpha = 1;
+            break;
+
+        case 'crystal_facet':
+            // Multi-faceted draw
+            ctx.save();
+            for (let i = 0; i < 6; i++) {
+                const angle = i * Math.PI / 3;
+                ctx.save();
+                ctx.rotate(angle);
+                ctx.fillStyle = `hsl(${i * 60}, 100%, 70%)`;
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(radius, 0);
+                ctx.lineTo(radius * 0.5, radius * 0.866);
+                ctx.closePath();
+                ctx.fill();
+                ctx.restore();
+            }
+            ctx.restore();
+            break;
+
+        case 'void_portal':
+            // Swirling darkness
+            const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, radius * 2);
+            gradient.addColorStop(0, '#000');
+            gradient.addColorStop(1, skin.color);
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(0, 0, radius * 2, 0, Math.PI * 2);
+            ctx.fill();
+            break;
+
+        case 'sunflare':
+            // Radiant rays
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(0, 0, radius * 0.5, 0, Math.PI * 2);
+            ctx.fill();
+            for (let i = 0; i < 6; i++) {
+                const angle = i * Math.PI / 3 + Date.now() * 0.005;
+                ctx.strokeStyle = skin.color;
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(Math.cos(angle) * radius * 1.5, Math.sin(angle) * radius * 1.5);
+                ctx.stroke();
+            }
+            break;
+
+        case 'ice_crystal':
+            // Fractal lines
+            ctx.strokeStyle = skin.color;
+            ctx.lineWidth = 1;
+            function drawBranch(len, angle) {
+                if (len < 1) return;
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(Math.cos(angle) * len, Math.sin(angle) * len);
+                ctx.stroke();
+                drawBranch(len * 0.7, angle + 0.3);
+                drawBranch(len * 0.7, angle - 0.3);
+            }
+            drawBranch(radius, 0);
+            break;
+
+        case 'lava_flow':
+            // Bubbling blobs
+            ctx.fillStyle = skin.color;
+            for (let i = 0; i < 3; i++) {
+                const rx = Math.sin(Date.now() * 0.003 + i) * 2;
+                const ry = Math.cos(Date.now() * 0.002 + i) * 2;
+                ctx.beginPath();
+                ctx.arc(rx, ry, radius * 0.6, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            // Embers
+            ctx.fillStyle = '#fff';
+            for (let i = 0; i < 3; i++) {
+                ctx.fillRect(Math.random() * radius * 2 - radius, Math.random() * radius * 2 - radius, 0.5, 0.5);
+            }
+            break;
+
+        case 'neural_net':
+            // Connected nodes
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(0, 0, radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = skin.color;
+            for (let i = 0; i < 4; i++) {
+                const angle = i * Math.PI / 2;
+                const r = radius * 0.5;
+                ctx.beginPath();
+                ctx.arc(Math.cos(angle) * r, Math.sin(angle) * r, 1.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = skin.color;
+                ctx.lineWidth = 0.5;
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(Math.cos(angle) * r, Math.sin(angle) * r);
+                ctx.stroke();
+            }
+            break;
+
+        case 'quantum_flux':
+            // Wave interference
+            ctx.strokeStyle = skin.color;
+            ctx.lineWidth = 0.5;
+            for (let i = 0; i < 2; i++) {
+                const offset = i * 5 + Date.now() * 0.01;
+                ctx.beginPath();
+                for (let j = 0; j < 360; j += 30) {
+                    const rad = j * Math.PI / 180;
+                    const wave = Math.sin(rad + offset) * 3;
+                    const rx = Math.cos(rad) * (radius + wave);
+                    const ry = Math.sin(rad) * (radius + wave);
+                    if (j === 0) ctx.moveTo(rx, ry);
+                    else ctx.lineTo(rx, ry);
+                }
+                ctx.closePath();
+                ctx.stroke();
+            }
+            break;
+
+        case 'arcade_pixel':
+            // Pixelated sprite
+            ctx.imageSmoothingEnabled = false;
+            ctx.fillStyle = skin.color;
+            for (let px = -radius; px < radius; px += 2) {
+                for (let py = -radius; py < radius; py += 2) {
+                    if (Math.random() > 0.5) ctx.fillRect(px, py, 2, 2);
+                }
+            }
+            // Scanlines
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 0.5;
+            for (let i = 0; i < radius * 2; i += 1) {
+                ctx.beginPath();
+                ctx.moveTo(-radius, i - radius);
+                ctx.lineTo(radius, i - radius);
+                ctx.stroke();
+            }
+            break;
+
+        case 'steampunk_gear':
+            // Gears
+            ctx.fillStyle = '#cd7f32';
+            ctx.beginPath();
+            ctx.moveTo(radius, 0);
+            for (let i = 1; i < 8; i++) {
+                const angle = i * Math.PI / 4;
+                ctx.lineTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
+            }
+            ctx.closePath();
+            ctx.fill();
+            // Rotate
+            ctx.save();
+            ctx.rotate(Date.now() * 0.005);
+            ctx.strokeStyle = '#8b4513';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(0, 0, radius, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+            break;
+
+        case 'bioluminescent':
+            // Pulsing tendrils
+            for (let i = 0; i < 6; i++) {
+                const angle = i * Math.PI / 3 + Math.sin(Date.now() * 0.005) * 0.1;
+                const len = radius + Math.sin(Date.now() * 0.01 + i) * 6;
+                ctx.strokeStyle = skin.color;
+                ctx.lineWidth = 1;
+                ctx.globalAlpha = 0.8 + Math.sin(Date.now() * 0.02 + i) * 0.2;
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(Math.cos(angle) * len, Math.sin(angle) * len);
+                ctx.stroke();
+            }
+            ctx.globalAlpha = 1;
+            break;
+
+        case 'holo_cube':
+            // 3D cube projection
+            ctx.strokeStyle = skin.color;
+            ctx.lineWidth = 1;
+            const rotX = Date.now() * 0.001;
+            const rotY = Date.now() * 0.002;
+            const cosX = Math.cos(rotX), sinX = Math.sin(rotX);
+            const cosY = Math.cos(rotY), sinY = Math.sin(rotY);
+            const verts = [
+                [-5, -5, -5], [5, -5, -5], [5, 5, -5], [-5, 5, -5],
+                [-5, -5, 5], [5, -5, 5], [5, 5, 5], [-5, 5, 5]
+            ].map(v => ({
+                x: v[0] * cosY - v[2] * sinY,
+                y: (v[1] * cosX - v[2] * sinX) * 10,
+                z: v[0] * sinY + v[2] * cosY
+            }));
+            // Draw edges (simplified)
+            const edges = [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]];
+            edges.forEach(e => {
+                ctx.beginPath();
+                ctx.moveTo(verts[e[0]].x + radius / 2, verts[e[0]].y + radius / 2);
+                ctx.lineTo(verts[e[1]].x + radius / 2, verts[e[1]].y + radius / 2);
+                ctx.stroke();
+            });
+            break;
+
+        case 'shadow_puppeteer':
+            // Morphing shadow
+            const morph = Math.sin(Date.now() / 1000);
+            ctx.fillStyle = '#000';
+            ctx.globalAlpha = 0.8;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, radius * (1 + morph * 0.5), radius * (1 - morph * 0.3), 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+            break;
+
+        case 'electric_arc':
+            // Arcing lightning
+            ctx.strokeStyle = skin.color;
+            ctx.lineWidth = 2;
+            ctx.globalAlpha = 0.7;
+            for (let i = 0; i < 3; i++) {
+                const startAngle = i * Math.PI * 2 / 3;
+                const endAngle = startAngle + Math.PI;
+                const midX = Math.cos(startAngle + Math.PI / 2) * radius * 0.5;
+                const midY = Math.sin(startAngle + Math.PI / 2) * radius * 0.5;
+                ctx.beginPath();
+                ctx.moveTo(Math.cos(startAngle) * radius, Math.sin(startAngle) * radius);
+                ctx.quadraticCurveTo(midX + (Math.random()-0.5)*5, midY + (Math.random()-0.5)*5, Math.cos(endAngle) * radius, Math.sin(endAngle) * radius);
+                ctx.stroke();
+            }
+            ctx.globalAlpha = 1;
+            break;
+
+        case 'flame_wisp':
+            // Floating flames
+            for (let i = 0; i < 4; i++) {
+                const angle = i * Math.PI * 2 / 4 + Date.now() * 0.004;
+                const r = radius * 0.3 + Math.sin(Date.now() * 0.01 + i) * 3;
+                ctx.fillStyle = `rgba(255, 69, 0, ${0.6 + Math.sin(Date.now() * 0.03 + i) * 0.4})`;
+                ctx.beginPath();
+                ctx.arc(Math.cos(angle) * r, Math.sin(angle) * r, 1.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            break;
+
+        case 'thorn_vine':
+            // Twisting vines (Updated to 4 arms)
+            ctx.strokeStyle = skin.color;
+            ctx.lineWidth = 2;
+            for (let i = 0; i < 4; i++) { // Changed from 3 to 4
+                const baseAngle = i * Math.PI / 2; // 90 degrees for 4 arms
+                ctx.save();
+                ctx.rotate(baseAngle);
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                for (let j = 0; j < 15; j++) {
+                    const t = j / 15;
+                    const rx = t * radius * 1.2;
+                    const ry = Math.sin(t * Math.PI * 3 + Date.now() * 0.005) * 3;
+                    if (j === 0) ctx.moveTo(rx, ry);
+                    else ctx.lineTo(rx, ry);
+                }
+                ctx.stroke();
+                ctx.restore();
+            }
+            break;
+
+        case 'echo_waveform':
+            // Waveforms
+            ctx.strokeStyle = skin.color;
+            ctx.lineWidth = 0.5;
+            const time = Date.now() * 0.001;
+            for (let i = 0; i < 2; i++) {
+                const offset = i * Math.PI / 2 + time;
+                ctx.beginPath();
+                for (let j = 0; j < 360; j += 30) {
+                    const rad = j * Math.PI / 180;
+                    const r = radius + Math.sin(rad * 2 + offset) * 6;
+                    const rx = Math.cos(rad) * r;
+                    const ry = Math.sin(rad) * r;
+                    if (j === 0) ctx.moveTo(rx, ry);
+                    else ctx.lineTo(rx, ry);
+                }
+                ctx.closePath();
+                ctx.stroke();
+            }
+            break;
+
+        case 'arcade':
+            // 4x4 grid of squares, alternating orange/wine red, dark semi-transparent fuzzy, random flicker, bright bottom line
+            const gridSize = radius * 1.5 / 4; // Size per square
+            const orange = '#8b4513'; // Darker orange
+            const wineRed = '#4a1f23'; // Darker wine red
+            const brightLine = '#ff4500'; // Brighter for bottom line
+            let arcadeFlicker = skinState.arcadeFlicker || Array(16).fill(false);
+
+            // Update flickers (random per square)
+            for (let i = 0; i < 16; i++) {
+                if (Math.random() < 0.02) { // ~2% chance per frame to flicker
+                    arcadeFlicker[i] = !arcadeFlicker[i];
+                }
+            }
+            skinState.arcadeFlicker = arcadeFlicker;
+
+            // Smooth alternate: global hue shift over time for the grid
+            const globalShift = Math.sin(Date.now() / 1000) * 0.1; // Subtle shift
+
+            ctx.globalAlpha = 0.4; // Semi-transparent base
+            for (let row = 0; row < 4; row++) {
+                for (let col = 0; col < 4; col++) {
+                    const idx = row * 4 + col;
+                    const rx = (col - 1.5) * gridSize;
+                    const ry = (row - 1.5) * gridSize;
+                    const isOrange = ((row + col) % 2 === 0);
+                    let color = isOrange ? orange : wineRed;
+                    // Fuzzy: draw as small blurred rects or multiple dots (simple: alpha vary)
+                    const flickerAlpha = arcadeFlicker[idx] ? 0.8 : 0.2;
+                    ctx.globalAlpha = 0.4 * flickerAlpha;
+                    ctx.fillStyle = color;
+                    ctx.fillRect(rx, ry, gridSize, gridSize);
+                }
+            }
+            ctx.globalAlpha = 1;
+
+            // Bottom scanline (brighter)
+            ctx.fillStyle = brightLine;
+            ctx.fillRect(-radius * 0.75, radius * 0.4, radius * 1.5, 2);
+            break;
+
+        case 'grok_xai':
+            // Black hole center with outline, 8 spinning circles changing from white-gray-black based on position
+            // Center black hole
+            ctx.beginPath();
+            ctx.arc(0, 0, radius * 0.6, 0, Math.PI * 2);
+            ctx.fillStyle = '#000';
+            ctx.fill();
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            // Update rotation
+            let grokAngle = (skinState.grokAngle || 0) + dt * 0.001;
+            skinState.grokAngle = grokAngle;
+
+            // 8 orbiting circles
+            for (let i = 0; i < 8; i++) {
+                const angle = (i * Math.PI / 4) + grokAngle;
+                const r = radius * 1.2;
+                const ox = Math.cos(angle) * r;
+                const oy = Math.sin(angle) * r;
+                ctx.beginPath();
+                ctx.arc(ox, oy, 2, 0, Math.PI * 2);
+                // Color: white-gray-black based on position (cosine for smooth gradient)
+                const lightness = 50 + 50 * Math.cos(angle);
+                ctx.fillStyle = `hsl(0, 0%, ${lightness}%)`;
+                ctx.fill();
+            }
+            break;
+
+        // V2 Skins Renders (Enhanced for complexity: more particles, layers, effects)
+        case 'v2_nebula':
+            // Multi-layer swirling nebula with 20+ particles and gradient bursts
+            const nebulaGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, radius * 2.5);
+            nebulaGradient.addColorStop(0, '#8a2be2');
+            nebulaGradient.addColorStop(0.3, '#4b0082');
+            nebulaGradient.addColorStop(0.7, '#000080');
+            nebulaGradient.addColorStop(1, '#000');
+            ctx.fillStyle = nebulaGradient;
+            ctx.beginPath();
+            ctx.arc(0, 0, radius * 2.5, 0, Math.PI * 2);
+            ctx.fill();
+            // Enhanced particles: 20 swirling with trails
+            for (let i = 0; i < 20; i++) {
+                const pAngle = i * Math.PI / 10 + Date.now() * 0.003;
+                const pr = radius * (1.2 + Math.sin(pAngle * 2) * 0.5);
+                const trailLen = Math.sin(Date.now() * 0.01 + i) * 5;
+                ctx.strokeStyle = `hsl(${pAngle * 180 / Math.PI + Date.now() * 0.1}, 100%, 70%)`;
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(Math.cos(pAngle) * (pr - trailLen), Math.sin(pAngle) * (pr - trailLen));
+                ctx.lineTo(Math.cos(pAngle) * pr, Math.sin(pAngle) * pr);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.arc(Math.cos(pAngle) * pr, Math.sin(pAngle) * pr, 2, 0, Math.PI * 2);
+                ctx.fillStyle = ctx.strokeStyle;
+                ctx.fill();
+            }
+            break;
+
+        case 'v2_photon':
+            // Cascading photons with refractions and 16+ beams
+            ctx.fillStyle = '#ffd700';
+            ctx.beginPath();
+            ctx.arc(0, 0, radius * 0.8, 0, Math.PI * 2);
+            ctx.fill();
+            for (let i = 0; i < 16; i++) {
+                const angle = i * Math.PI / 8 + Date.now() * 0.005;
+                const dist = radius + Math.sin(angle * 3) * 8;
+                const refraction = Math.sin(Date.now() * 0.01 + i) * 2;
+                ctx.strokeStyle = '#ffff00';
+                ctx.lineWidth = 1 + Math.sin(Date.now() * 0.02 + i) * 0.5;
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.quadraticCurveTo(Math.cos(angle) * (dist / 2) + refraction, Math.sin(angle) * (dist / 2) + refraction, Math.cos(angle) * dist, Math.sin(angle) * dist);
+                ctx.stroke();
+            }
+            // Core pulse
+            const corePulse = Math.sin(Date.now() / 150) * 0.3 + 0.7;
+            ctx.globalAlpha = corePulse;
+            ctx.beginPath();
+            ctx.arc(0, 0, radius * 1.2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+            break;
+
+        case 'v2_chrono':
+            // Temporal waves with echoing distortions and 5+ layered waves
+            ctx.strokeStyle = '#4169e1';
+            ctx.lineWidth = 1.5;
+            const chronoTime = Date.now() * 0.002;
+            for (let i = 0; i < 5; i++) {
+                const waveOffset = i * 2;
+                ctx.globalAlpha = 0.6 / i || 0.6;
+                ctx.beginPath();
+                for (let j = 0; j <= 360; j += 10) {
+                    const rad = j * Math.PI / 180;
+                    const wave = Math.sin(rad * (2 + i * 0.5) + chronoTime + waveOffset) * (radius + i * 3);
+                    const echoDistort = Math.cos(chronoTime * 2 + j) * 2;
+                    const rx = Math.cos(rad) * wave + echoDistort;
+                    const ry = Math.sin(rad) * wave;
+                    if (j === 0) ctx.moveTo(rx, ry);
+                    else ctx.lineTo(rx, ry);
+                }
+                ctx.closePath();
+                ctx.stroke();
+            }
+            ctx.globalAlpha = 1;
+            break;
+
+        case 'v2_singularity':
+            // Pulling gravity with warped space and 8+ tendrils with distortion
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(0, 0, radius * 1.2, 0, Math.PI * 2);
+            ctx.fill();
+            // Event horizon ring
+            ctx.strokeStyle = '#4b0082';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(0, 0, radius * 1.2, 0, Math.PI * 2);
+            ctx.stroke();
+            for (let i = 0; i < 8; i++) {
+                const angle = i * Math.PI / 4;
+                const warp = Math.sin(Date.now() * 0.005 + i) * 0.5;
+                ctx.strokeStyle = `rgba(75, 0, 130, ${0.7 + Math.sin(Date.now() * 0.01 + i) * 0.3})`;
+                ctx.lineWidth = 2 + warp * 2;
+                ctx.beginPath();
+                ctx.moveTo(Math.cos(angle + warp) * radius * 1.1, Math.sin(angle + warp) * radius * 1.1);
+                ctx.quadraticCurveTo(Math.cos(angle) * radius * 1.5, Math.sin(angle) * radius * 1.5, Math.cos(angle - warp) * (radius * 2.5), Math.sin(angle - warp) * (radius * 2.5));
+                ctx.stroke();
+            }
+            break;
+
+        case 'v2_aurora':
+            // Dancing lights with 10+ spectral layers and curvature
+            const auroraTime = Date.now() * 0.004;
+            for (let i = 0; i < 10; i++) {
+                const angle = auroraTime + i * Math.PI * 0.8;
+                const len = radius * (1.5 + Math.sin(auroraTime * 2 + i) * 0.8);
+                const hue = (auroraTime * 50 + i * 30) % 360;
+                ctx.strokeStyle = `hsla(${hue}, 100%, 60%, 0.8)`;
+                ctx.lineWidth = 4 - i * 0.3;
+                ctx.globalAlpha = 0.6 + Math.sin(auroraTime * 3 + i) * 0.4;
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                for (let j = 0; j < 20; j++) {
+                    const t = j / 20;
+                    const curveX = Math.cos(angle) * t * len + Math.sin(auroraTime * 5 + j) * 2;
+                    const curveY = Math.sin(angle) * t * len + Math.cos(auroraTime * 4 + j) * 1.5;
+                    if (j === 0) ctx.moveTo(curveX, curveY);
+                    else ctx.lineTo(curveX, curveY);
+                }
+                ctx.stroke();
+            }
+            ctx.globalAlpha = 1;
+            break;
+
+        case 'v2_fusion':
+            // Reactor flares with 12+ energy bursts and plasma containment field
+            ctx.fillStyle = '#ff4500';
+            ctx.beginPath();
+            const fusionPulse = Math.sin(Date.now() / 100) * 0.4 + 0.6;
+            ctx.arc(0, 0, radius * fusionPulse, 0, Math.PI * 2);
+            ctx.fill();
+            // Containment field
+            ctx.strokeStyle = '#ffff00';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(0, 0, radius * 1.3, 0, Math.PI * 2);
+            ctx.stroke();
+            // Enhanced flares: 12 with random bursts
+            for (let i = 0; i < 12; i++) {
+                const flareAngle = i * Math.PI / 6 + Math.sin(Date.now() * 0.007 + i) * 0.3;
+                const flareLen = radius * 2 + Math.random() * 5;
+                const burstAlpha = 0.4 + Math.random() * 0.5;
+                ctx.fillStyle = `rgba(255, 165, 0, ${burstAlpha})`;
+                ctx.globalAlpha = burstAlpha;
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(Math.cos(flareAngle) * flareLen, Math.sin(flareAngle) * flareLen);
+                ctx.lineTo(Math.cos(flareAngle + 0.2) * flareLen * 0.8, Math.sin(flareAngle + 0.2) * flareLen * 0.8);
+                ctx.closePath();
+                ctx.fill();
+                // Inner ember particles
+                for (let p = 0; p < 3; p++) {
+                    const px = Math.cos(flareAngle) * (flareLen * 0.3 + p * 2), py = Math.sin(flareAngle) * (flareLen * 0.3 + p * 2);
+                    ctx.fillRect(px - 0.5, py - 0.5, 1, 1);
+                }
+            }
+            ctx.globalAlpha = 1;
+            break;
+
+        case 'v2_ethereal':
+            // Spectral trails with 8+ ghostly layers and fade effects
+            ctx.globalAlpha = 0.5;
+            ctx.fillStyle = '#dda0dd';
+            for (let i = 0; i < 8; i++) {
+                const trailAngle = i * Math.PI * 2 / 8 + Date.now() * 0.003;
+                const trailR = radius + i * 4;
+                const fade = 0.8 - i * 0.08;
+                ctx.globalAlpha = fade;
+                ctx.beginPath();
+                ctx.arc(Math.cos(trailAngle) * trailR, Math.sin(trailAngle) * trailR, 4 - i * 0.3, 0, Math.PI * 2);
+                ctx.fill();
+                // Trail lines
+                ctx.strokeStyle = '#dda0dd';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(Math.cos(trailAngle) * trailR, Math.sin(trailAngle) * trailR);
+                ctx.stroke();
+            }
+            ctx.globalAlpha = 1;
+            ctx.strokeStyle = '#dda0dd';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(0, 0, radius * 0.6, 0, Math.PI * 2);
+            ctx.stroke();
+            break;
+
+        case 'v2_dragon':
+            // Code-drawn dragon body (simple polygonal shape for head, body, wings)
+            ctx.fillStyle = '#8B4513'; // Brown scales
+            ctx.beginPath();
+            // Body
+            ctx.ellipse(0, 0, radius * 1.2, radius * 0.6, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Head
+            ctx.beginPath();
+            ctx.ellipse(radius * 0.8, 0, radius * 0.4, radius * 0.3, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Wings (two simple triangles)
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(-radius * 0.8, -radius * 0.5);
+            ctx.lineTo(-radius * 0.8, radius * 0.5);
+            ctx.closePath();
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(radius * 0.8, -radius * 0.5);
+            ctx.lineTo(radius * 0.8, radius * 0.5);
+            ctx.closePath();
+            ctx.fill();
+            // Flame breath (orange triangle forward)
+            ctx.fillStyle = '#FF4500';
+            ctx.beginPath();
+            ctx.moveTo(radius * 1.2, 0);
+            ctx.lineTo(radius * 1.8, -radius * 0.2);
+            ctx.lineTo(radius * 1.8, radius * 0.2);
+            ctx.closePath();
+            ctx.fill();
+            // Spikes (from diep.io style: triangular spikes around body)
+            ctx.fillStyle = '#654321';
+            for (let i = 0; i < 6; i++) {
+                const spikeAngle = i * Math.PI / 3;
+                ctx.save();
+                ctx.translate(0, 0);
+                ctx.rotate(spikeAngle);
+                ctx.beginPath();
+                ctx.moveTo(radius * 0.5, 0);
+                ctx.lineTo(radius * 0.8, -radius * 0.3);
+                ctx.lineTo(radius * 0.8, radius * 0.3);
+                ctx.closePath();
+                ctx.fill();
+                ctx.restore();
+            }
+            // Red spinning shield
+            const dragonShieldAngle = skinState.dragonShieldAngle || 0;
+            ctx.strokeStyle = '#ff0000';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(0, 0, radius + 8, dragonShieldAngle, dragonShieldAngle + Math.PI * 1.5);
+            ctx.stroke();
+            break;
+
+        case 'v2_nexus':
+            // Bending prisms with 8+ refractive layers and shadow glow
+            ctx.save();
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = '#ff00ff';
+            for (let i = 0; i < 8; i++) {
+                ctx.save();
+                const prismRot = i * Math.PI / 4 + Date.now() * 0.002;
+                ctx.rotate(prismRot);
+                ctx.fillStyle = `hsl(${i * 45}, 100%, ${70 + Math.sin(Date.now() * 0.01 + i) * 20}%)`;
+                for (let j = 0; j < 3; j++) { // Multi-facet per prism
+                    ctx.beginPath();
+                    ctx.rect(-radius * 0.4 + j * 0.2, -radius * 0.4, radius * 0.8, radius * 0.8);
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+            ctx.restore();
+            ctx.shadowBlur = 0;
+            break;
+
+        case 'v2_apex':
+            // Hunting pulses with 6+ bio-lum rings and predatory spikes
+            const pulseRadius = radius + Math.sin(Date.now() / 200) * 8;
+            ctx.fillStyle = '#008000';
+            ctx.beginPath();
+            ctx.arc(0, 0, pulseRadius, 0, Math.PI * 2);
+            ctx.fill();
+            // Enhanced pulse rings: 6 with varying speeds
+            for (let i = 1; i < 6; i++) {
+                const ringR = pulseRadius + i * 10 + Math.sin(Date.now() / (150 / i)) * 3;
+                const ringAlpha = 0.6 / i;
+                ctx.globalAlpha = ringAlpha;
+                ctx.strokeStyle = '#00ff00';
+                ctx.lineWidth = 3 - i * 0.4;
+                ctx.beginPath();
+                ctx.arc(0, 0, ringR, 0, Math.PI * 2);
+                ctx.stroke();
+                // Spikes
+                for (let s = 0; s < 3; s++) {
+                    const spikeAngle = s * Math.PI * 2 / 3 + Date.now() * 0.01;
+                    ctx.lineTo(Math.cos(spikeAngle) * (ringR + 5), Math.sin(spikeAngle) * (ringR + 5));
+                }
+            }
+            ctx.globalAlpha = 1;
+            break;
+
+        // Additional Skins Renders
+        case 'v2_cosmic':
+            // Galactic form with embedded stars, nebulae swirls, and flare bursts
+            const cosmicGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, radius * 3);
+            cosmicGrad.addColorStop(0, '#ffffff');
+            cosmicGrad.addColorStop(0.4, '#8a2be2');
+            cosmicGrad.addColorStop(0.8, '#000080');
+            cosmicGrad.addColorStop(1, '#000');
+            ctx.fillStyle = cosmicGrad;
+            ctx.beginPath();
+            ctx.arc(0, 0, radius * 3, 0, Math.PI * 2);
+            ctx.fill();
+            // Embedded galaxies: 15 swirling stars
+            for (let i = 0; i < 15; i++) {
+                const gAngle = i * Math.PI / 7.5 + Date.now() * 0.0025;
+                const gr = radius * 0.7 + Math.sin(gAngle * 1.5) * 4;
+                ctx.fillStyle = `hsl(${gAngle * 180 / Math.PI}, 100%, ${80 + Math.random() * 20}%)`;
+                ctx.beginPath();
+                ctx.arc(Math.cos(gAngle) * gr, Math.sin(gAngle) * gr, 1.5 + Math.sin(Date.now() * 0.015 + i) * 0.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            // Flare bursts
+            for (let f = 0; f < 5; f++) {
+                const fAngle = Date.now() * 0.008 + f;
+                ctx.strokeStyle = '#ffd700';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(Math.cos(fAngle) * radius * 2.5, Math.sin(fAngle) * radius * 2.5);
+                ctx.stroke();
+            }
+            break;
+
+        case 'v2_chaos':
+            // Fractal chaos with recursive branches and color-shifting interference
+            ctx.strokeStyle = '#ff1493';
+            ctx.lineWidth = 1;
+            function drawChaosFractal(len, angle, depth) {
+                if (depth > 4 || len < 1) return;
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                const endX = Math.cos(angle) * len;
+                const endY = Math.sin(angle) * len;
+                ctx.lineTo(endX + Math.sin(Date.now() * 0.01 + depth) * 2, endY + Math.cos(Date.now() * 0.008 + depth) * 1.5);
+                ctx.stroke();
+                const hueShift = (Date.now() * 0.2 + depth * 60) % 360;
+                ctx.strokeStyle = `hsl(${hueShift}, 100%, 50%)`;
+                drawChaosFractal(len * 0.6, angle + 0.4, depth + 1);
+                drawChaosFractal(len * 0.6, angle - 0.4, depth + 1);
+                drawChaosFractal(len * 0.5, angle + Math.PI / 2, depth + 1);
+            }
+            for (let i = 0; i < 6; i++) {
+                const baseAngle = i * Math.PI / 3;
+                ctx.save();
+                ctx.rotate(baseAngle);
+                drawChaosFractal(radius * 1.2, 0, 0);
+                ctx.restore();
+            }
+            break;
+
+        case 'v2_eternal':
+            // Infinite inferno with 7+ fire rings, ember storms, and heat distortion
+            // Core flame
+            const eternalPulse = Math.sin(Date.now() / 80) * 0.5 + 0.5;
+            ctx.fillStyle = '#ff4500';
+            ctx.beginPath();
+            ctx.arc(0, 0, radius * eternalPulse, 0, Math.PI * 2);
+            ctx.fill();
+            // Multi-ring fire: 7 layers
+            for (let i = 1; i < 8; i++) {
+                const ringR = radius + i * 6 + Math.sin(Date.now() / (100 * i)) * 4;
+                const ringAlpha = 0.4 / i;
+                ctx.globalAlpha = ringAlpha;
+                ctx.strokeStyle = `hsl(20, 100%, ${70 - i * 5}%)`;
+                ctx.lineWidth = 4 - i * 0.5;
+                ctx.beginPath();
+                for (let j = 0; j < 360; j += 15) {
+                    const rad = j * Math.PI / 180;
+                    const flameWiggle = Math.sin(Date.now() * 0.02 + j + i) * 3;
+                    const rx = Math.cos(rad) * ringR + flameWiggle;
+                    const ry = Math.sin(rad) * ringR;
+                    if (j === 0) ctx.moveTo(rx, ry);
+                    else ctx.lineTo(rx, ry);
+                }
+                ctx.closePath();
+                ctx.stroke();
+            }
+            ctx.globalAlpha = 1;
+            // Ember storm: 20 random embers
+            ctx.fillStyle = '#ffff00';
+            for (let e = 0; e < 20; e++) {
+                const ex = (Math.random() - 0.5) * radius * 2.5;
+                const ey = (Math.random() - 0.5) * radius * 2.5;
+                const eAlpha = Math.random() * 0.8;
+                ctx.globalAlpha = eAlpha;
+                ctx.beginPath();
+                ctx.arc(ex, ey, 0.8 + Math.random() * 1.2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+            break;
+    }
+    ctx.restore();
+}
+
+// --- ATTACK ARCHITECTURE (Unique Attack Registry - UAR) ---
+
+// Base Attack Structure
+function createAttack(x, y, vx, vy, color, radius, damage, lifetime = Infinity, type = 'basic') {
+    return { x, y, vx, vy, color, radius, damage, lifetime, type };
+}
+
+// White Hole Mechanic (Repels attacks, harder for bigger radius)
+function updateWhiteHole(dt) {
+    if (!game.whiteHole) return;
+    const wh = game.whiteHole;
+    wh.timer -= dt;
+    if (wh.timer <= 0) {
+        game.whiteHole = null;
+        player.skinState.whiteHoleActive = false;
+        return;
+    }
+
+    // Repel nearby attacks
+    game.attacks.forEach(attack => {
+        const dx = attack.x - player.x;
+        const dy = attack.y - player.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < wh.radius && dist > player.radius + 10) {
+            const repelForce = wh.strength / (attack.radius * attack.radius + 1); // Harder for bigger
+            attack.vx += (dx / dist) * repelForce * dt / 1000;
+            attack.vy += (dy / dist) * repelForce * dt / 1000;
+        }
+    });
+}
+
+function spawnWhiteHole() {
+    game.whiteHole = {
+        x: player.x,
+        y: player.y,
+        radius: 150,
+        strength: 5,
+        timer: 5000 // 5 seconds
     };
+    player.skinState.whiteHoleActive = true;
+    showPopup('WHITE HOLE ACTIVATED! Repelling...', player.x, player.y - 50, 2000, '#ffffff');
 }
 
-/**
- * Saves player progress to localStorage.
- * @param {object} progress - The player's current progress data.
- */
-function saveProgress(progress) {
-    try {
-        localStorage.setItem('typingTitansProgress', JSON.stringify(progress));
-    } catch (e) {
-        console.error("Error saving progress to localStorage:", e);
+// Unique Attack Functions - Extended for more uniqueness (after h different)
+function spawn_H_attack() { // H: Homing Hive (Swarm with random deviations)
+    const cw = canvas.width, ch = canvas.height;
+    for (let i = 0; i < 8; i++) {
+        const angle = i * Math.PI / 4;
+        const x = cw / 2 + Math.cos(angle) * 200;
+        const y = ch / 2 + Math.sin(angle) * 200;
+        const vx = Math.cos(angle) * 1 + (Math.random() - 0.5) * 0.5; // Deviation
+        const vy = Math.sin(angle) * 1 + (Math.random() - 0.5) * 0.5;
+
+        game.attacks.push({
+            ...createAttack(x, y, vx, vy, '#888888', 4, 6, 6000),
+            deviationTimer: 0,
+            update: function(dt) {
+                this.deviationTimer += dt;
+                const dx = player.x - this.x;
+                const dy = player.y - this.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist > 50) {
+                    this.vx += (dx / dist) * 0.003 + (Math.random() - 0.5) * 0.01 * Math.sin(this.deviationTimer / 200);
+                    this.vy += (dy / dist) * 0.003 + (Math.random() - 0.5) * 0.01 * Math.sin(this.deviationTimer / 200);
+                }
+                this.x += this.vx * dt;
+                this.y += this.vy * dt;
+                this.lifetime -= dt;
+            }
+        });
     }
 }
 
-// =========================================================================
-// WEBRTC MANAGER CLASS (Real-time Multiplayer)
-// =========================================================================
+function spawn_I_attack() { // I: Imploding Implosion (Pull towards random point)
+    const cw = canvas.width, ch = canvas.height;
+    const implodePointX = cw * (0.3 + Math.random() * 0.4);
+    const implodePointY = ch * (0.3 + Math.random() * 0.4);
+    for (let i = 0; i < 6; i++) {
+        const angle = i * Math.PI / 3;
+        const x = cw / 2 + Math.cos(angle) * 300;
+        const y = ch / 2 + Math.sin(angle) * 300;
 
-/**
- * Manages WebRTC peer connections and data channels for 1v1 multiplayer.
- */
-class WebRTCManager {
-    constructor(gameInstance) {
-        this.game = gameInstance;
-        this.peerConnection = null;
-        this.dataChannel = null;
-        this.localId = crypto.randomUUID(); // Unique ID for peer identification
-        this.isInitiator = false;
-        this.isConnected = false;
-
-        // Configuration for STUN servers
-        this.rtcConfig = {
-            iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' }
-            ]
-        };
+        game.attacks.push({
+            ...createAttack(x, y, 0, 0, '#666666', 7, 9, 7000),
+            implodePointX, implodePointY,
+            update: function(dt) {
+                const dx = this.implodePointX - this.x;
+                const dy = this.implodePointY - this.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist > 20) {
+                    this.vx = (dx / dist) * 1.2;
+                    this.vy = (dy / dist) * 1.2;
+                }
+                this.x += this.vx * dt;
+                this.y += this.vy * dt;
+                this.lifetime -= dt;
+            }
+        });
     }
+}
 
-    /**
-     * Initializes the WebRTC connection, setting up the PeerConnection and event handlers.
-     */
-    initializeConnection() {
-        this.peerConnection = new RTCPeerConnection(this.rtcConfig);
-        this.peerConnection.onicecandidate = this.handleIceCandidate.bind(this);
-        this.peerConnection.ondatachannel = this.handleDataChannelCreation.bind(this);
-        this.peerConnection.oniceconnectionstatechange = this.handleIceConnectionStateChange.bind(this);
-        this.peerConnection.onconnectionstatechange = this.handleConnectionStateChange.bind(this);
+// Add more unique for j-z, 0-9 (example for a few, pattern for others)
+function spawn_J_attack() { // J: Jagged Javelins (Zigzag projectiles)
+    const cw = canvas.width, ch = canvas.height;
+    for (let i = 0; i < 5; i++) {
+        const y = i * ch / 5;
+        const vx = 1.5;
+        const vy = (Math.random() - 0.5) * 2;
+
+        game.attacks.push({
+            ...createAttack(0, y, vx, vy, '#777777', 5, 7, 5000),
+            zigzagTimer: 0,
+            update: function(dt) {
+                this.zigzagTimer += dt;
+                this.vy += Math.sin(this.zigzagTimer / 300) * 0.02;
+                this.x += this.vx * dt;
+                this.y += this.vy * dt;
+                this.lifetime -= dt;
+            }
+        });
     }
+}
 
-    /**
-     * Handles ICE candidate discovery and sends it to the remote peer (via mock signaling).
-     */
-    handleIceCandidate(event) {
-        if (event.candidate) {
-            this.sendSignal({
-                type: 'candidate',
-                candidate: event.candidate,
-                senderId: this.localId
-            });
-            console.debug("WebRTC: Sent ICE candidate.");
+// New unique attacks for post-K
+function spawn_K_attack() { // K: Nail Rain from sides/top/bottom
+    const cw = canvas.width, ch = canvas.height;
+    for (let side = 0; side < 4; side++) {
+        let startX, startY, vx, vy;
+        if (side === 0) { // left
+            startX = 0; startY = Math.random() * ch; vx = 3; vy = (Math.random() - 0.5) * 1;
+        } else if (side === 1) { // right
+            startX = cw; startY = Math.random() * ch; vx = -3; vy = (Math.random() - 0.5) * 1;
+        } else if (side === 2) { // top
+            startX = Math.random() * cw; startY = 0; vx = (Math.random() - 0.5) * 1; vy = 3;
+        } else { // bottom
+            startX = Math.random() * cw; startY = ch; vx = (Math.random() - 0.5) * 1; vy = -3;
         }
+        game.attacks.push(createAttack(startX, startY, vx, vy, '#cccccc', 2, 5, 5000)); // Thin nails
+    }
+}
+
+function spawn_P_attack() { // P: Bowling Balls rolling in and out
+    const cw = canvas.width, ch = canvas.height;
+    for (let i = 0; i < 3; i++) {
+        const y = ch * (0.2 + i * 0.3);
+        const x = -50;
+        const vx = 1.5;
+        const vy = 0;
+        game.attacks.push({
+            ...createAttack(x, y, vx, vy, '#8B4513', 15, 20, 10000),
+            state: 'in',
+            update: function(dt) {
+                if (this.state === 'in' && this.x > cw / 2) {
+                    this.state = 'out';
+                    this.vx = -this.vx * 1.2; // Speed up out
+                }
+                this.x += this.vx * dt / 16;
+                this.y += this.vy * dt / 16;
+                this.lifetime -= dt;
+            }
+        });
+    }
+}
+
+function spawn_W_attack() { // W: Fast wall with gaps
+    const cw = canvas.width, ch = canvas.height;
+    const wallSpeed = 4;
+    game.attacks.push({
+        x: 0, y: -20, vx: 0, vy: wallSpeed,
+        color: '#f00', radius: 10, damage: 15, lifetime: 3000, type: 'wall',
+        width: cw * 0.8, height: 20, gapStart: cw * 0.1, gapEnd: cw * 0.3,
+        update: function(dt) {
+            this.y += this.vy * dt / 16;
+            this.lifetime -= dt;
+        },
+        draw: function(ctx) {
+            ctx.fillStyle = this.color;
+            ctx.globalAlpha = 0.7;
+            ctx.fillRect(this.x, this.y, this.gapStart, this.height);
+            ctx.fillRect(this.gapEnd, this.y, this.width - this.gapEnd, this.height);
+            ctx.globalAlpha = 1;
+        },
+        isColliding: function(px, py, pr) {
+            return py + pr > this.y && py - pr < this.y + this.height &&
+                   ((px + pr < this.gapStart || px - pr > this.gapEnd) && px > 0 && px < this.width);
+        }
+    });
+}
+
+function spawn_Exclaim_attack() { // !: Flashing ! then red box
+    const cw = canvas.width, ch = canvas.height;
+    game.attacks.push({
+        x: cw / 2, y: ch / 2, vx: 0, vy: 0,
+        color: '#fff', radius: 0, damage: 0, lifetime: 3000, type: 'exclaim',
+        state: 'flash', flashTimer: 0, boxTimer: 0,
+        update: function(dt) {
+            this.flashTimer += dt;
+            if (this.state === 'flash' && this.flashTimer > 1000) {
+                this.state = 'box';
+                this.boxTimer = 0;
+                this.damage = 25; // Damage on box
+            }
+            if (this.state === 'box') {
+                this.boxTimer += dt;
+                if (this.boxTimer > 1000) this.lifetime = 0;
+            }
+            this.lifetime -= dt;
+        },
+        draw: function(ctx) {
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            if (this.state === 'flash') {
+                const alpha = Math.sin(this.flashTimer / 50) * 0.5 + 0.5;
+                ctx.globalAlpha = alpha;
+                ctx.font = 'bold 40px monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText('!', 0, 0);
+            } else {
+                const alpha = 1 - this.boxTimer / 1000;
+                ctx.globalAlpha = alpha;
+                ctx.fillStyle = '#f00';
+                ctx.fillRect(-20, -20, 40, 40);
+            }
+            ctx.restore();
+        },
+        isColliding: function(px, py, pr) {
+            const dist = Math.sqrt((px - this.x)**2 + (py - this.y)**2);
+            return dist < 25 && this.state === 'box';
+        }
+    });
+}
+
+function spawn_A_attack() { // A: Accelerating Aperture (Homing to Center)
+    const cw = canvas.width, ch = canvas.height;
+    for (let i = 0; i < 4; i++) {
+        const angle = i * Math.PI / 2;
+        const x = cw / 2 + Math.cos(angle) * 300;
+        const y = ch / 2 + Math.sin(angle) * 300;
+        const vx = Math.cos(angle) * 0.5;
+        const vy = Math.sin(angle) * 0.5;
+
+        game.attacks.push({
+            ...createAttack(x, y, vx, vy, '#ff0000', 8, 10, 8000),
+            update: function(dt) {
+                // Accelerate towards center
+                const dx = cw / 2 - this.x;
+                const dy = ch / 2 - this.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist > 100) {
+                    this.vx += (dx / dist) * 0.005;
+                    this.vy += (dy / dist) * 0.005;
+                }
+                this.x += this.vx * dt;
+                this.y += this.vy * dt;
+                this.lifetime -= dt;
+            }
+        });
+    }
+}
+
+function spawn_B_attack() { // B: Straight-line Stream (Fixed Trajectory)
+    const cw = canvas.width, ch = canvas.height;
+    const speed = 2.0;
+
+    // Spawn 6 projectiles from random locations near the edge
+    for (let i = 0; i < 6; i++) {
+        let x, y;
+        // Determine if spawning from horizontal (top/bottom) or vertical (left/right) edges
+        if (Math.random() < 0.5) { 
+            x = Math.random() * cw;
+            y = Math.random() < 0.5 ? 0 : ch;
+        } else { 
+            x = Math.random() < 0.5 ? 0 : cw;
+            y = Math.random() * ch;
+        }
+
+        // Calculate straight trajectory towards player's current position (snapshot at spawn)
+        const dx = player.x - x;
+        const dy = player.y - y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        const vx = (dx / dist) * speed;
+        const vy = (dy / dist) * speed;
+
+        game.attacks.push({
+            ...createAttack(x, y, vx, vy, '#ff9900', 7, 8, 8000),
+            // Minimal update: just handle the lifetime. vx/vy remain constant.
+            update: function(dt) {
+                this.lifetime -= dt;
+            }
+        });
+    }
+}
+
+function spawn_C_attack() { // C: Angular Sweep (Rotating Laser Grid)
+    const cw = canvas.width, ch = canvas.height;
+    const center_x = cw / 2;
+    const center_y = ch / 2;
+    const count = 2; // Reduced to 2 beams for better balance
+    const thickness = 10;
+    const angularSpeed = 0.0005; // radians per millisecond (slow rotation)
+
+    for (let i = 0; i < count; i++) {
+        const initialAngle = i * Math.PI / count; // 0 and PI (180 deg)
+        const laserLength = Math.max(cw, ch) * 2;
+
+        game.attacks.push({
+            x: center_x, 
+            y: center_y,
+            vx: 0, 
+            vy: 0,
+            color: '#ff00cc', 
+            radius: thickness / 2, 
+            damage: 10, 
+            lifetime: 15000, 
+            type: 'laser',
+            width: thickness, 
+            length: laserLength,
+            angle: initialAngle,
+            
+            update: function(dt) {
+                // Rotate the laser line
+                this.angle += angularSpeed * dt;
+                this.lifetime -= dt;
+            },
+            
+            draw: function(ctx) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle);
+                
+                // Draw beam as a long, centered rectangle
+                ctx.fillStyle = this.color;
+                ctx.globalAlpha = 0.6;
+                ctx.fillRect(-this.length / 2, -this.width / 2, this.length, this.width);
+                ctx.globalAlpha = 1;
+                
+                // Draw a pulsing core effect
+                const coreRadius = this.width / 2;
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(0, 0, coreRadius * (1 + Math.sin(Date.now() / 100) * 0.2), 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.restore();
+            },
+            
+            isColliding: function(px, py, pr) {
+                // Check if the player is within the rotating beam area
+                const dx = px - this.x;
+                const dy = py - this.y;
+                
+                // Inverse rotation of player coordinates
+                const cosA = Math.cos(-this.angle);
+                const sinA = Math.sin(-this.angle);
+                
+                const rotatedY = dx * sinA + dy * cosA;
+                
+                // Check collision only against the width of the beam
+                const halfWidth = this.width / 2;
+                
+                return rotatedY + pr > -halfWidth && rotatedY - pr < halfWidth;
+            }
+        });
+    }
+}
+
+function spawn_D_attack() { // D: Drift Net (Slow, Wide Swarm - 1 Damage)
+    const cw = canvas.width, ch = canvas.height;
+    const count = 15; // High projectile count
+    const speed = 0.8; // Slow speed
+
+    for (let i = 0; i < count; i++) {
+        // Spawn across the entire height of the screen, slightly off-screen left
+        // Add a slight random offset to y for a less rigid pattern
+        const yOffset = (Math.random() - 0.5) * 40;
+        const x = -50;
+        const y = (i / count) * ch + yOffset;
+
+        game.attacks.push({
+            ...createAttack(x, y, speed, 0, '#0099ff', 4, 1, 10000), // Damage set to 1
+            update: function(dt) {
+                // No change in trajectory, just lifetime
+                this.lifetime -= dt;
+            }
+        });
+    }
+}
+
+// --- NEW ATTACKS: E and F ---
+
+function spawn_E_attack() { // E: Echo Wave (Oscillating Corridors)
+    const cw = canvas.width, ch = canvas.height;
+    const waveWidth = 40; // Slightly narrower walls
+
+    // 1. Create two oscillating barrier attacks (non-damaging walls)
+    // Wall 1 (Left)
+    game.attacks.push({
+        x: cw / 4, y: ch / 2, vx: 0, vy: 0,
+        color: '#ff66b2', radius: waveWidth / 2, damage: 0, lifetime: 8000, type: 'oscillator',
+        width: waveWidth, height: ch, start_x: cw/4, amplitude: cw/8,
+        update: function(dt) {
+            // Horizontal sine wave oscillation
+            this.x = this.start_x + Math.sin(Date.now() / 800) * this.amplitude;
+            this.lifetime -= dt;
+        },
+        draw: function(ctx) {
+            ctx.fillStyle = this.color;
+            ctx.globalAlpha = 0.2; // Very transparent
+            ctx.fillRect(this.x - this.width / 2, 0, this.width, this.height);
+            // Draw visible lines
+            ctx.strokeStyle = this.color;
+            ctx.globalAlpha = 0.5;
+            ctx.lineWidth = 1;
+            ctx.strokeRect(this.x - this.width / 2, 0, this.width, this.height);
+            ctx.globalAlpha = 1;
+        },
+        isColliding: function(px, py, pr) {
+            // Check collision with player
+            return px + pr > this.x - this.width / 2 &&
+                   px - pr < this.x + this.width / 2;
+        }
+    });
+
+    // Wall 2 (Right)
+    game.attacks.push({
+        x: cw * 3 / 4, y: ch / 2, vx: 0, vy: 0,
+        color: '#ff66b2', radius: waveWidth / 2, damage: 0, lifetime: 8000, type: 'oscillator',
+        width: waveWidth, height: ch, start_x: cw*3/4, amplitude: cw/8,
+        update: function(dt) {
+            this.x = this.start_x + Math.sin(Date.now() / 800) * this.amplitude;
+            this.lifetime -= dt;
+        },
+        // Re-use draw and collision logic from Wall 1
+        draw: game.attacks[game.attacks.length-1].draw,
+        isColliding: game.attacks[game.attacks.length-1].isColliding
+    });
+    
+    // 2. Create small, low-damage projectiles that move across the screen (The real threat)
+    for (let i = 0; i < 6; i++) {
+        const x = cw * (0.1 + i * 0.15);
+        const y = ch / 2;
+        const speed = 1.2 + Math.random();
+
+        game.attacks.push({
+            ...createAttack(x, y, 0, speed, '#fff', 5, 8, 8000), // Moderate damage
+            update: function(dt) {
+                // Reverse direction when hitting top/bottom
+                if (this.y < 0 || this.y > ch) {
+                    this.vy *= -1;
+                }
+                this.lifetime -= dt;
+            }
+        });
+    }
+}
+
+function spawn_F_attack() { // F: Focal Point Grid (Converge and Burst)
+    const cw = canvas.width, ch = canvas.height;
+    // Random focus point, far enough from edges
+    const focusX = cw * (0.3 + Math.random() * 0.4); 
+    const focusY = ch * (0.3 + Math.random() * 0.4);
+    const speed = 1.5;
+
+    for (let i = 0; i < 8; i++) {
+        // Spawn from random edges
+        let x, y;
+        const edge = Math.floor(Math.random() * 4); // 0=Top, 1=Bottom, 2=Left, 3=Right
+        if (edge === 0) { x = Math.random() * cw; y = 0; }
+        else if (edge === 1) { x = Math.random() * cw; y = ch; }
+        else if (edge === 2) { x = 0; y = Math.random() * ch; }
+        else { x = cw; y = Math.random() * ch; }
+        
+        // Calculate initial velocity towards the focus point
+        const dx = focusX - x;
+        const dy = focusY - y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        
+        const vx = (dx / dist) * speed;
+        const vy = (dy / dist) * speed;
+
+        game.attacks.push({
+            ...createAttack(x, y, vx, vy, '#00ffff', 6, 12, 12000), // Medium-high damage
+            focusX: focusX,
+            focusY: focusY,
+            state: 'inbound', // 'inbound' or 'outbound'
+            update: function(dt) {
+                if (this.state === 'inbound') {
+                    const distToFocus = Math.sqrt((this.x - this.focusX)**2 + (this.y - this.focusY)**2);
+                    if (distToFocus < 20) { // Near focus point - trigger burst
+                        this.state = 'outbound';
+                        // Calculate new velocity (burst outwards from focus)
+                        const angle = Math.atan2(this.y - this.focusY, this.x - this.focusX) + (Math.random() - 0.5) * 0.5;
+                        this.vx = Math.cos(angle) * speed * 2; // Double speed on burst
+                        this.vy = Math.sin(angle) * speed * 2;
+                        // Draw a visual burst cue
+                        startShake(100, 3);
+                        showPopup('BURST!', this.focusX, this.focusY, 200, '#ff0000');
+                    }
+                }
+                this.lifetime -= dt;
+            }
+        });
+    }
+}
+
+function spawn_G_attack() { // G: Spiral Gale (Spiraling Projectiles)
+    const cw = canvas.width, ch = canvas.height;
+    const numProjectiles = 12;
+    const baseRadius = 200;
+    const baseSpeed = 1.5;
+
+    for (let i = 0; i < numProjectiles; i++) {
+        const angle = i * (Math.PI * 2 / numProjectiles);
+        const x = cw / 2 + Math.cos(angle) * baseRadius;
+        const y = ch / 2 + Math.sin(angle) * baseRadius;
+        const speed = baseSpeed + (i / numProjectiles) * 0.5; // Slight speed variation
+
+        game.attacks.push({
+            ...createAttack(x, y, Math.cos(angle) * speed, Math.sin(angle) * speed, '#00ff88', 6, 8, 8000),
+            initialAngle: angle,
+            spiralSpeed: 0.0005, // Spiral inward slowly
+            update: function(dt) {
+                this.initialAngle += this.spiralSpeed * dt;
+                this.vx = Math.cos(this.initialAngle) * speed;
+                this.vy = Math.sin(this.initialAngle) * speed;
+                this.x += this.vx * dt / 16;
+                this.y += this.vy * dt / 16;
+                this.lifetime -= dt;
+            }
+        });
+    }
+}
+
+
+function spawn_Z_attack() { // Z: Zonal Collapse (Zig-zag)
+    const cw = canvas.width, ch = canvas.height;
+    const count = 5;
+    for (let i = 0; i < count; i++) {
+        const x = cw / 2;
+        const y = ch / 2;
+        const angle = (Math.PI * 2 / count) * i;
+        const vx = Math.cos(angle) * 3;
+        const vy = Math.sin(angle) * 3;
+
+        game.attacks.push({
+            ...createAttack(x, y, vx, vy, '#00ffcc', 6, 15, 6000),
+            state: 0, // 0: out, 1: zig-zag in
+            maxDist: 300,
+            update: function(dt) {
+                this.x += this.vx * dt;
+                this.y += this.vy * dt;
+                const distFromCenter = Math.sqrt((this.x - cw / 2)**2 + (this.y - ch / 2)**2);
+
+                if (distFromCenter > this.maxDist && this.state === 0) {
+                    this.state = 1;
+                }
+                if (this.state === 1) {
+                    // Zig-zag back towards center
+                    this.vx = (cw / 2 - this.x) * 0.002 * Math.sin(Date.now() / 200);
+                    this.vy = (ch / 2 - this.y) * 0.002 * Math.cos(Date.now() / 200);
+                }
+                this.lifetime -= dt;
+            }
+        });
+    }
+}
+
+// Unique Attack Functions - World 2 Examples
+function spawn_Enter_attack() { // Enter: The Hard Commit (Vertical Beams)
+    const cw = canvas.width, ch = canvas.height;
+    // Create large, slow moving vertical beams
+    for (let i = 0; i < 3; i++) {
+        const x = cw / 4 + i * cw / 4;
+        const width = 30;
+        const speed = 0.5;
+
+        game.attacks.push({
+            x: x, y: -ch / 2, vx: 0, vy: speed,
+            color: '#ff6600', radius: width / 2, damage: 30, lifetime: 10000, type: 'beam',
+            width: width, height: ch * 2,
+            update: function(dt) {
+                this.y += this.vy * dt;
+                this.vy += 0.001; // Gravity effect
+                if (this.y > ch + ch / 2) this.lifetime = 0;
+            },
+            draw: function(ctx) {
+                ctx.fillStyle = this.color;
+                ctx.globalAlpha = 0.5;
+                ctx.fillRect(this.x - this.width / 2, this.y - this.height / 2, this.width, this.height);
+                ctx.globalAlpha = 1;
+            },
+            isColliding: function(px, py, pr) {
+                // Check AABB collision
+                return px + pr > this.x - this.width / 2 &&
+                       px - pr < this.x + this.width / 2 &&
+                       py + pr > this.y - this.height / 2 &&
+                       py - pr < this.y + this.height / 2;
+            }
+        });
+    }
+}
+
+function spawn_ArrowRight_attack() { // ArrowRight: Directional Current
+    const cw = canvas.width, ch = canvas.height;
+    for (let i = 0; i < 10; i++) {
+        const x = cw * 0.1;
+        const y = Math.random() * ch;
+        const speed = 1 + Math.random();
+
+        game.attacks.push({
+            ...createAttack(x, y, speed, 0, '#00bfff', 5, 5, 8000),
+            baseVx: speed,
+            update: function(dt) {
+                // Persistent force field pushes right
+                this.vx = this.baseVx + 0.1 * dt;
+                this.x += this.vx * dt;
+                this.y += this.vy * dt;
+                if (this.x > cw + 100) this.lifetime = 0;
+                this.lifetime -= dt;
+            }
+        });
+    }
+}
+
+// Spike Attack (from diep.io: spinning spiked orbs)
+function spawn_Spike_attack() { // For '0' or symbols
+    const cw = canvas.width, ch = canvas.height;
+    for (let i = 0; i < 4; i++) {
+        const angle = i * Math.PI / 2;
+        const x = cw / 2 + Math.cos(angle) * 250;
+        const y = ch / 2 + Math.sin(angle) * 250;
+
+        game.attacks.push({
+            ...createAttack(x, y, Math.cos(angle) * 1.2, Math.sin(angle) * 1.2, '#8B4513', 12, 15, 9000),
+            rotation: 0,
+            spikes: 8, // Number of spikes
+            update: function(dt) {
+                this.rotation += dt * 0.005; // Spin
+                this.x += this.vx * dt;
+                this.y += this.vy * dt;
+                this.lifetime -= dt;
+            },
+            draw: function(ctx) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+                // Core
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(0, 0, this.radius * 0.6, 0, Math.PI * 2);
+                ctx.fill();
+                // Spikes
+                ctx.fillStyle = '#654321';
+                for (let s = 0; s < this.spikes; s++) {
+                    const sAngle = s * Math.PI * 2 / this.spikes;
+                    ctx.beginPath();
+                    ctx.moveTo(this.radius * 0.6 * Math.cos(sAngle), this.radius * 0.6 * Math.sin(sAngle));
+                    ctx.lineTo(this.radius * Math.cos(sAngle), this.radius * Math.sin(sAngle));
+                    ctx.lineTo(this.radius * 0.8 * Math.cos(sAngle + Math.PI / this.spikes), this.radius * 0.8 * Math.sin(sAngle + Math.PI / this.spikes));
+                    ctx.closePath();
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
+        });
+    }
+}
+
+const UNIQUE_ATTACK_REGISTRY = {
+    // World 1 Unique Attacks (Extended for uniqueness)
+    'a': spawn_A_attack,
+    'b': spawn_B_attack,
+    'c': spawn_C_attack, 
+    'd': spawn_D_attack,
+    'e': spawn_E_attack,
+    'f': spawn_F_attack,
+    'g': spawn_G_attack,
+    'h': spawn_H_attack,
+    'i': spawn_I_attack,
+    'j': spawn_J_attack,
+    'k': spawn_K_attack,
+    'l': spawn_J_attack, // Variation: same but faster
+    'm': spawn_G_attack, // Spiral variation
+    'n': spawn_H_attack, // Homing variation
+    'o': spawn_I_attack, // Implode variation
+    'p': spawn_P_attack,
+    'q': spawn_E_attack, // Echo variation
+    'r': spawn_B_attack, // Stream variation
+    's': spawn_Spike_attack, // Spike
+    't': spawn_F_attack, // Focal variation
+    'u': spawn_C_attack, // Sweep variation
+    'v': spawn_D_attack, // Drift variation
+    'w': spawn_W_attack,
+    'x': spawn_Z_attack, // Zigzag variation
+    'y': spawn_A_attack, // Accelerate variation
+    'z': spawn_Z_attack,
+    '0': spawn_Spike_attack, // Spike for number
+    '1': spawn_K_attack, // Nail variation
+    // ... Similar for 2-9 with variations
+    
+    // World 2 Unique Attacks
+    'Enter': spawn_Enter_attack,
+    'ArrowRight': spawn_ArrowRight_attack,
+    '!': spawn_Exclaim_attack,
+    
+    // NOTE: Fallback now varies by key for more difference
+};
+
+function spawnPatternForStage(stageKey) {
+    const key = stageKey.toLowerCase();
+    // Check if a unique attack is defined
+    if (UNIQUE_ATTACK_REGISTRY[key]) {
+        UNIQUE_ATTACK_REGISTRY[key]();
+        return;
+    }
+    // Special for Unicode
+    if (WORLD2_UNICODE.includes(stageKey)) {
+        const hash = stageKey.charCodeAt(0) % 4;
+        switch (hash) {
+            case 0: spawn_Spike_attack(); break;
+            case 1: spawn_K_attack(); break;
+            case 2: spawn_P_attack(); break;
+            case 3: spawn_W_attack(); break;
+        }
+        return;
+    }
+    // Enhanced Fallback: Vary by key hash for different patterns
+    const hash = key.charCodeAt(0) % 5;
+    const cw = canvas.width, ch = canvas.height;
+    const count = 4 + hash * 2; // Vary count
+    const speed = 1 + hash * 0.5; // Vary speed
+    const color = `hsl(${hash * 72}, 100%, 50%)`; // Vary color
+    for (let i = 0; i < count; i++) {
+        const angle = i * Math.PI * 2 / count + hash * 0.5;
+        const x = cw / 2 + Math.cos(angle) * (200 + hash * 50);
+        const y = ch / 2 + Math.sin(angle) * (200 + hash * 50);
+        
+        game.attacks.push({
+            ...createAttack(x, y, 0, 0, color, 5 + hash, 5 + hash, 5000 + hash * 1000),
+            update: function(dt) {
+                // Vary homing strength
+                const dx = player.x - this.x;
+                const dy = player.y - this.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                const homing = 0.002 + hash * 0.001;
+                this.vx = (dx / dist) * speed * (1 - hash * 0.1); 
+                this.vy = (dy / dist) * speed * (1 - hash * 0.1);
+                this.x += this.vx * dt;
+                this.y += this.vy * dt;
+                this.lifetime -= dt;
+            }
+        });
+    }
+}
+
+
+// --- GAME FLOW AND STATE MANAGEMENT ---
+
+function showMenu() {
+    // Stop the game loop
+    if (game.animationFrameId) {
+        cancelAnimationFrame(game.animationFrameId);
+        game.animationFrameId = null;
     }
     
-    /**
-     * Handles changes in the ICE connection state.
-     */
-    handleIceConnectionStateChange() {
-        console.log('WebRTC ICE Connection State:', this.peerConnection.iceConnectionState);
-        if (this.peerConnection.iceConnectionState === 'failed' || this.peerConnection.iceConnectionState === 'disconnected') {
-            if (this.isConnected) {
-                this.handleDataChannelClose();
-            }
-        }
+    // Reset state and hide HUD/Canvas elements
+    game.mode = 'menu';
+    
+    // Hide all game-related UI
+    hud.classList.add('hidden');
+    canvas.style.display = 'none';
+
+    // Show menu UI
+    menu.classList.remove('hidden');
+    gameover.classList.add('hidden');
+    shop.classList.add('hidden');
+    
+    const mainButtons = document.getElementById('main-menu-buttons');
+    const shopBtn = document.getElementById('skinsShopBtn');
+    if (game.inChoiceMode) {
+        mainButtons.classList.add('hidden');
+        keypad.classList.remove('hidden');
+        shopBtn.style.display = 'none';
+        buildKeypad();
+    } else {
+        mainButtons.classList.remove('hidden');
+        keypad.classList.add('hidden');
+        shopBtn.style.display = 'block';
     }
 
-    /**
-     * Handles changes in the overall connection state.
-     */
-    handleConnectionStateChange() {
-        console.log('WebRTC Connection State:', this.peerConnection.connectionState);
-        if (this.peerConnection.connectionState === 'closed' || this.peerConnection.connectionState === 'failed') {
-             if (this.isConnected) {
-                this.handleDataChannelClose();
-            }
-        }
+    updateHUD();
+}
+
+function startGame(mode, world, stageKey) {
+    if (mode === 'precoded-uni' && !progress.world1) { // Check for world 1 completion
+        startShake(300, 8);
+        showPopup('World 2 Locked: Complete World 1 first!', canvas.width / 2, canvas.height / 2, 2000, '#f55');
+        return;
     }
 
+    game.mode = mode;
+    game.world = world;
+    game.stageKey = stageKey;
+    game.timer = 8 + Math.random() * 4; // Reset timer
+    player.hp = player.maxHp;
+    player.shield = 0;
+    player.dead = false;
+    game.attacks = [];
+    game.lastTime = performance.now();
 
-    /**
-     * Handles the creation of the DataChannel when the remote peer initiates it.
-     */
-    handleDataChannelCreation(event) {
-        this.dataChannel = event.channel;
-        this.setupDataChannelHandlers();
-        console.log("WebRTC: DataChannel received and setup by remote peer.");
+    // Reset player position to center of the canvas
+    player.x = canvas.width / 2;
+    player.y = canvas.height / 2;
+
+    // Periodic Table skin logic on spawn
+    if (player.equippedSkinId === 'periodic') {
+        player.skinState.periodicElement = getRandomPeriodicElement();
     }
 
-    /**
-     * Sets up event listeners for the DataChannel (open, close, message).
-     */
-    setupDataChannelHandlers() {
-        this.dataChannel.onopen = this.handleDataChannelOpen.bind(this);
-        this.dataChannel.onclose = this.handleDataChannelClose.bind(this);
-        this.dataChannel.onmessage = this.handleDataChannelMessage.bind(this);
-        this.dataChannel.onerror = (error) => console.error("WebRTC DataChannel Error:", error);
-    }
+    // Hide menus and show game elements
+    menu.classList.add('hidden');
+    gameover.classList.add('hidden');
+    hud.classList.remove('hidden');
+    canvas.style.display = 'block';
+    
+    // Update HUD now that game state is set
+    updateHUD();
 
-    /**
-     * Handles DataChannel open event, signaling a successful connection.
-     */
-    handleDataChannelOpen() {
-        this.isConnected = true;
-        this.game.setMultiplayerState(true);
-        this.game.showCenterMessage("CONNECTION ESTABLISHED. STARTING ARENA!", '#0f0', 3000);
-        this.game.startRound();
-        this.updateStatus('Connected', 'text-success');
-        console.log("WebRTC: DataChannel opened. Connection is active.");
-    }
-
-    /**
-     * Handles DataChannel message events, parsing and processing game updates/chats.
-     */
-    handleDataChannelMessage(event) {
-        try {
-            const data = JSON.parse(event.data);
-            if (data.type === 'game_state') {
-                // Used for 1v1 duel: Opponent state
-                this.game.receiveOpponentState(data.state);
-            } else if (data.type === 'player_state') {
-                // Used for Team Mode: Teammate state
-                this.game.receiveTeammateState(data.state);
-            } else if (data.type === 'boss_attack') {
-                // Used for Team Mode: Boss attack on US
-                this.game.receiveBossAttack(data.damage);
-            } else if (data.type === 'chat') {
-                this.game.addChatMessage('Teammate', data.message, '#0ff');
-            } else if (data.type === 'round_start') {
-                // Synchronize round with initiator's state
-                this.game.startRound(data.word);
-            } else if (data.type === 'boss_state') {
-                 // Used for Team Mode: Boss state
-                this.game.receiveBossState(data.state);
-            }
-        } catch (e) {
-            console.warn("WebRTC: Failed to parse incoming message:", event.data, e);
-        }
-    }
-
-    /**
-     * Handles DataChannel close event, indicating connection loss.
-     */
-    handleDataChannelClose() {
-        this.isConnected = false;
-        this.game.setMultiplayerState(false);
-        this.game.showCenterMessage("PEER DISCONNECTED. RETURNING TO LOBBY.", '#f00', 5000);
-        this.game.returnToLobby();
-        this.updateStatus('Disconnected', 'text-error');
-        console.log("WebRTC: DataChannel closed.");
-    }
-
-    /**
-     * Initiates the connection by creating the DataChannel and Offer (Peer A).
-     * @param {string} remoteId - The Peer ID of the opponent. (Unused in mock)
-     */
-    async createOffer(remoteId) {
-        this.isInitiator = true;
-        this.initializeConnection();
-        this.dataChannel = this.peerConnection.createDataChannel("gameChannel");
-        this.setupDataChannelHandlers();
-
-        try {
-            const offer = await this.peerConnection.createOffer();
-            await this.peerConnection.setLocalDescription(offer);
-            this.sendSignal({
-                type: 'offer',
-                sdp: this.peerConnection.localDescription,
-                senderId: this.localId,
-                targetId: remoteId
-            });
-            this.updateStatus('Waiting for opponent...', 'text-flair');
-            console.log("WebRTC: Created and sent offer.");
-        } catch (error) {
-            console.error("WebRTC: Error creating offer:", error);
-            this.updateStatus('Error creating offer', 'text-error');
-        }
-    }
-
-    /**
-     * Processes an incoming offer and sends an Answer (Peer B).
-     */
-    async handleOffer(offer, remoteId) {
-        this.isInitiator = false;
-        this.initializeConnection();
-
-        try {
-            await this.peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-            const answer = await this.peerConnection.createAnswer();
-            await this.peerConnection.setLocalDescription(answer);
-            this.sendSignal({
-                type: 'answer',
-                sdp: this.peerConnection.localDescription,
-                senderId: this.localId,
-                targetId: remoteId
-            });
-            this.updateStatus('Sent answer, connecting...', 'text-flair');
-            console.log("WebRTC: Handled offer and sent answer.");
-        } catch (error) {
-            console.error("WebRTC: Error handling offer:", error);
-            this.updateStatus('Error handling offer', 'text-error');
-        }
-    }
-
-    /**
-     * Processes an incoming answer. (Peer A)
-     */
-    async handleAnswer(answer) {
-        try {
-            await this.peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-            this.updateStatus('Answer received, connecting...', 'text-flair');
-            console.log("WebRTC: Handled answer.");
-        } catch (error) {
-            console.error("WebRTC: Error handling answer:", error);
-            this.updateStatus('Error handling answer', 'text-error');
-        }
-    }
-
-    /**
-     * Processes an incoming ICE candidate.
-     */
-    async handleCandidate(candidate) {
-        try {
-            if (candidate) {
-                await this.peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-                console.debug("WebRTC: Added remote ICE candidate.");
-            }
-        } catch (error) {
-            console.error("WebRTC: Error adding remote candidate:", error);
-        }
-    }
-
-    /**
-     * Sends a message over the DataChannel if connected.
-     */
-    send(data) {
-        if (this.isConnected && this.dataChannel && this.dataChannel.readyState === 'open') {
-            try {
-                this.dataChannel.send(JSON.stringify(data));
-            } catch (e) {
-                console.warn("WebRTC: Failed to send data:", e);
-            }
-        }
-    }
-
-    /**
-     * MOCK: Simulates sending a signal (offer, answer, candidate) through a server.
-     */
-    sendSignal(signal) {
-        // --- NOTE: This is the MOCK of the signaling server logic ---
-        console.log(`WebRTC MOCK: Sending signal to ${signal.targetId || 'unknown'}: ${signal.type}`);
-
-        const signalQueue = document.getElementById('local-peer-id');
-        if (signal.type === 'offer' || signal.type === 'answer') {
-            // Put the entire SDP into the local ID box for manual copy/paste exchange
-            signalQueue.value = JSON.stringify({
-                type: signal.type,
-                sdp: signal.sdp,
-                senderId: signal.senderId,
-                mode: this.game.matchMode, // Crucial for connection handshake
-            });
-        }
-    }
-
-    /**
-     * MOCK: Updates the status text in the multiplayer lobby UI.
-     */
-    updateStatus(text, className = 'text-gray-400') {
-        const statusEl = document.getElementById('rtc-status');
-        if (statusEl) {
-            statusEl.innerHTML = `Status: <span class="${className}">${text}</span>`;
-        }
-    }
-
-    /**
-     * Resets the entire WebRTC connection state.
-     */
-    close() {
-        if (this.dataChannel) {
-            this.dataChannel.close();
-        }
-        if (this.peerConnection) {
-            this.peerConnection.close();
-        }
-        this.peerConnection = null;
-        this.dataChannel = null;
-        this.isConnected = false;
-        this.isInitiator = false;
-        this.updateStatus('Idle', 'text-flair');
-        console.log("WebRTC: Connection closed and reset.");
+    // Start the loop
+    if (!game.animationFrameId) {
+        game.animationFrameId = requestAnimationFrame(mainLoop);
     }
 }
 
-// =========================================================================
-// PLAYER AND GAME CLASSES (New Architecture)
-// =========================================================================
+function nextStage() {
+    const keyset = game.mode === 'yourchoice' ? game.keyset : (game.world === 'world1' ? WORLD1_KEYS : WORLD2_FULL);
+    game.stageIndex++;
 
-/**
- * Represents a Player's state (Local or Opponent).
- */
-class Player {
-    /**
-     * @param {string} id - 'local', 'opponent', 'teammate', or 'boss'
-     * @param {number} [maxHp=MAX_HEALTH] - Optional starting HP.
-     */
-    constructor(id, maxHp = MAX_HEALTH) {
-        this.id = id;
-        this.maxHp = maxHp;
-        this.hp = maxHp;
-        this.shield = 0;
-        this.dead = false;
-    }
-
-    /**
-     * Applies damage, factoring in shield before health.
-     * @param {number} amount - Damage amount.
-     */
-    takeDamage(amount) {
-        if (this.dead) return;
-
-        let remainingDamage = amount;
-        if (this.shield > 0) {
-            const shieldAbsorbed = Math.min(this.shield, remainingDamage);
-            this.shield -= shieldAbsorbed;
-            remainingDamage -= shieldAbsorbed;
+    if (game.stageIndex >= keyset.length) {
+        // World completion logic
+        if (game.world === 'world1') {
+            progress.world1 = true;
+            progress.unlockedKeys = [...progress.unlockedKeys, ...WORLD1_KEYS];
+            showPopup('WORLD 1 CLEARED! World 2 Unlocked!', canvas.width / 2, canvas.height / 2, 3000, '#00ff44');
+        } else if (game.world === 'world2') {
+            progress.world2 = true;
+            showPopup('WORLD 2 CLEARED! You Win!', canvas.width / 2, canvas.height / 2, 3000, '#00ff44');
+        } else if (game.mode === 'yourchoice') {
+            showPopup('FULL PROGRESSION CLEARED! Master of Keys!', canvas.width / 2, canvas.height / 2, 3000, '#00ff44');
         }
-
-        if (remainingDamage > 0) {
-            this.hp -= remainingDamage;
-        }
-
-        if (this.hp <= 0) {
-            this.hp = 0;
-            this.dead = true;
-        }
+        
+        saveProgress();
+        game.inChoiceMode = false;
+        showMenu(); // Return to menu after world completion
+        return;
     }
 
-    /**
-     * Adds shield protection.
-     * @param {number} amount - Shield amount.
-     */
-    gainShield(amount) {
-        this.shield = Math.min(amount, this.maxHp / 2); // Max shield is 50% of max HP
+    game.stageKey = keyset[game.stageIndex];
+    game.timer = 8 + Math.random() * 4;
+    game.attacks = [];
+    
+    // Reset player position to center
+    player.x = canvas.width / 2;
+    player.y = canvas.height / 2;
+
+    // Periodic Table skin logic on wave completion
+    if (player.equippedSkinId === 'periodic') {
+        player.skinState.periodicElement = getRandomPeriodicElement();
+    }
+    
+    updateHUD();
+}
+
+function gameWin() {
+    // 1. Credit Calculation
+    const hpRatio = player.hp / player.maxHp;
+    const creditsGained = BASE_CREDITS + Math.floor(hpRatio * BONUS_CREDITS);
+    player.credits += creditsGained;
+    showPopup(`+${creditsGained} Credits!`, canvas.width / 2, canvas.height / 2 + 50, 1500, '#ffeb3b');
+
+    // 2. Full health and shield regeneration (Requested feature)
+    player.hp = player.maxHp;
+    player.shield = player.maxShield;
+    showPopup('System Refreshed: HP & Shield Maxed!', canvas.width / 2, canvas.height / 2 - 50, 1500, '#00bfff');
+
+
+    // 3. Unlock Key
+    if (!progress.unlockedKeys.includes(game.stageKey)) {
+        progress.unlockedKeys.push(game.stageKey);
+        progress.unlockedKeys = Array.from(new Set(progress.unlockedKeys));
+        showPopup(`'${game.stageKey.toUpperCase()}' Unlocked!`, canvas.width / 2, canvas.height / 2 + 100, 1500, '#00bfff');
     }
 
-    /**
-     * Heals the player.
-     * @param {number} amount - Heal amount.
-     */
-    heal(amount) {
-        this.hp = Math.min(this.maxHp, this.hp + amount);
+    // 4. Mark as completed
+    if (!progress.completedKeys.includes(game.stageKey)) {
+        progress.completedKeys.push(game.stageKey);
+        progress.completedKeys = Array.from(new Set(progress.completedKeys));
+        showPopup(`'${game.stageKey.toUpperCase()}' Completed!`, canvas.width / 2, canvas.height / 2 + 150, 1500, '#00ff44');
     }
 
-    /**
-     * Resets the player state for a new match.
-     */
-    reset(newMaxHp = MAX_HEALTH) {
-        this.maxHp = newMaxHp;
-        this.hp = newMaxHp;
-        this.shield = 0;
-        this.dead = false;
+    saveProgress(); // Save state immediately
+
+    if (game.mode.includes('precoded') || game.mode === 'yourchoice') {
+        nextStage(); // Progress to next for both precoded and choice
+    } else {
+        game.inChoiceMode = false;
+        showMenu();
     }
 }
 
-/**
- * Manages the core game loop, state, and UI.
- */
-class Game {
-    constructor() {
-        this.canvas = document.getElementById('canvas');
-        this.ctx = this.canvas.getContext('2d');
-        this.localPlayer = new Player('local');
-        this.remoteEntity = new Player('opponent'); // Can be opponent, teammate, or boss
-        this.progress = loadProgress();
-        this.money = this.progress.money;
-        this.equippedSkin = ALL_SKINS.find(s => s.id === this.progress.equippedSkinId);
-
-        this.rtcManager = new WebRTCManager(this);
-        this.isMultiplayer = false;
-        this.gameRunning = false;
-        this.matchMode = 'solo'; // 'solo', 'duel_mp', 'team_mp'
-        this.nextBossAttackTarget = 'local'; // For team mode, tracks who the Boss attacks next
-
-        // Typing State
-        this.targetWord = '';
-        this.typedWord = '';
-        this.wordStartTime = 0;
-        this.roundTimerId = null;
-        this.bossAttackIntervalId = null;
-
-        // UI Elements
-        this.ui = {
-            menu: document.getElementById('menu'),
-            shop: document.getElementById('shop'),
-            lobby: document.getElementById('multiplayer-lobby'),
-            hud: document.getElementById('hud'),
-            typingInput: document.getElementById('typing-input'),
-            targetWordEl: document.getElementById('target-word'),
-            centerMessage: document.getElementById('center-message'),
-            roundTimer: document.getElementById('round-timer'),
-            chatInput: document.getElementById('chat-input'),
-            chatMessages: document.getElementById('chat-messages'),
-            chatSendBtn: document.getElementById('chat-send'),
-            // HP Bars
-            playerTitle: document.getElementById('player-status-title'),
-            opponentTitle: document.getElementById('opponent-status-title'),
-            opponentHealthContainer: document.getElementById('opponent-health-container'),
-        };
-
-        this.initCanvas();
-        this.initEventListeners();
-        this.updateShopUI(); // This call is now safe
+function gameOver() {
+    player.dead = true;
+    game.mode = 'gameover';
+    
+    // Stop the game loop
+    if (game.animationFrameId) {
+        cancelAnimationFrame(game.animationFrameId);
+        game.animationFrameId = null;
     }
 
-    /**
-     * Shows a temporary popup message on the screen.
-     * @param {string} text - The message to display.
-     * @param {string} color - CSS color string.
-     * @param {number} duration - Duration in milliseconds.
-     */
-    showPopup(text, color = '#fff', duration = 1500) {
-        const popup = document.createElement('div');
-        popup.textContent = text;
-        popup.style.cssText = `
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            padding: 15px 30px;
-            background: rgba(0, 0, 0, 0.9);
-            color: ${color};
-            border: 2px solid ${color};
-            border-radius: 8px;
-            font-size: 24px;
-            font-weight: bold;
-            z-index: 2000;
-            opacity: 0;
-            transition: opacity 0.3s, transform 0.3s;
+    // Hide HUD/Canvas and show gameover screen
+    hud.classList.add('hidden');
+    canvas.style.display = 'none';
+    gameover.classList.remove('hidden');
+    
+    document.getElementById('finalScore').textContent = `Final Stage: ${game.stageKey.toUpperCase()} (Wave ${game.stageIndex + 1})`;
+    startShake(1000, 10);
+}
+
+
+// --- MAIN LOOP ---
+
+function mainLoop(time) {
+    if (game.mode === 'menu' || game.mode === 'gameover' || game.mode === 'shop' || game.mode === 'multiplayer') {
+        if (game.animationFrameId) {
+             cancelAnimationFrame(game.animationFrameId);
+             game.animationFrameId = null;
+        }
+        return;
+    }
+
+    const dt = time - game.lastTime;
+    game.lastTime = time;
+    const cw = canvas.width, ch = canvas.height;
+
+    // Shield regen from skin buff (debuffed rates applied in catalog)
+    const skin = SKIN_CATALOG.find(s => s.id === player.equippedSkinId);
+    if (skin?.buffs?.regenRate) {
+        player.shield = Math.min(player.maxShield, player.shield + skin.buffs.regenRate * dt);
+    }
+
+    // White hole update
+    updateWhiteHole(dt);
+
+    // 1. Update Game State
+    game.timer -= dt / 1000;
+    if (game.timer <= 0) {
+        gameWin();
+        if (game.mode !== 'menu') {
+             game.animationFrameId = requestAnimationFrame(mainLoop);
+        }
+        return;
+    }
+
+    // Player movement update (using simple mouse follow for now)
+    player.x = Math.max(player.radius, Math.min(cw - player.radius, player.x + (mouse.x - player.x) * 0.1));
+    player.y = Math.max(player.radius, Math.min(ch - player.radius, player.y + (mouse.y - player.y) * 0.1));
+
+    // 2. Attack Spawning
+    if (Math.random() < 0.05) { // Spawn new pattern every 20 frames on average
+        spawnPatternForStage(game.stageKey);
+    }
+
+    // 3. Update Attacks and Check Collisions
+    game.attacks = game.attacks.filter(attack => {
+        // Base movement
+        if (attack.update) attack.update(dt);
+        attack.x += attack.vx * dt / 16;
+        attack.y += attack.vy * dt / 16;
+
+        // Collision Check
+        const attackRadius = attack.radius || 10;
+        
+        let collision = false;
+        if (attack.isColliding) {
+            collision = attack.isColliding(player.x, player.y, player.radius);
+        } else {
+            const dx = player.x - attack.x;
+            const dy = player.y - attack.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            collision = dist < player.radius + attackRadius;
+        }
+
+        if (collision) {
+            const damage = attack.damage || 5;
+            let finalDamage = damage;
+
+            // Dragon reflect special (fixed: angle check, no shield cost on reflect)
+            if (player.equippedSkinId === 'v2_dragon' && player.shield > 0) {
+                const dx_pos = attack.x - player.x;
+                const dy_pos = attack.y - player.y;
+                const dist_pos = Math.sqrt(dx_pos * dx_pos + dy_pos * dy_pos);
+                if (dist_pos > 0) {
+                    // Hit angle
+                    let hitAngle = Math.atan2(dy_pos, dx_pos);
+                    if (hitAngle < 0) hitAngle += Math.PI * 2;
+
+                    // Shield arc
+                    let shieldStart = player.skinState.dragonShieldAngle % (Math.PI * 2);
+                    if (shieldStart < 0) shieldStart += Math.PI * 2;
+                    let shieldEnd = shieldStart + Math.PI * 1.5;
+                    let wraps = shieldEnd > Math.PI * 2;
+                    shieldEnd = shieldEnd % (Math.PI * 2);
+
+                    let covered = wraps ? (hitAngle >= shieldStart || hitAngle <= shieldEnd) : (hitAngle >= shieldStart && hitAngle <= shieldEnd);
+
+                    if (covered) {
+                        // Reflect
+                        const nx = dx_pos / dist_pos;
+                        const ny = dy_pos / dist_pos;
+                        const dot = attack.vx * nx + attack.vy * ny;
+                        attack.vx -= 2 * dot * nx;
+                        attack.vy -= 2 * dot * ny;
+                        // Repel away
+                        attack.x += nx * (player.radius + attackRadius + 10);
+                        attack.y += ny * (player.radius + attackRadius + 10);
+                        showPopup('REFLECT!', player.x, player.y - 30, 500, '#ff0');
+                        // No damage or shield cost
+                        return true;
+                    }
+                }
+            }
+
+            // Normal damage
+            if (player.shield > 0) {
+                const shieldAbsorbed = Math.min(player.shield, finalDamage);
+                player.shield -= shieldAbsorbed;
+                finalDamage -= shieldAbsorbed;
+            }
+            if (finalDamage > 0) {
+                player.hp -= finalDamage;
+                game.lastDamageTime = Date.now();
+                startShake(150, 5);
+                // Only show damage popup if damage was actually taken
+                if (Math.round(finalDamage) > 0) {
+                     showPopup(`-${Math.round(finalDamage)} HP`, player.x, player.y - 20, 500, '#f55');
+                }
+            }
+            if (player.hp <= 0) {
+                gameOver();
+                return false; // Remove attack on hit
+            }
+            // Only remove projectile if it actually deals damage, otherwise let passive threats persist.
+            if (attack.damage > 0) {
+                return false; // Remove attack on hit
+            }
+        }
+
+        // Lifetime and boundary check
+        return attack.lifetime > 0 &&
+               attack.x > -100 && attack.x < cw + 100 &&
+               attack.y > -100 && attack.y < ch + 100;
+    });
+
+    // 4. Draw Everything
+    ctx.clearRect(0, 0, cw, ch);
+    ctx.fillStyle = '#111';
+    ctx.fillRect(0, 0, cw, ch);
+    
+    // FIX: Use ctx.save() and ctx.restore() to contain the screen shake translation
+    ctx.save(); 
+
+    // Apply shake offset
+    const shakeX = Math.random() * game.shake - game.shake / 2;
+    const shakeY = Math.random() * game.shake - game.shake / 2;
+    ctx.translate(shakeX, shakeY);
+
+    // Draw White Hole if active
+    if (game.whiteHole) {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.beginPath();
+        ctx.arc(game.whiteHole.x, game.whiteHole.y, game.whiteHole.radius, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Draw Attacks
+    game.attacks.forEach(attack => {
+        if (attack.draw) {
+            attack.draw(ctx);
+        } else {
+            ctx.fillStyle = attack.color || '#fff';
+            ctx.beginPath();
+            ctx.arc(attack.x, attack.y, attack.radius || 10, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    });
+
+    // Draw Player
+    renderPlayerSkin(ctx, player.x, player.y, player.radius, player.equippedSkinId, dt, player.skinState, player.hp, player.maxHp);
+
+    // Draw Shield
+    if (player.shield > 0) {
+        const shieldRatio = player.shield / player.maxShield;
+        ctx.strokeStyle = `rgba(0, 150, 255, ${0.5 + shieldRatio * 0.5})`;
+        ctx.lineWidth = 5 * shieldRatio;
+        ctx.beginPath();
+        ctx.arc(player.x, player.y, player.radius + 5, 0, Math.PI * 2);
+        ctx.stroke();
+    }
+
+    // Draw Health Bar
+    const hpRatio = player.hp / player.maxHp;
+    ctx.fillStyle = hpRatio > 0.5 ? '#0f0' : (hpRatio > 0.2 ? '#ff0' : '#f00');
+    ctx.fillRect(player.x - 15, player.y + player.radius + 5, 30 * hpRatio, 3);
+    
+    ctx.restore(); // Restores context, automatically resetting the translate (shake)
+
+    // 5. Update HUD and Loop
+    updateHUD();
+    game.animationFrameId = requestAnimationFrame(mainLoop);
+}
+
+
+// --- MENU AND KEYPAD LOGIC ---
+
+function buildKeypad() {
+    keypad.innerHTML = '';
+    const worldKeys = [...WORLD1_KEYS, ...WORLD2_FULL];
+
+    worldKeys.forEach(k => {
+        const keybtn = document.createElement('div');
+        keybtn.className = 'key-btn';
+        const isUnlocked = progress.unlockedKeys.includes(k);
+        const isCompleted = progress.completedKeys.includes(k);
+
+        if (!isUnlocked) {
+            keybtn.classList.add('locked');
+            keybtn.textContent = '?';
+            keybtn.title = 'Complete this stage in Precoded Mode to unlock.';
+        } else {
+            keybtn.textContent = isCompleted ? k.toUpperCase() : k.toUpperCase();
+            keybtn.onclick = () => startChoiceStage(k);
+        }
+
+        if (k === game.stageKey) {
+            keybtn.classList.add('current');
+        }
+
+        keypad.appendChild(keybtn);
+    });
+}
+
+function startChoiceStage(k) {
+    const combinedKeyset = [...WORLD1_KEYS, ...WORLD2_FULL];
+    game.keyset = combinedKeyset;
+    const index = combinedKeyset.indexOf(k);
+    if (index === -1) {
+        console.error("Key not found in combined set:", k);
+        return;
+    }
+    game.stageIndex = index;
+    game.world = index < WORLD1_KEYS.length ? 'world1' : 'world2';
+    
+    // Hide Keypad and start game
+    keypad.classList.add('hidden');
+    startGame('yourchoice', game.world, k);
+}
+
+
+// --- SKINS SHOP LOGIC ---
+
+function showSkinsShop() {
+    menu.classList.add('hidden');
+    shop.classList.remove('hidden');
+    renderShopCatalog();
+}
+
+function renderShopCatalog() {
+    const catalogContainer = document.getElementById('skinCatalog');
+    catalogContainer.innerHTML = '';
+    document.getElementById('shopCredits').textContent = player.credits;
+
+    SKIN_CATALOG.forEach(skin => {
+        const card = document.createElement('div');
+        card.className = 'skin-card';
+        let buffTag = '';
+        if (skin.buffs) {
+            buffTag = '<div class="buff-tag">Has Buffs!</div>';
+        }
+        card.innerHTML = `
+            <h3>${skin.name} - ${skin.price} CR</h3>
+            <div class="preview"><canvas id="prev_${skin.id}" width="50" height="50" style="background:#111; border:1px solid #333; image-rendering:pixelated;"></canvas></div>
+            <p>${skin.desc}</p>
+            ${buffTag}
+            <div class="actions"></div>
         `;
-        document.body.appendChild(popup);
 
-        // Fade in
-        setTimeout(() => {
-            popup.style.opacity = '1';
-            popup.style.transform = 'translate(-50%, -50%) scale(1.05)';
-        }, 10);
+        const actionsDiv = card.querySelector('.actions');
+        const isOwned = progress.ownedSkins.includes(skin.id);
+        const isEquipped = player.equippedSkinId === skin.id;
 
-        // Fade out and remove
-        setTimeout(() => {
-            popup.style.opacity = '0';
-            popup.style.transform = 'translate(-50%, -50%) scale(0.95)';
-            setTimeout(() => popup.remove(), 300);
-        }, duration);
-    }
-
-    /**
-     * Initializes the canvas size and drawing context.
-     */
-    initCanvas() {
-        this.resizeCanvas();
-        window.addEventListener('resize', this.resizeCanvas.bind(this));
-    }
-
-    /**
-     * Adjusts the canvas size to fill the viewport.
-     */
-    resizeCanvas() {
-        this.canvas.width = window.innerWidth;
-        this.canvas.height = window.innerHeight;
-    }
-
-    /**
-     * Initializes all event listeners for UI buttons and input.
-     */
-    initEventListeners() {
-        // --- Menu Buttons ---
-        document.getElementById('precodedBtn').onclick = () => this.startGame('solo', 'V1');
-        document.getElementById('precodedUniBtn').onclick = () => this.startGame('solo', 'V2');
-        document.getElementById('multiplayerDuelBtn').onclick = () => this.showMultiplayerLobby('duel_mp'); // 1v1 DUEL
-        document.getElementById('multiplayerTeamBtn').onclick = () => this.showMultiplayerLobby('team_mp'); // 2v1 TEAM
-        document.getElementById('skinsShopBtn').onclick = () => this.showSkinsShop();
-
-        // --- Shop Buttons ---
-        document.getElementById('shopBackBtn').onclick = () => this.showMenu();
-        document.getElementById('skin-grid').onclick = (e) => {
-            const item = e.target.closest('.skin-item');
-            if (item) {
-                this.handleSkinPurchaseEquip(item.dataset.id);
-            }
-        };
-
-        // --- Multiplayer Lobby Buttons ---
-        document.getElementById('lobbyBackBtn').onclick = () => this.showMenu();
-        document.getElementById('connectBtn').onclick = () => this.connectWebRTC();
-
-        // --- In-Game Input and Chat ---
-        this.ui.typingInput.oninput = this.handleTypingInput.bind(this);
-        this.ui.typingInput.onkeydown = this.handleTypingKeyDown.bind(this);
-        this.ui.chatSendBtn.onclick = this.sendChatMessage.bind(this);
-        this.ui.chatInput.onkeydown = (e) => {
-            if (e.key === 'Enter') this.sendChatMessage();
-        };
-
-        // --- Global Key Handlers (for restart 'R') ---
-        document.addEventListener('keydown', e => {
-            if (e.key === 'r' || e.key === 'R') {
-                if (this.localPlayer.dead || this.remoteEntity.dead) {
-                    this.localPlayer.reset();
-                    this.remoteEntity.reset(this.matchMode === 'team_mp' ? BOSS_HEALTH : MAX_HEALTH);
-                    this.startRound();
-                    this.showCenterMessage("RESTARTING MATCH!", '#ff0', 1000);
-                }
-            }
-        });
-    }
-
-    /**
-     * Handles key presses in the typing input field.
-     */
-    handleTypingKeyDown(e) {
-        const input = this.ui.typingInput;
-
-        // Block all non-text keys in the input area during a round
-        if (!this.gameRunning || this.localPlayer.dead) {
-            e.preventDefault();
-            return;
-        }
-
-        // Allow backspace
-        if (e.key === 'Backspace') return;
-
-        // Check for correct character input (key-specific attack system)
-        if (e.key.length === 1) {
-            this.handleKeyAttack(e.key);
-        }
-
-        // Check for word submission
-        if (e.key === 'Enter') {
-            e.preventDefault(); // Prevent new line
-            if (input.value.trim() === this.targetWord) {
-                this.processWordCompletion();
-                input.value = '';
+        if (isEquipped) {
+            actionsDiv.innerHTML = `<button disabled>EQUIPPED</button>`;
+        } else if (isOwned) {
+            const equipBtn = document.createElement('button');
+            equipBtn.textContent = 'EQUIP';
+            equipBtn.onclick = () => equipSkin(skin.id);
+            actionsDiv.appendChild(equipBtn);
+        } else {
+            const purchaseBtn = document.createElement('button');
+            const canAfford = player.credits >= skin.price;
+            
+            purchaseBtn.textContent = `BUY - ${skin.price} CR`;
+            purchaseBtn.disabled = !canAfford;
+            purchaseBtn.classList.toggle('disabled', !canAfford);
+            
+            if (canAfford) {
+                purchaseBtn.onclick = () => purchaseSkin(skin.id, skin.price);
             } else {
-                this.showPopup("Incorrect word!", '#f00');
+                purchaseBtn.title = 'Not enough credits!';
             }
-        }
-    }
-
-    /**
-     * Handles the 'input' event to update the typed word.
-     */
-    handleTypingInput() {
-        this.typedWord = this.ui.typingInput.value;
-    }
-
-    /**
-     * Processes a key press, triggering a minor, key-specific action.
-     */
-    handleKeyAttack(key) {
-        const charCode = key.charCodeAt(0);
-        const effectMagnitude = (charCode % 5) + 1; // 1 to 5 damage/effect
-
-        // Use the character itself to determine the action type
-        if (/[a-z]/i.test(key)) { // Letters: Minor damage boost
-            if (this.matchMode === 'duel_mp' || this.matchMode === 'solo') {
-                this.remoteEntity.takeDamage(1);
-            }
-        } else if (/[0-9]/.test(key)) { // Numbers: Minor shield boost
-            this.localPlayer.gainShield(effectMagnitude * 0.5);
-        } else if (/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?~`]/.test(key)) { // Symbols: Minor slow on opponent (visual only in solo)
-            this.showPopup(`Symbolic Interference: ${key}`, '#f8f', 500);
-        } else { // Unicode/Other: Very minor health bump
-            this.localPlayer.heal(0.5);
+            actionsDiv.appendChild(purchaseBtn);
         }
 
-        // Only send updates if in a multiplayer mode
-        if (this.isMultiplayer) {
-            this.sendLocalState();
-        }
-    }
-
-    /**
-     * Executes the main action upon successful word completion.
-     */
-    processWordCompletion() {
-        const timeTaken = Date.now() - this.wordStartTime;
-        const baseDamage = BASE_ATTACK_DAMAGE;
-        const speedBonus = timeTaken < 3000 ? 5 : 0; // Bonus for typing in under 3 seconds
-        const entityToHit = this.remoteEntity;
-
-        // Determine action based on the word
-        let action = 'ATTACK';
-        let effectColor = '#f00';
-        let actionMessage = `HIT! -${baseDamage} HP`;
-        let totalDamage = baseDamage + speedBonus;
-
-        if (this.targetWord === 'shield') {
-            this.localPlayer.gainShield(SHIELD_AMOUNT);
-            action = 'SHIELD';
-            effectColor = '#0bf';
-            actionMessage = `SHIELD GAINED! +${SHIELD_AMOUNT} SHD`;
-            totalDamage = 0;
-        } else if (this.targetWord === 'heal') {
-            this.localPlayer.heal(SHIELD_AMOUNT);
-            action = 'HEAL';
-            effectColor = '#0f0';
-            actionMessage = `HEALED! +${SHIELD_AMOUNT} HP`;
-            totalDamage = 0;
-        } else {
-            // Default attack
-            entityToHit.takeDamage(totalDamage);
-            actionMessage = `CRITICAL ATTACK! -${totalDamage} HP`;
-        }
-
-        // Reward money based on word length
-        const moneyReward = Math.ceil(this.targetWord.length / 2);
-        this.money += moneyReward;
-        this.saveState();
-
-        this.showPopup(`${actionMessage} (+${moneyReward} Gold)`, effectColor);
-
-        // Send state updates
-        if (this.isMultiplayer) {
-            this.sendLocalState();
-            // In Team Mode, we also need to send the Boss's new state
-            if (this.matchMode === 'team_mp' && entityToHit.id === 'boss') {
-                this.sendBossState();
-            }
-        }
-
-        if (!entityToHit.dead) {
-            this.startRound();
-        } else {
-            // Check win condition
-            const won = (this.matchMode === 'duel_mp' || this.matchMode === 'solo') ? entityToHit.dead : true;
-            this.endMatch(won);
-        }
-    }
-
-    /**
-     * Starts the game loop and hides menus.
-     * @param {string} mode - 'solo', 'duel_mp', or 'team_mp'.
-     * @param {string} type - 'V1' or 'V2' (for solo word type).
-     */
-    startGame(mode, type) {
-        this.matchMode = mode;
-        this.wordType = type;
-        this.gameRunning = true;
-        this.localPlayer.reset();
-
-        // Configure the remote entity based on mode
-        let remoteMaxHp = MAX_HEALTH;
-        let remoteIcon = 'ENEMY';
-        let remoteTitle = 'OPPONENT';
-        let healthBarClass = '';
-
-        if (mode === 'team_mp') {
-            remoteMaxHp = BOSS_HEALTH;
-            remoteIcon = '👾';
-            remoteTitle = 'BOSS (Teammate HP Below)';
-            healthBarClass = 'health-boss';
-            this.startBossAttackLoop();
-        } else if (mode === 'duel_mp') {
-            remoteIcon = 'DUELIST';
-            remoteTitle = 'OPPONENT';
-            this.stopBossAttackLoop();
-        } else { // solo
-            remoteIcon = 'AI';
-            remoteTitle = 'AI OPPONENT';
-            this.stopBossAttackLoop();
-            // Start a simple solo AI loop (just to have them heal sometimes)
-            this.soloAILoop = setInterval(() => {
-                if (Math.random() < 0.2 && !this.remoteEntity.dead) { // 20% chance to heal/shield
-                    this.remoteEntity.gainShield(10);
-                    this.showCenterMessage("AI SHIELDING!", '#f0f', 500);
-                }
-            }, 3000);
-        }
-
-        this.remoteEntity.reset(remoteMaxHp);
-        this.remoteEntity.id = mode === 'team_mp' ? 'boss' : (mode === 'duel_mp' ? 'teammate' : 'opponent');
-
-        // Update UI status/styles
-        this.ui.opponentTitle.textContent = remoteTitle;
-        this.ui.opponentHealthContainer.className = `health-bar-container ${healthBarClass}`;
-
-        // Hide all panels, show HUD
-        this.ui.menu.classList.add('hidden');
-        this.ui.shop.classList.add('hidden');
-        this.ui.lobby.classList.add('hidden');
-        this.ui.hud.classList.remove('hidden');
-        this.ui.typingInput.focus();
-
-        // Show chat only if multiplayer
-        if (mode.includes('_mp')) {
-            document.getElementById('multiplayer-overlay').classList.remove('hidden');
-        } else {
-            document.getElementById('multiplayer-overlay').classList.add('hidden');
-        }
-
-        this.showCenterMessage("DUEL START!", '#ffeb3b', 2000);
-        this.startRound();
-    }
-
-    /**
-     * Boss AI logic for Team Mode. Initiator handles the attack timing and target.
-     */
-    startBossAttackLoop() {
-        if (!this.rtcManager.isInitiator || this.bossAttackIntervalId) return;
-
-        this.bossAttackIntervalId = setInterval(() => {
-            if (!this.gameRunning || this.localPlayer.dead || this.remoteEntity.dead) {
-                this.stopBossAttackLoop();
-                return;
-            }
-
-            // Boss attacks one of the two players (local or remote)
-            const target = this.nextBossAttackTarget;
-            const damage = BOSS_ATTACK_DAMAGE + Math.floor(Math.random() * 10); // Variable damage
-
-            if (target === 'local') {
-                this.localPlayer.takeDamage(damage);
-                this.showPopup(`BOSS HIT YOU! -${damage} HP`, '#f00', 1500);
-                this.sendLocalState();
-                this.nextBossAttackTarget = 'remote'; // Switch target
-            } else {
-                // Tell the remote player they got hit
-                this.rtcManager.send({ type: 'boss_attack', damage });
-                this.showCenterMessage("BOSS ATTACKED TEAMMATE!", '#ff0', 1500);
-                this.nextBossAttackTarget = 'local'; // Switch target
-            }
-
-            // Check if local player died
-            if (this.localPlayer.dead) {
-                this.endMatch(false);
-            }
-        }, 5000); // Boss attacks every 5 seconds
-    }
-
-    /**
-     * Stops the Boss AI attack loop.
-     */
-    stopBossAttackLoop() {
-        if (this.bossAttackIntervalId) {
-            clearInterval(this.bossAttackIntervalId);
-            this.bossAttackIntervalId = null;
-        }
-        if (this.soloAILoop) {
-            clearInterval(this.soloAILoop);
-            this.soloAILoop = null;
-        }
-    }
-
-    /**
-     * Starts a new round by selecting a word and setting a timer.
-     * @param {string} [fixedWord=null] - Optional word for MP synchronization.
-     */
-    startRound(fixedWord = null) {
-        if (this.roundTimerId) {
-            clearTimeout(this.roundTimerId);
-        }
-        if (this.localPlayer.dead || this.remoteEntity.dead) {
-            this.endMatch(this.localPlayer.dead ? false : true);
-            return;
-        }
-
-        // Select a new word
-        if (fixedWord) {
-            this.targetWord = fixedWord;
-        } else {
-            // Filter words based on complexity for solo mode
-            let pool = WORD_DICTIONARY.filter(word => {
-                const hasUnicode = !/^[a-zA-Z0-9]+$/.test(word);
-                return this.wordType === 'V2' ? true : !hasUnicode;
-            });
-            this.targetWord = pool[Math.floor(Math.random() * pool.length)];
-
-            // Send round synchronization to opponent if MP and initiator
-            if (this.isMultiplayer && this.rtcManager.isInitiator) {
-                this.rtcManager.send({ type: 'round_start', word: this.targetWord });
-            }
-        }
-
-        this.ui.targetWordEl.textContent = this.targetWord;
-        this.ui.typingInput.value = '';
-        this.typedWord = '';
-        this.wordStartTime = Date.now();
-
-        // Set round timer (5s to 12s)
-        const duration = Math.floor(Math.random() * (ROUND_MAX_DURATION - ROUND_MIN_DURATION + 1)) + ROUND_MIN_DURATION;
-        let timeRemaining = Math.floor(duration / 1000);
-        this.ui.roundTimer.textContent = `${timeRemaining}s`;
-
-        // Update timer every second
-        const intervalId = setInterval(() => {
-            timeRemaining--;
-            this.ui.roundTimer.textContent = `${timeRemaining}s`;
-
-            if (timeRemaining <= 0) {
-                clearInterval(intervalId);
-                // Round fails, small penalty
-                this.localPlayer.takeDamage(BASE_ATTACK_DAMAGE / 2);
-                this.showPopup('TIME OUT! -5 HP Penalty.', '#ffa07a', 1500);
-                if (this.isMultiplayer) this.sendLocalState();
-                this.startRound();
-            }
-        }, 1000);
-
-        this.roundTimerId = intervalId;
-    }
-
-    /**
-     * Ends the current match and shows the winner/loser screen.
-     */
-    endMatch(won) {
-        this.gameRunning = false;
-        this.stopBossAttackLoop();
-        if (this.roundTimerId) {
-            clearInterval(this.roundTimerId);
-        }
-
-        const message = won ? "VICTORY! +100 Gold Reward." : "DEFEAT! Try again.";
-        const color = won ? '#0f0' : '#f00';
-        this.showCenterMessage(message, color, 5000);
-
-        if (won) {
-            this.money += 100; // Match win bonus
-        }
-        this.saveState();
-
-        setTimeout(() => this.returnToLobby(), 5000);
-    }
-
-    /**
-     * Renders the game state on the canvas and HUD.
-     */
-    render() {
-        // Clear canvas
-        this.ctx.fillStyle = '#0a0a0a';
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-        if (!this.gameRunning) {
-            return;
-        }
-
-        // Draw Player 1 (Local) and Player 2 (Remote Entity)
-        this.drawPlayer(this.localPlayer, this.canvas.width / 4, this.canvas.height / 2, this.equippedSkin.icon, '#0f0');
-        this.drawPlayer(this.remoteEntity, this.canvas.width * 3 / 4, this.canvas.height / 2, this.getRemoteIcon(), this.getRemoteColor());
-
-        // Draw HUD updates
-        this.updateHUD();
-    }
-
-    /**
-     * Gets the appropriate icon for the remote entity based on mode.
-     */
-    getRemoteIcon() {
-        if (this.matchMode === 'team_mp') return '👾';
-        if (this.matchMode === 'duel_mp') return 'DUELIST';
-        return 'AI';
-    }
-
-    /**
-     * Gets the appropriate color for the remote entity based on mode.
-     */
-    getRemoteColor() {
-        if (this.matchMode === 'team_mp') return '#ff0000'; // Boss is red
-        if (this.matchMode === 'duel_mp') return '#00ffff'; // Opponent is cyan
-        return '#ffeb3b'; // Solo AI is yellow
-    }
-
-    /**
-     * Draws a player's avatar on the canvas.
-     */
-    drawPlayer(player, x, y, icon, color) {
-        this.ctx.save();
-        this.ctx.translate(x, y);
-
-        // Body outline/glow
-        this.ctx.shadowBlur = 20;
-        this.ctx.shadowColor = color;
-        this.ctx.fillStyle = color;
-        this.ctx.beginPath();
-        this.ctx.arc(0, 0, 40, 0, Math.PI * 2);
-        this.ctx.fill();
-        this.ctx.shadowBlur = 0;
-
-        // Draw Icon/Skin
-        this.ctx.fillStyle = '#000';
-        this.ctx.font = '48px Inter';
-        this.ctx.textAlign = 'center';
-        this.ctx.textBaseline = 'middle';
-        this.ctx.fillText(icon, 0, 0);
-
-        // Draw status (Dead)
-        if (player.dead) {
-            this.ctx.font = '24px Inter';
-            this.ctx.fillStyle = '#f00';
-            this.ctx.fillText('DEAD', 0, 70);
-        }
-
-        this.ctx.restore();
-    }
-
-    /**
-     * Updates the HUD elements (HP, Shields).
-     */
-    updateHUD() {
-        // Local Player HUD
-        const localPercent = this.localPlayer.hp / this.localPlayer.maxHp * 100;
-        const localShieldPercent = this.localPlayer.shield / (this.localPlayer.maxHp / 2) * 100;
-        document.getElementById('player-health-bar').style.width = `${localPercent}%`;
-        document.getElementById('player-shield-bar').style.width = `${localShieldPercent}%`;
-        document.getElementById('player-hp-text').textContent = `${Math.ceil(this.localPlayer.hp)} HP / ${Math.ceil(this.localPlayer.shield)} SHD`;
-
-        // Remote Entity HUD (Opponent/Boss/Teammate)
-        const remotePercent = this.remoteEntity.hp / this.remoteEntity.maxHp * 100;
-        const remoteShieldPercent = this.remoteEntity.shield / (this.remoteEntity.maxHp / 2) * 100;
-        document.getElementById('opponent-health-bar').style.width = `${remotePercent}%`;
-        document.getElementById('opponent-shield-bar').style.width = `${remoteShieldPercent}%`;
-
-        let remoteText = '';
-        if (this.matchMode === 'team_mp') {
-            remoteText = `BOSS: ${Math.ceil(this.remoteEntity.hp)} HP / TMMT: ${Math.ceil(this.remoteTeammate?.hp || 100)} HP`;
-        } else if (this.matchMode === 'duel_mp') {
-            remoteText = `OPPONENT: ${Math.ceil(this.remoteEntity.hp)} HP / ${Math.ceil(this.remoteEntity.shield)} SHD`;
-        } else {
-            remoteText = `AI: ${Math.ceil(this.remoteEntity.hp)} HP / ${Math.ceil(this.remoteEntity.shield)} SHD`;
-        }
-        document.getElementById('opponent-hp-text').textContent = remoteText;
-    }
-
-    /**
-     * Updates the center message on the HUD.
-     */
-    showCenterMessage(message, color, duration = 1500) {
-        const el = this.ui.centerMessage;
-        el.textContent = message;
-        el.style.color = color;
-        el.style.textShadow = `0 0 10px ${color}`;
-        if (this.centerMessageTimeout) {
-            clearTimeout(this.centerMessageTimeout);
-        }
-        this.centerMessageTimeout = setTimeout(() => {
-            el.textContent = "TYPING TITANS: KEYBOARD ARENA";
-            el.style.color = '#ffeb3b';
-            el.style.textShadow = '0 0 8px #ffeb3b';
-        }, duration);
-    }
-
-    /**
-     * Saves current money and skin data to localStorage.
-     */
-    saveState() {
-        this.progress.money = this.money;
-        this.progress.equippedSkinId = this.equippedSkin.id;
-        saveProgress(this.progress);
-        this.updateShopUI(); // Update UI after saving
-    }
-
-    // --- UI/Panel Management ---
-
-    /**
-     * Hides all panels and shows the main menu.
-     */
-    showMenu() {
-        this.gameRunning = false;
-        this.stopBossAttackLoop();
-        if (this.roundTimerId) {
-            clearInterval(this.roundTimerId);
-        }
-        this.rtcManager.close(); // Close any active RTC connection
-        this.ui.hud.classList.add('hidden');
-        document.getElementById('multiplayer-overlay').classList.add('hidden');
-        this.ui.shop.classList.add('hidden');
-        this.ui.lobby.classList.add('hidden');
-        this.ui.menu.classList.remove('hidden');
-    }
-
-    /**
-     * Shows the skins shop UI.
-     */
-    showSkinsShop() {
-        this.ui.menu.classList.add('hidden');
-        this.ui.lobby.classList.add('hidden');
-        this.ui.shop.classList.remove('hidden');
-        this.updateShopUI();
-    }
-
-    /**
-     * Updates the skins shop display based on player progress.
-     */
-    updateShopUI() {
-        document.getElementById('playerMoney').textContent = this.money;
-        const skinGrid = document.getElementById('skin-grid');
-        skinGrid.innerHTML = '';
-
-        ALL_SKINS.forEach(skin => {
-            const playerSkinData = this.progress.skins.find(s => s.id === skin.id);
-            const isOwned = playerSkinData ? playerSkinData.owned : false;
-            const isEquipped = this.equippedSkin.id === skin.id;
-
-            const statusText = isEquipped ? 'EQUIPPED' : (isOwned ? 'OWNED' : `${skin.price} GOLD`);
-            const statusClass = isEquipped ? 'text-success' : (isOwned ? 'text-flair' : 'text-yellow-400');
-            const itemClass = isEquipped ? 'equipped' : (isOwned ? 'owned' : 'locked');
-
-            const itemHTML = `
-                <div class="skin-item ${itemClass}" data-id="${skin.id}">
-                    <div class="skin-preview">${skin.icon}</div>
-                    <div class="skin-name">${skin.name}</div>
-                    <div class="${statusClass}">${statusText}</div>
-                </div>
-            `;
-            skinGrid.innerHTML += itemHTML;
-        });
-    }
-
-    /**
-     * Handles purchase or equipping of a skin.
-     */
-    handleSkinPurchaseEquip(skinId) {
-        const skin = ALL_SKINS.find(s => s.id === skinId);
-        if (!skin) return;
-
-        const playerSkinData = this.progress.skins.find(s => s.id === skinId);
-        const isOwned = playerSkinData ? playerSkinData.owned : false;
-
-        if (isOwned) {
-            // Equip
-            this.equippedSkin = skin;
-            this.progress.equippedSkinId = skinId;
-            this.saveState();
-            this.showPopup(`${skin.name} Equipped!`, '#0ff');
-        } else {
-            // Buy
-            if (this.money >= skin.price) {
-                this.money -= skin.price;
-                if (playerSkinData) {
-                    playerSkinData.owned = true;
-                } else {
-                    this.progress.skins.push({ id: skinId, owned: true });
-                }
-                this.equippedSkin = skin; // Equip immediately upon purchase
-                this.progress.equippedSkinId = skinId;
-                this.saveState();
-                this.showPopup(`Purchased & Equipped ${skin.name}!`, '#0f0');
-            } else {
-                this.showPopup('Not enough Gold!', '#f00');
-            }
-        }
-    }
-
-    /**
-     * Displays the WebRTC lobby UI.
-     * @param {string} mode - The intended multiplayer mode ('duel_mp' or 'team_mp').
-     */
-    showMultiplayerLobby(mode) {
-        this.matchMode = mode;
-        this.ui.menu.classList.add('hidden');
-        this.ui.shop.classList.add('hidden');
-        this.ui.lobby.classList.remove('hidden');
-
-        document.getElementById('lobby-title').textContent = mode === 'duel_mp' ? '1V1 DUEL LOBBY' : '2V1 TEAM LOBBY';
-        document.getElementById('lobby-description').textContent = mode === 'duel_mp' ?
-            'Connect for a direct 1v1 battle, damaging your opponent directly.' :
-            'Connect with a teammate to fight a powerful AI Boss!';
-
-        // Reset and get local ID
-        this.rtcManager.close();
-        document.getElementById('local-peer-id').value = this.rtcManager.localId;
-        document.getElementById('remote-peer-id').value = '';
-    }
-
-    // --- Multiplayer Management ---
-
-    /**
-     * Initiates the WebRTC connection process.
-     */
-    async connectWebRTC() {
-        const remoteInput = document.getElementById('remote-peer-id').value.trim();
-        const localIdInput = document.getElementById('local-peer-id');
-
-        if (!remoteInput) {
-            this.rtcManager.updateStatus('Error: Paste opponent ID/Signal!', 'text-error');
-            return;
-        }
-
-        this.rtcManager.updateStatus('Connecting...', 'text-flair');
-        localIdInput.value = 'Waiting for SDP exchange...'; // Clear ID to show SDP
-
-        let signal;
-        try {
-            signal = JSON.parse(remoteInput);
-        } catch (e) {
-            // Treat as a regular ID and create an offer
-            this.rtcManager.createOffer(remoteInput);
-            return;
-        }
-
-        // If it's a signal, process it
-        if (signal.type === 'offer') {
-            // Crucial check: Ensure modes match before processing
-            if (signal.mode !== this.matchMode) {
-                this.rtcManager.updateStatus(`Error: Mode mismatch! (${signal.mode} vs ${this.matchMode})`, 'text-error');
-                return;
-            }
-            await this.rtcManager.handleOffer(signal.sdp, signal.senderId);
-        } else if (signal.type === 'answer') {
-            await this.rtcManager.handleAnswer(signal.sdp);
-        } else if (signal.type === 'candidate') {
-            await this.rtcManager.handleCandidate(signal.candidate);
-        } else {
-            this.rtcManager.updateStatus('Invalid signal/ID format.', 'text-error');
-        }
-    }
-
-    /**
-     * Sets the multiplayer flag and adjusts the game mode.
-     */
-    setMultiplayerState(isConnected) {
-        this.isMultiplayer = isConnected;
-        if (isConnected) {
-            this.startGame(this.matchMode, 'V2'); // Start game in the selected mode
-        }
-    }
-
-    // --- State Sending (Split for Duel vs. Team) ---
-
-    /**
-     * Sends the local player's state to the peer.
-     * In DUEL mode: this is the state of the opponent.
-     * In TEAM mode: this is the state of the teammate.
-     */
-    sendLocalState() {
-        const state = {
-            hp: this.localPlayer.hp,
-            shield: this.localPlayer.shield,
-            dead: this.localPlayer.dead,
-        };
-        const type = this.matchMode === 'duel_mp' ? 'game_state' : 'player_state';
-        this.rtcManager.send({ type, state });
-    }
-
-    /**
-     * Sends the Boss's state to the teammate (only in Team Mode).
-     */
-    sendBossState() {
-        if (this.matchMode === 'team_mp' && this.remoteEntity.id === 'boss') {
-            const state = {
-                hp: this.remoteEntity.hp,
-                dead: this.remoteEntity.dead,
-            };
-            this.rtcManager.send({ type: 'boss_state', state });
-        }
-    }
-
-    // --- State Receiving (Split for Duel vs. Team) ---
-
-    /**
-     * Receives and applies the opponent's game state (DUEL mode).
-     * The remote state is mapped to our local 'remoteEntity'.
-     */
-    receiveOpponentState(state) {
-        if (this.matchMode !== 'duel_mp') return;
-        this.remoteEntity.hp = state.hp;
-        this.remoteEntity.shield = state.shield;
-        this.remoteEntity.dead = state.dead;
-
-        if (this.remoteEntity.dead) {
-            this.endMatch(true); // Opponent is dead, I win
-        }
-    }
-
-    /**
-     * Receives and applies the teammate's game state (TEAM mode).
-     * We track the teammate's state separately.
-     */
-    receiveTeammateState(state) {
-        if (this.matchMode !== 'team_mp') return;
-        // Store teammate state for HUD update
-        this.remoteTeammate = state;
-
-        if (state.dead && this.localPlayer.dead) {
-            this.endMatch(false); // Both players dead, defeat
-        }
-    }
-
-    /**
-     * Receives the Boss's state from the initiator (TEAM mode).
-     */
-    receiveBossState(state) {
-        if (this.matchMode !== 'team_mp' || this.rtcManager.isInitiator) return;
-        this.remoteEntity.hp = state.hp;
-        this.remoteEntity.dead = state.dead;
-
-        if (this.remoteEntity.dead) {
-            this.endMatch(true); // Boss is dead, team victory
-        }
-    }
-
-    /**
-     * Receives a boss attack command from the initiator (TEAM mode).
-     */
-    receiveBossAttack(damage) {
-        if (this.matchMode !== 'team_mp' || this.rtcManager.isInitiator) return;
-        this.localPlayer.takeDamage(damage);
-        this.showPopup(`TEAMMATE's BOSS ATTACK HIT YOU! -${damage} HP`, '#f00', 1500);
-        this.sendLocalState(); // Send updated local HP back
-        if (this.localPlayer.dead) {
-            this.endMatch(false);
-        }
-    }
-
-    /**
-     * Sends a chat message over the data channel.
-     */
-    sendChatMessage() {
-        const message = this.ui.chatInput.value.trim();
-        if (message && this.isMultiplayer) {
-            this.rtcManager.send({ type: 'chat', message });
-            this.addChatMessage('You', message, '#0f0');
-            this.ui.chatInput.value = '';
-        } else if (message) {
-            this.addChatMessage('SYSTEM', 'Cannot send chat in Solo Mode.', '#ff0');
-            this.ui.chatInput.value = '';
-        }
-    }
-
-    /**
-     * Appends a chat message to the UI log.
-     */
-    addChatMessage(sender, message, color) {
-        const msgEl = document.createElement('div');
-        msgEl.innerHTML = `<span style="color:${color}; font-weight:bold;">[${sender}]:</span> ${message}`;
-        this.ui.chatMessages.appendChild(msgEl);
-        // Auto-scroll to bottom
-        this.ui.chatMessages.scrollTop = this.ui.chatMessages.scrollHeight;
-    }
-
-    /**
-     * Returns to the main menu/lobby after a match.
-     */
-    returnToLobby() {
-        this.ui.hud.classList.add('hidden');
-        document.getElementById('multiplayer-overlay').classList.add('hidden');
-        if (this.matchMode.includes('_mp')) {
-            // After an MP match, go back to the lobby selection state
-            this.showMenu();
-        } else {
-            this.showMenu();
-        }
+        catalogContainer.appendChild(card);
+    });
+
+    // Render previews on canvases
+    SKIN_CATALOG.forEach(skin => {
+        const prevCanvas = document.getElementById(`prev_${skin.id}`);
+        if (!prevCanvas) return;
+        const pctx = prevCanvas.getContext('2d');
+        pctx.clearRect(0, 0, 50, 50);
+        const mockX = 25, mockY = 25, mockR = 8;
+        let mockState = {};
+        if (skin.id === 'cat_txt') mockState = { catBlinkTimer: 0, catBlinkDuration: 1200, catFace: 'owo' };
+        if (skin.id === 'periodic') mockState.periodicElement = getRandomPeriodicElement();
+        if (skin.id === 'arcade') mockState.arcadeFlicker = Array(16).fill(false);
+        if (skin.id === 'grok_xai') mockState.grokAngle = 0;
+        if (skin.id === 'v2_dragon') mockState.dragonShieldAngle = 0;
+        if (skin.id === 'retro_term') mockState.retroBlinkTime = 0;
+        // Add more inits as needed
+        renderPlayerSkin(pctx, mockX, mockY, mockR, skin.id, 0, mockState, 50, 100);
+    });
+}
+
+function equipSkin(skinId) {
+    player.equippedSkinId = skinId;
+    applySkinBuffs();
+    saveProgress();
+    renderShopCatalog(); // Refresh shop view
+    showPopup(`Equipped ${skinId}!`, canvas.width/2, canvas.height/2, 1000, '#00ff44');
+}
+
+function purchaseSkin(skinId, price) {
+    if (player.credits >= price) {
+        player.credits -= price;
+        progress.ownedSkins.push(skinId);
+        player.equippedSkinId = skinId; // Auto-equip on purchase
+        applySkinBuffs();
+        
+        saveProgress();
+        renderShopCatalog(); // Refresh shop view
+        updateHUD();
+        
+        showPopup(`Purchased & Equipped ${skinId}!`, canvas.width/2, canvas.height/2, 2000, '#ffeb3b');
+    } else {
+        showPopup(`Not enough credits!`, canvas.width/2, canvas.height/2, 1000, '#f55');
     }
 }
 
-// =========================================================================
-// MAIN EXECUTION AND ANIMATION LOOP
-// =========================================================================
 
-let gameInstance;
+// --- EVENT LISTENERS AND INITIALIZATION ---
 
-/**
- * The main game animation loop.
- */
-function animate() {
-    requestAnimationFrame(animate);
-    if (gameInstance) {
-        gameInstance.render();
+let mouse = { x: 0, y: 0 };
+window.onmousemove = e => { mouse.x = e.clientX; mouse.y = e.clientY; };
+window.ontouchmove = e => { if (e.touches.length > 0) { mouse.x = e.touches[0].clientX; mouse.y = e.touches[0].clientY; e.preventDefault(); }};
+
+window.onresize = () => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+};
+
+// Keyboard controls for spinning shield (Q/E for dragon)
+document.addEventListener('keydown', (e) => {
+    if (player.equippedSkinId === 'v2_dragon') {
+        if (e.key === 'q' || e.key === 'Q') {
+            player.skinState.dragonShieldAngle -= 0.2;
+        } else if (e.key === 'e' || e.key === 'E') {
+            player.skinState.dragonShieldAngle += 0.2;
+        } else if (e.key === 'w' || e.key === 'W') {
+            spawnWhiteHole(); // W for white hole activation
+        }
     }
-}
+});
 
-// Initialize the game instance when the window loads
+// Menu Button Wiring (FIX: Always start at stage 0 for Precoded modes)
+precodedBtn.onclick = () => { 
+    game.stageIndex = 0; 
+    game.stageKey = WORLD1_KEYS[0]; 
+    game.inChoiceMode = false;
+    startGame('precoded', 'world1', WORLD1_KEYS[0]); 
+};
+precodedUniBtn.onclick = () => {
+    if (!progress.world1) { // World 2 requires World 1 completion
+        startShake(300, 8);
+        showPopup('Locked: Complete World 1 first!', canvas.width / 2, canvas.height / 2, 2000, '#f55');
+        return;
+    }
+    game.stageIndex = 0; // FIX: Ensure stage index is reset
+    game.stageKey = WORLD2_FULL[0]; 
+    game.inChoiceMode = false;
+    startGame('precoded-uni', 'world2', WORLD2_FULL[0]);
+};
+
+// Your Choice Mode button now correctly opens the keypad as checkpoint
+yourChoiceBtn.onclick = () => {
+    game.inChoiceMode = true;
+    showMenu(); // Shows menu with keypad and hides main buttons
+};
+
+skinsShopBtn.onclick = () => {
+    game.inChoiceMode = false; // Reset to main menu state when entering shop
+    showSkinsShop();
+};
+shopBackBtn.onclick = () => { 
+    game.inChoiceMode = false;
+    shop.classList.add('hidden'); 
+    showMenu(); 
+};
+
+
+// Key R restart
+document.addEventListener('keydown', e => {
+    if (e.key === 'r' || e.key === 'R') {
+        player.hp = player.maxHp;
+        player.shield = 0;
+        player.dead = false;
+        game.attacks = [];
+        game.inChoiceMode = false;
+        showMenu(); // Use the dedicated function to clean up and transition
+    }
+});
+
+// Initial Setup
 window.onload = function () {
-    gameInstance = new Game();
-    animate(); // Start the animation loop
-}
+    window.onresize(); // Set initial canvas size
+    showMenu(); // Ensure the menu is shown initially and the game loop is stopped
+};
 
 </script>
 </body>
 </html>
-
