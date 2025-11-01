@@ -1,1053 +1,1677 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lexi-Glitch Arena - V2 System</title>
-    <!-- Load Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        /* Global Styling & Font (Inter) */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Space+Mono:wght@400;700&display=swap');
-        :root {
-            --primary-bg: #111827; /* Dark Slate */
-            --secondary-bg: #1f2937; /* Lighter Slate */
-            --accent-green: #10b981; /* Emerald Green */
-            --accent-yellow: #f59e0b; /* Amber */
-            --text-light: #f9fafb; /* White */
-            --text-mute: #9ca3af; /* Gray */
-            --border-color: #374151; /* Medium Gray */
-        }
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--primary-bg);
-            color: var(--text-light);
-            overflow: hidden;
-            height: 100vh;
-        }
+<meta charset="utf-8" />
+<title>TYPING TITANS: KEYBOARD ARENA — V2 System (Team Mode Enabled)</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+/* Global Styles (Preserved from Original Script) */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#000; overflow:hidden; touch-action:none; font-family: 'Inter', sans-serif; }
+canvas { display:block; image-rendering:pixelated; cursor:none; }
+/* Game UI Overlays */
+#hud { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; color:#fff; }
+.topleft { position:absolute; top:10px; left:10px; font-size:14px; text-shadow: 0 0 5px #0f0; }
+.topright { position:absolute; top:10px; right:10px; font-size:14px; text-shadow: 0 0 5px #0f0; } /* Adjusted position for teammate/boss HP */
+.centertop { position:absolute; top:10px; left:50%; transform:translateX(-50%); font-size:18px; font-weight:bold; color: #ffeb3b; text-shadow: 0 0 8px #ffeb3b; }
+.bottomcenter { position:absolute; bottom:10px; left:50%; transform:translateX(-50%); display:flex; gap:10px; }
+/* Main Menu and Panels */
+.menu-panel {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90%;
+    max-width: 500px;
+    padding: 20px;
+    background: #111;
+    border: 3px solid #333;
+    border-radius: 12px;
+    box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+    color: #fff;
+    text-align: center;
+    z-index: 1000;
+}
+.menu-panel h1 {
+    font-size: 28px;
+    font-weight: bold;
+    color: #0f0;
+    text-shadow: 0 0 10px #0f0;
+    margin-bottom: 20px;
+}
+.menu-button {
+    width: 100%;
+    padding: 15px;
+    margin-bottom: 10px;
+    background: #005500;
+    color: #fff;
+    border: 2px solid #00ff00;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+    box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+    text-transform: uppercase;
+}
+.menu-button:hover {
+    background: #007700;
+    box-shadow: 0 0 15px #00ff00;
+}
+.menu-button:active {
+    transform: scale(0.98);
+}
+.skin-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 15px;
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 10px;
+    border: 1px solid #333;
+    border-radius: 8px;
+    background: #0a0a0a;
+}
+.skin-item {
+    padding: 10px;
+    border: 2px solid #333;
+    border-radius: 8px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+}
+.skin-item:hover {
+    box-shadow: 0 0 15px #0ff;
+    transform: translateY(-2px);
+}
+.skin-item.equipped {
+    border-color: #0ff;
+    box-shadow: 0 0 20px #0ff;
+    background: #1a1a1a;
+}
+.skin-item.locked {
+    filter: grayscale(100%);
+    opacity: 0.5;
+    cursor: default;
+}
+.skin-preview {
+    font-size: 48px;
+    margin-bottom: 5px;
+    height: 50px;
+    line-height: 50px;
+}
+.skin-name {
+    font-size: 14px;
+    font-weight: bold;
+    color: #fff;
+}
+.skin-price {
+    font-size: 12px;
+    color: #ff0;
+}
+.skin-status {
+    font-size: 12px;
+    color: #0f0;
+}
+.currency-display {
+    font-size: 20px;
+    font-weight: bold;
+    color: #ff0;
+    margin-bottom: 15px;
+    text-shadow: 0 0 5px #ff0;
+}
+/* Health and Shields (HUD) */
+.health-bar-container {
+    width: 200px;
+    height: 20px;
+    background: #333;
+    border: 2px solid #fff;
+    border-radius: 5px;
+    overflow: hidden;
+}
+.health-bar {
+    height: 100%;
+    background: linear-gradient(to right, #f00, #ff0);
+    transition: width 0.3s;
+}
+.shield-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background: rgba(0, 191, 255, 0.6);
+    transition: width 0.3s;
+}
+/* Chat/Multiplayer Overlay */
+#multiplayer-overlay {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 300px;
+    height: 200px;
+    background: rgba(0, 0, 0, 0.8);
+    border-top: 2px solid #0f0;
+    border-left: 2px solid #0f0;
+    display: flex;
+    flex-direction: column;
+    padding: 5px;
+    z-index: 100;
+}
+#chat-messages {
+    flex-grow: 1;
+    overflow-y: auto;
+    color: #fff;
+    font-size: 12px;
+    padding: 5px;
+    margin-bottom: 5px;
+}
+#chat-input-container {
+    display: flex;
+}
+#chat-input {
+    flex-grow: 1;
+    padding: 5px;
+    background: #333;
+    color: #fff;
+    border: none;
+}
+#chat-send {
+    padding: 5px 10px;
+    background: #0f0;
+    color: #000;
+    border: none;
+    cursor: pointer;
+}
+/* Utility */
+.hidden { display: none !important; }
+.text-flair { color: #ffeb3b; text-shadow: 0 0 5px #ffeb3b; }
+.text-error { color: #f00; text-shadow: 0 0 5px #f00; }
+.text-success { color: #0f0; text-shadow: 0 0 5px #0f0; }
 
-        /* Console/Code-like Font for the Arena and Log */
-        .mono-font {
-            font-family: 'Space Mono', monospace;
-        }
-
-        /* UI Panel Styling */
-        .ui-panel {
-            background-color: var(--secondary-bg);
-            border: 1px solid var(--border-color);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-        }
-
-        /* Custom Scrollbar for Logs */
-        .custom-scroll::-webkit-scrollbar {
-            width: 8px;
-        }
-        .custom-scroll::-webkit-scrollbar-track {
-            background: var(--secondary-bg);
-        }
-        .custom-scroll::-webkit-scrollbar-thumb {
-            background: var(--border-color);
-            border-radius: 4px;
-        }
-        .custom-scroll::-webkit-scrollbar-thumb:hover {
-            background: var(--accent-green);
-        }
-
-        /* Button Hover Effects (Translated from old script requirement) */
-        .btn-hover {
-            transition: all 0.2s ease-in-out;
-            transform: scale(1);
-        }
-        .btn-hover:hover {
-            background-color: var(--accent-green);
-            color: var(--primary-bg);
-            box-shadow: 0 0 10px var(--accent-green);
-            transform: scale(1.02);
-        }
-        .btn-hover:active {
-            transform: scale(0.98);
-        }
-
-        /* Game Arena Canvas Styling */
-        #gameCanvas {
-            border: 2px solid var(--accent-green);
-            background-color: #000000;
-            cursor: crosshair;
-        }
-
-        /* Modal Backdrop */
-        .modal-backdrop {
-            background-color: rgba(0, 0, 0, 0.8);
-            z-index: 50;
-        }
-
-        /* Skin Card Hover Effect */
-        .skin-card:hover {
-            border-color: var(--accent-green);
-            box-shadow: 0 0 15px rgba(16, 185, 129, 0.7);
-            cursor: pointer;
-            transform: translateY(-2px);
-            transition: all 0.3s ease-in-out;
-        }
-
-        .skin-card-equipped {
-            border-color: var(--accent-yellow) !important;
-            box-shadow: 0 0 15px rgba(245, 158, 11, 0.8) !important;
-        }
-    </style>
+/* Custom Boss Styling */
+.health-boss .health-bar {
+    background: linear-gradient(to right, #800000, #ff4500);
+}
+</style>
 </head>
-<body class="flex flex-col h-screen p-4">
+<body>
 
-    <!-- Header Section -->
-    <header class="mb-4 text-center">
-        <h1 class="text-3xl font-bold mono-font text-accent-green">LEXI-GLITCH ARENA</h1>
-        <p class="text-sm text-text-mute">Development Assisted by HARP & REX | V2 Core System</p>
-    </header>
+<div id="app" class="relative w-screen h-screen">
+    <canvas id="canvas" class="w-full h-full"></canvas>
 
-    <!-- Main Content Grid -->
-    <main class="flex-grow grid grid-cols-12 gap-4">
+    <!-- Main Menu Panel -->
+    <div id="menu" class="menu-panel">
+        <h1>TYPING TITANS: KEYBOARD ARENA</h1>
+        <p class="mb-5 text-gray-400">Battle the key or challenge a friend.</p>
 
-        <!-- Left Panel: Game Status & Network -->
-        <div class="col-span-12 lg:col-span-3 flex flex-col space-y-4">
-            <!-- Game Status Panel -->
-            <div class="ui-panel p-4 rounded-lg flex-shrink-0">
-                <h2 class="text-xl font-bold mb-2 border-b border-border-color pb-1">STATUS</h2>
-                <div class="mono-font text-sm space-y-1">
-                    <p>Round Timer: <span id="roundTimer" class="text-accent-yellow">--</span>s</p>
-                    <p>Player ID: <span id="localUserId" class="text-accent-green">...</span></p>
-                    <p>Opponent ID: <span id="remoteUserId" class="text-accent-yellow">N/A</span></p>
-                    <p>Connection: <span id="connectionStatus" class="text-text-mute">DISCONNECTED</span></p>
-                    <p>Energy: <span id="playerEnergy" class="text-accent-green">100</span></p>
-                </div>
-            </div>
-
-            <!-- Network/WebRTC Control Panel -->
-            <div class="ui-panel p-4 rounded-lg flex-grow flex flex-col">
-                <h2 class="text-xl font-bold mb-2 border-b border-border-color pb-1">NETWORK (WebRTC P2P)</h2>
-                <div class="mono-font text-sm space-y-3 flex-grow">
-                    <button id="btnCreateOffer" class="btn-hover w-full py-2 bg-indigo-600 rounded-lg text-text-light font-bold">1. Create Offer</button>
-                    <button id="btnCreateAnswer" class="btn-hover w-full py-2 bg-teal-600 rounded-lg text-text-light font-bold" disabled>2. Create Answer</button>
-
-                    <label for="signalBox" class="block text-text-mute mt-2">Signal Data (Copy/Paste):</label>
-                    <textarea id="signalBox" rows="6" class="w-full bg-black border border-border-color p-2 text-accent-green text-xs rounded-lg custom-scroll" placeholder="Paste Offer/Answer here..."></textarea>
-                    <button id="btnProcessSignal" class="btn-hover w-full py-2 bg-gray-600 rounded-lg text-text-light font-bold">3. Process Signal</button>
-
-                    <p id="dataChannelStatus" class="text-center pt-2 text-accent-yellow">Data Channel: Closed</p>
-                </div>
-            </div>
+        <div id="solo-section" class="mb-5">
+            <h2 class="text-xl text-flair mb-3">Solo Training</h2>
+            <button id="precodedBtn" class="menu-button">Start Arena (Solo V1)</button>
+            <button id="precodedUniBtn" class="menu-button">Start Arena (Solo V2 - Unicode)</button>
         </div>
 
-        <!-- Center Panel: Game Arena & Input -->
-        <div class="col-span-12 lg:col-span-6 flex flex-col space-y-4">
-            <!-- Game Arena Canvas -->
-            <div class="flex-grow flex items-center justify-center bg-black rounded-lg">
-                <canvas id="gameCanvas" width="800" height="600" class="w-full h-full max-h-[600px] rounded-lg"></canvas>
-            </div>
-
-            <!-- Player Input/Queue -->
-            <div class="ui-panel p-3 rounded-lg flex-shrink-0">
-                <label for="commandInput" class="text-sm text-text-mute block mb-1">Lexi-Command Input (Type to attack):</label>
-                <input type="text" id="commandInput" class="w-full h-10 bg-black border border-accent-green p-2 text-xl mono-font rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-green" maxlength="10" placeholder="Type letters/symbols...">
-                <p class="text-xs text-text-mute pt-1">Queue: <span id="attackQueue" class="text-accent-yellow mono-font">_ _ _</span></p>
-            </div>
+        <div id="multiplayer-section" class="mb-5">
+            <h2 class="text-xl text-flair mb-3">Multiplayer Arena (WebRTC)</h2>
+            <button id="multiplayerDuelBtn" class="menu-button bg-red-800 border-red-500 hover:bg-red-900">1V1 DUEL (Opponent HP)</button>
+            <button id="multiplayerTeamBtn" class="menu-button bg-purple-800 border-purple-500 hover:bg-purple-900">2V1 TEAM ARENA (Boss HP)</button>
         </div>
 
-        <!-- Right Panel: Shop & Game Log -->
-        <div class="col-span-12 lg:col-span-3 flex flex-col space-y-4">
-            <!-- Shop/Skins Button -->
-            <button id="btnOpenShop" class="btn-hover w-full py-3 bg-accent-yellow text-primary-bg font-extrabold text-lg rounded-lg shadow-lg flex-shrink-0">
-                <span class="mr-2">SHOP</span> | CREDITS: <span id="playerCredits">0</span>
-            </button>
+        <button id="skinsShopBtn" class="menu-button bg-blue-800 border-blue-500 hover:bg-blue-900">Skins Shop</button>
 
-            <!-- Game Log/Console Output -->
-            <div class="ui-panel p-4 rounded-lg flex-grow flex flex-col overflow-hidden">
-                <h2 class="text-xl font-bold mb-2 border-b border-border-color pb-1">GAME LOG</h2>
-                <div id="gameLog" class="mono-font text-xs space-y-1 overflow-y-auto custom-scroll flex-grow">
-                    <!-- Log messages will appear here -->
-                </div>
-            </div>
-        </div>
-    </main>
-
-    <!-- Modal for Shop System -->
-    <div id="shopModal" class="fixed inset-0 modal-backdrop hidden items-center justify-center p-4" onclick="handleModalClick(event)">
-        <div class="ui-panel w-full max-w-4xl p-6 rounded-xl relative transform transition-all duration-300 scale-95 opacity-0" id="shopContent">
-            <h2 class="text-3xl font-bold mono-font mb-4 text-accent-yellow border-b border-border-color pb-2">LEXI-SKIN STORE</h2>
-            <p class="text-text-light mb-4">Current Credits: <span id="modalCredits" class="text-accent-green font-bold">0</span></p>
-
-            <div id="skinsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 custom-scroll max-h-96 overflow-y-auto pr-2">
-                <!-- Skin Cards will be injected here -->
-            </div>
-
-            <button onclick="closeShopModal()" class="btn-hover absolute top-3 right-3 text-2xl text-text-light hover:text-accent-yellow">
-                &times;
-            </button>
+        <div class="mt-8 text-xs text-gray-500">
+            Development Assisted by <span class="text-green-500 font-bold">HARP & REX</span>
         </div>
     </div>
 
-    <script type="module">
-        // =================================================================
-        // GLOBAL CONSTANTS AND SETUP
-        // =================================================================
-        const CANVAS = document.getElementById('gameCanvas');
-        const CTX = CANVAS.getContext('2d');
-        const INPUT_FIELD = document.getElementById('commandInput');
-        const MAX_ENERGY = 100;
-        const FPS = 60;
-        const MS_PER_FRAME = 1000 / FPS;
-        const LOCAL_USER_ID = crypto.randomUUID().substring(0, 8); // Unique ID for P2P signaling
+    <!-- Skins Shop Panel -->
+    <div id="shop" class="menu-panel hidden">
+        <h1 class="text-blue-400">ARENA SKINS SHOP</h1>
+        <div class="currency-display mb-3">
+            <span id="playerMoney"></span> Gold
+        </div>
+        <div id="skin-grid" class="skin-grid mb-5">
+            <!-- Skin items will be injected here by JavaScript -->
+        </div>
+        <button id="shopBackBtn" class="menu-button bg-gray-600 border-gray-400 hover:bg-gray-700">Back to Menu</button>
+    </div>
 
-        // Display User ID immediately
-        document.getElementById('localUserId').textContent = LOCAL_USER_ID;
+    <!-- Multiplayer Lobby Panel -->
+    <div id="multiplayer-lobby" class="menu-panel hidden">
+        <h1 id="lobby-title" class="text-red-400">WebRTC LOBBY</h1>
+        <p class="text-sm text-gray-400 mb-5" id="lobby-description">Start a peer-to-peer connection for a real 1v1 duel or 2v1 team fight.</p>
 
-        // V1 (Legacy) and V2 (Complex/Realistic) Skins
-        const SKINS = [
-            // V1: Legacy Skins (Simple Visuals/Effects)
-            { id: 'S101', name: 'Legacy Byte', cost: 0, equipped: true, version: 'V1', color: '#0f0', effectDesc: 'Standard projectile speed, basic energy regen.' },
-            { id: 'S102', name: 'Glitch Stream', cost: 1500, equipped: false, version: 'V1', color: '#ff0', effectDesc: 'Slightly slower projectiles, high damage output.' },
-            { id: 'S103', name: 'Zero-Day', cost: 3000, equipped: false, version: 'V1', color: '#f00', effectDesc: 'Low health, but passive ability grants temporary invulnerability on kill.' },
+        <div id="lobby-state" class="p-3 mb-5 border border-red-500 rounded text-left bg-gray-800">
+            <p id="rtc-status" class="text-sm">Status: <span class="text-flair">Idle</span></p>
+            <p class="text-sm">Your Peer ID (Copy/Paste):</p>
+            <input type="text" id="local-peer-id" readonly class="w-full p-2 mt-1 text-xs bg-gray-900 border border-red-700 rounded text-red-300 select-all" value="Generating ID..." />
+        </div>
 
-            // V2: Current (Realistic/Complex) Skins
-            { id: 'S201', name: 'HARP Protocol', cost: 5000, equipped: false, version: 'V2', color: '#00f', effectDesc: 'Defense-focused. Typing symbols grants temporary Shield HP.' },
-            { id: 'S202', name: 'REX Engine', cost: 7500, equipped: false, version: 'V2', color: '#f0f', effectDesc: 'Mobility-focused. Typing vowels increases movement speed for 3 seconds.' },
-            { id: 'S203', name: 'Phantom Key', cost: 10000, equipped: false, version: 'V2', color: '#fff', effectDesc: 'Stealth-focused. After 5 seconds of inactivity, become briefly invisible to opponent.' }
-        ];
+        <p class="text-sm text-gray-400 mb-2">Enter Opponent's Peer ID:</p>
+        <input type="text" id="remote-peer-id" placeholder="Paste ID here..." class="w-full p-3 mb-3 bg-gray-700 border border-red-700 rounded text-white" />
 
-        // Map of all characters to unique attack actions (The core unique mechanic)
-        // This object defines the attack logic for every possible keystroke.
-        const CHARACTER_ACTIONS = {
-            // Letters (A-Z) - Primary Attack/Defense
-            'a': { type: 'attack', power: 10, cost: 5, description: 'Alpha Strike: Standard projectile.' },
-            'b': { type: 'utility', power: 5, cost: 8, description: 'Barrier Field: Small, temporary shield.' },
-            'c': { type: 'attack', power: 12, cost: 6, description: 'C-Bomb: Medium damage, delayed explosion.' },
-            'd': { type: 'movement', power: 1, cost: 4, description: 'Dash: Short forward dash.' },
-            'e': { type: 'utility', power: 10, cost: 3, description: 'Energy Burst: Regenerate 10 Energy.' },
-            'f': { type: 'attack', power: 15, cost: 10, description: 'Flame Array: High damage, linear projectile.' },
-            'g': { type: 'utility', power: 0, cost: 5, description: 'Grapple: Pull opponent slightly closer.' },
-            'h': { type: 'attack', power: 8, cost: 5, description: 'Homing Missile: Low power, guaranteed hit (slow).' },
-            'i': { type: 'movement', power: 0, cost: 3, description: 'I-Frame: Brief moment of invulnerability.' },
-            'j': { type: 'utility', power: 0, cost: 5, description: 'Jitter: Briefly scramble opponent movement.' },
-            'k': { type: 'attack', power: 20, cost: 15, description: 'Kilo-Shot: Very high power, high cost.' },
-            'l': { type: 'utility', power: 5, cost: 7, description: 'Lifesteal: Deal small damage, heal 5 HP.' },
-            'm': { type: 'utility', power: 0, cost: 5, description: 'Mine Deploy: Deploy static proximity mine.' },
-            'n': { type: 'utility', power: 0, cost: 3, description: 'Nullify: Destroy nearest incoming projectile.' },
-            'o': { type: 'attack', power: 10, cost: 5, description: 'Orbital Strike: Area-of-effect marker.' },
-            'p': { type: 'attack', power: 7, cost: 4, description: 'Penetrator: Ignores 5 points of shield.' },
-            'q': { type: 'movement', power: 0, cost: 4, description: 'Quick-Shift: Teleport a short distance randomly.' },
-            'r': { type: 'utility', power: 0, cost: 5, description: 'Rebound: Reflect next incoming projectile.' },
-            's': { type: 'attack', power: 10, cost: 5, description: 'Shotgun Blast: Wide cone of low-power shots.' },
-            't': { type: 'utility', power: 0, cost: 3, description: 'Tempo Boost: Increase typing speed briefly.' },
-            'u': { type: 'utility', power: 0, cost: 5, description: 'Uplink: Increase Credits earned for 10s.' },
-            'v': { type: 'attack', power: 10, cost: 5, description: 'Vector Trace: Damage over time effect.' },
-            'w': { type: 'movement', power: 1, cost: 4, description: 'Warp: Controlled long-range movement.' },
-            'x': { type: 'utility', power: 0, cost: 10, description: 'X-Factor: Randomly trigger two other actions.' },
-            'y': { type: 'attack', power: 10, cost: 5, description: 'Y-Axis Beam: Vertical damage line.' },
-            'z': { type: 'utility', power: 0, cost: 5, description: 'Zero Lag: Remove all debuffs.' },
+        <button id="connectBtn" class="menu-button bg-red-800 border-red-500 hover:bg-red-900">CONNECT & START</button>
+        <button id="lobbyBackBtn" class="menu-button bg-gray-600 border-gray-400 hover:bg-gray-700 mt-2">Back to Menu</button>
+    </div>
 
-            // Numbers (0-9) - Resources/Status Effects
-            '0': { type: 'resource', power: 200, cost: 0, description: 'Code Zero: Gain 200 Credits.' },
-            '1': { type: 'status', power: 5, cost: 5, description: 'Status-1: Slow opponent movement.' },
-            '2': { type: 'status', power: 5, cost: 5, description: 'Status-2: Drain opponent energy.' },
-            '3': { type: 'resource', power: 10, cost: 0, description: 'Code 3: Full Energy Refill.' },
-            '4': { type: 'status', power: 5, cost: 5, description: 'Status-4: Opponent camera shake.' },
-            '5': { type: 'status', power: 5, cost: 5, description: 'Status-5: Temporary reverse controls.' },
-            '6': { type: 'resource', power: 500, cost: 0, description: 'Code Six: Gain 500 Credits.' },
-            '7': { type: 'status', power: 5, cost: 5, description: 'Status-7: Opponent weapon jam (cannot attack).' },
-            '8': { type: 'status', power: 5, cost: 5, description: 'Status-8: Opponent debuff stacking.' },
-            '9': { type: 'resource', power: 10, cost: 0, description: 'Code Nine: Small Health Boost (10 HP).' },
+    <!-- In-Game Heads-Up Display (HUD) -->
+    <div id="hud" class="hidden">
+        <!-- PLAYER 1 (Self) -->
+        <div class="topleft flex flex-col items-start gap-1">
+            <div id="player-status-title" class="font-bold text-flair">YOU</div>
+            <div class="health-bar-container">
+                <div id="player-health-bar" class="health-bar" style="width: 100%;">
+                    <div id="player-shield-bar" class="shield-bar" style="width: 0%;"></div>
+                </div>
+            </div>
+            <div id="player-hp-text">100 HP</div>
+        </div>
 
-            // Symbols/Punctuation - Utility/Complex Effects
-            '.': { type: 'utility', power: 0, cost: 10, description: 'Finalize: Execute the entire command queue immediately.' },
-            '!': { type: 'attack', power: 30, cost: 20, description: 'Exclamation: Devastating single hit (high cost).' },
-            '#': { type: 'defense', power: 25, cost: 15, description: 'Hash Shield: Large temporary shield.' },
-            '$': { type: 'resource', power: 0, cost: 0, description: 'Cash Out: Convert 5 Energy to 100 Credits.' },
-            '%': { type: 'status', power: 50, cost: 10, description: 'Percent Debuff: Reduce opponent damage output by 50% for 5s.' },
-            '^': { type: 'movement', power: 0, cost: 5, description: 'Uplift: Jump/boost movement.' },
-            '&': { type: 'utility', power: 0, cost: 10, description: 'Duplicate: Duplicate the previous action in the queue.' },
-            '*': { type: 'attack', power: 1, cost: 1, description: 'Star Scatter: Rapid fire low damage projectile.' },
-            '(': { type: 'utility', power: 0, cost: 5, description: 'Open Block: Start a sequence of buffered commands.' },
-            ')': { type: 'utility', power: 0, cost: 5, description: 'Close Block: Release the buffered command sequence.' },
-            '@': { type: 'attack', power: 5, cost: 5, description: 'At-Tag: Marks opponent for increased damage from next attack.' },
-            // Add more common symbols...
-            '/': { type: 'utility', power: 0, cost: 3, description: 'Divider: Clears one active debuff.' },
-            '?': { type: 'resource', power: 0, cost: 5, description: 'Question: Reveals opponent current Energy/HP briefly.' },
-            ';': { type: 'utility', power: 0, cost: 5, description: 'Separator: Allows two actions to be executed simultaneously.' },
-            ':': { type: 'utility', power: 0, cost: 5, description: 'Colon: Reduces cost of the next action by 50%.' },
-            '{': { type: 'defense', power: 10, cost: 5, description: 'Brace: Damage reduction for 2s.' },
-            '}': { type: 'defense', power: 10, cost: 5, description: 'Brace: Damage reduction for 2s.' },
-            '[': { type: 'defense', power: 10, cost: 5, description: 'Brace: Damage reduction for 2s.' },
-            ']': { type: 'defense', power: 10, cost: 5, description: 'Brace: Damage reduction for 2s.' },
-            '|': { type: 'attack', power: 15, cost: 10, description: 'Vertical Split: Wide vertical projectile.' },
-            '\\': { type: 'attack', power: 15, cost: 10, description: 'Backslash Split: Wide diagonal projectile.' },
-            '<': { type: 'movement', power: 1, cost: 4, description: 'Retreat: Fast back movement.' },
-            '>': { type: 'movement', power: 1, cost: 4, description: 'Advance: Fast forward movement.' },
-            '=': { type: 'utility', power: 0, cost: 7, description: 'Equilibrium: Balance HP with opponent (if difference is > 20).' },
-            '+': { type: 'resource', power: 15, cost: 0, description: 'Plus: Heal 15 HP.' },
-            '-': { type: 'status', power: 0, cost: 5, description: 'Minus: Opponent loses 15 Energy.' },
+        <!-- PLAYER 2 (Opponent / Boss / Teammate) -->
+        <div class="topright flex flex-col items-end gap-1">
+            <div id="opponent-status-title" class="font-bold text-red-500">OPPONENT</div>
+            <div class="health-bar-container" id="opponent-health-container">
+                <div id="opponent-health-bar" class="health-bar" style="width: 100%;">
+                    <div id="opponent-shield-bar" class="shield-bar" style="width: 0%;"></div>
+                </div>
+            </div>
+            <div id="opponent-hp-text">100 HP / 0 SHD</div>
+        </div>
 
-            // Example Unicode (Requires copy/paste, less likely to be typed but supported)
-            'Ω': { type: 'attack', power: 50, cost: 30, description: 'Omega Blast: Ultimate high-cost, area-denial attack.' },
-            'π': { type: 'status', power: 0, cost: 15, description: 'Pi Lock: Freeze opponent in place for 3s.' },
-            '√': { type: 'utility', power: 0, cost: 10, description: 'Root: Create a temporary slow zone.' },
+        <!-- Center Message & Timer -->
+        <div class="centertop">
+            <div id="center-message">WELCOME TO THE ARENA!</div>
+            <div id="round-timer" class="text-2xl text-red-500 mt-2"></div>
+        </div>
+
+        <!-- Typing Input -->
+        <div class="bottomcenter p-4 bg-gray-900 bg-opacity-90 rounded-t-xl border-t-4 border-green-500 shadow-2xl">
+            <div class="flex flex-col items-center">
+                <div id="target-word" class="text-4xl font-mono mb-2 text-white"></div>
+                <input type="text" id="typing-input" class="p-3 text-center text-xl font-mono bg-black text-green-400 border-2 border-green-500 rounded-md w-96 focus:outline-none focus:border-green-300" placeholder="Type the word above..." autocomplete="off" autofocus />
+            </div>
+        </div>
+    </div>
+
+    <!-- Multiplayer Chat Overlay -->
+    <div id="multiplayer-overlay" class="hidden">
+        <div id="chat-messages"></div>
+        <div id="chat-input-container">
+            <input type="text" id="chat-input" placeholder="Type a message..." />
+            <button id="chat-send">Send</button>
+        </div>
+    </div>
+
+</div>
+
+<script type="module">
+// =========================================================================
+// FIREBASE/GLOBAL VARS (Kept for Canvas Compatibility)
+// =========================================================================
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+
+// =========================================================================
+// CORE GAME CONSTANTS, SKINS, AND WORD DICTIONARIES
+// =========================================================================
+
+// --- Game Settings ---
+const MAX_HEALTH = 100;
+const BOSS_HEALTH = 500; // Team mode boss HP
+const ROUND_MIN_DURATION = 5000; // 5 seconds
+const ROUND_MAX_DURATION = 12000; // 12 seconds
+const BASE_ATTACK_DAMAGE = 10;
+const BOSS_ATTACK_DAMAGE = 25; // Boss hits harder
+const SHIELD_AMOUNT = 20;
+
+// --- Skins Data (Legacy and V2) ---
+const ALL_SKINS = [
+    // Legacy Skins (Original Script)
+    { id: 'default', name: 'Default Skin', icon: '◻️', price: 0, equipped: true, type: 'Legacy', complexity: 'V1' },
+    { id: 'red', name: 'Crimson Key', icon: '🔴', price: 50, equipped: false, type: 'Legacy', complexity: 'V1' },
+    { id: 'blue', name: 'Cerulean Core', icon: '🔵', price: 50, equipped: false, type: 'Legacy', complexity: 'V1' },
+    { id: 'green', name: 'Emerald Cipher', icon: '🟢', price: 50, equipped: false, type: 'Legacy', complexity: 'V1' },
+    { id: 'yellow', name: 'Golden Glyph', icon: '🟡', price: 100, equipped: false, type: 'Legacy', complexity: 'V1' },
+    { id: 'flame', name: 'Inferno Touch', icon: '🔥', price: 200, equipped: false, type: 'Legacy', complexity: 'V1' },
+    { id: 'ice', name: 'Frost Rune', icon: '🧊', price: 200, equipped: false, type: 'Legacy', complexity: 'V1' },
+    { id: 'neon', name: 'Neon Arc', icon: '⚡', price: 300, equipped: false, type: 'Legacy', complexity: 'V1' },
+    { id: 'skull', name: 'Doom Skull', icon: '💀', price: 500, equipped: false, type: 'Legacy', complexity: 'V1' },
+    // V2 Skins (More Realistic/Complex)
+    { id: 'circuit', name: 'Circuit Board', icon: '⚙️', price: 800, equipped: false, type: 'V2', complexity: 'V2' },
+    { id: 'matrix', name: 'Digital Rain', icon: '💻', price: 1000, equipped: false, type: 'V2', complexity: 'V2' },
+    { id: 'crystal', name: 'Aether Crystal', icon: '💎', price: 1200, equipped: false, type: 'V2', complexity: 'V2' },
+    { id: 'cosmic', name: 'Cosmic Rift', icon: '🌌', price: 1500, equipped: false, type: 'V2', complexity: 'V2' },
+];
+
+// --- Word Dictionary ---
+const WORD_DICTIONARY = [
+    'attack', 'shield', 'heal', 'blast', 'code', 'type', 'key', 'run', 'fix', 'win',
+    'keyboard', 'terminal', 'compiler', 'protocol', 'database', 'executor', 'variable', 'function',
+    '#include', '$money', '^power', '&ampersand', '!error', '@user', '%percent', 'ñam', 'ßeta', '€uro',
+];
+
+// =========================================================================
+// UTILITY FUNCTIONS (Load/Save Progress)
+// =========================================================================
+
+/**
+ * Loads player progress (money, owned skins, equipped skin) from localStorage.
+ * @returns {object} The player's progress data.
+ */
+function loadProgress() {
+    try {
+        const savedProgress = localStorage.getItem('typingTitansProgress');
+        if (savedProgress) {
+            const progress = JSON.parse(savedProgress);
+            // Ensure all skins exist in the progress object for new updates
+            ALL_SKINS.forEach(skin => {
+                if (!progress.skins.find(s => s.id === skin.id)) {
+                    progress.skins.push({ id: skin.id, owned: skin.price === 0 });
+                }
+            });
+            return progress;
+        }
+    } catch (e) {
+        console.error("Error loading progress from localStorage:", e);
+    }
+    // Default starting progress
+    return {
+        money: 50, // Starting money for new players
+        equippedSkinId: 'default',
+        skins: ALL_SKINS.map(s => ({
+            id: s.id,
+            owned: s.price === 0, // Only default skins are owned initially
+        }))
+    };
+}
+
+/**
+ * Saves player progress to localStorage.
+ * @param {object} progress - The player's current progress data.
+ */
+function saveProgress(progress) {
+    try {
+        localStorage.setItem('typingTitansProgress', JSON.stringify(progress));
+    } catch (e) {
+        console.error("Error saving progress to localStorage:", e);
+    }
+}
+
+// =========================================================================
+// WEBRTC MANAGER CLASS (Real-time Multiplayer)
+// =========================================================================
+
+/**
+ * Manages WebRTC peer connections and data channels for 1v1 multiplayer.
+ */
+class WebRTCManager {
+    constructor(gameInstance) {
+        this.game = gameInstance;
+        this.peerConnection = null;
+        this.dataChannel = null;
+        this.localId = crypto.randomUUID(); // Unique ID for peer identification
+        this.isInitiator = false;
+        this.isConnected = false;
+
+        // Configuration for STUN servers
+        this.rtcConfig = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' }
+            ]
+        };
+    }
+
+    /**
+     * Initializes the WebRTC connection, setting up the PeerConnection and event handlers.
+     */
+    initializeConnection() {
+        this.peerConnection = new RTCPeerConnection(this.rtcConfig);
+        this.peerConnection.onicecandidate = this.handleIceCandidate.bind(this);
+        this.peerConnection.ondatachannel = this.handleDataChannelCreation.bind(this);
+        this.peerConnection.oniceconnectionstatechange = this.handleIceConnectionStateChange.bind(this);
+        this.peerConnection.onconnectionstatechange = this.handleConnectionStateChange.bind(this);
+    }
+
+    /**
+     * Handles ICE candidate discovery and sends it to the remote peer (via mock signaling).
+     */
+    handleIceCandidate(event) {
+        if (event.candidate) {
+            this.sendSignal({
+                type: 'candidate',
+                candidate: event.candidate,
+                senderId: this.localId
+            });
+            console.debug("WebRTC: Sent ICE candidate.");
+        }
+    }
+    
+    /**
+     * Handles changes in the ICE connection state.
+     */
+    handleIceConnectionStateChange() {
+        console.log('WebRTC ICE Connection State:', this.peerConnection.iceConnectionState);
+        if (this.peerConnection.iceConnectionState === 'failed' || this.peerConnection.iceConnectionState === 'disconnected') {
+            if (this.isConnected) {
+                this.handleDataChannelClose();
+            }
+        }
+    }
+
+    /**
+     * Handles changes in the overall connection state.
+     */
+    handleConnectionStateChange() {
+        console.log('WebRTC Connection State:', this.peerConnection.connectionState);
+        if (this.peerConnection.connectionState === 'closed' || this.peerConnection.connectionState === 'failed') {
+             if (this.isConnected) {
+                this.handleDataChannelClose();
+            }
+        }
+    }
+
+
+    /**
+     * Handles the creation of the DataChannel when the remote peer initiates it.
+     */
+    handleDataChannelCreation(event) {
+        this.dataChannel = event.channel;
+        this.setupDataChannelHandlers();
+        console.log("WebRTC: DataChannel received and setup by remote peer.");
+    }
+
+    /**
+     * Sets up event listeners for the DataChannel (open, close, message).
+     */
+    setupDataChannelHandlers() {
+        this.dataChannel.onopen = this.handleDataChannelOpen.bind(this);
+        this.dataChannel.onclose = this.handleDataChannelClose.bind(this);
+        this.dataChannel.onmessage = this.handleDataChannelMessage.bind(this);
+        this.dataChannel.onerror = (error) => console.error("WebRTC DataChannel Error:", error);
+    }
+
+    /**
+     * Handles DataChannel open event, signaling a successful connection.
+     */
+    handleDataChannelOpen() {
+        this.isConnected = true;
+        this.game.setMultiplayerState(true);
+        this.game.showCenterMessage("CONNECTION ESTABLISHED. STARTING ARENA!", '#0f0', 3000);
+        this.game.startRound();
+        this.updateStatus('Connected', 'text-success');
+        console.log("WebRTC: DataChannel opened. Connection is active.");
+    }
+
+    /**
+     * Handles DataChannel message events, parsing and processing game updates/chats.
+     */
+    handleDataChannelMessage(event) {
+        try {
+            const data = JSON.parse(event.data);
+            if (data.type === 'game_state') {
+                // Used for 1v1 duel: Opponent state
+                this.game.receiveOpponentState(data.state);
+            } else if (data.type === 'player_state') {
+                // Used for Team Mode: Teammate state
+                this.game.receiveTeammateState(data.state);
+            } else if (data.type === 'boss_attack') {
+                // Used for Team Mode: Boss attack on US
+                this.game.receiveBossAttack(data.damage);
+            } else if (data.type === 'chat') {
+                this.game.addChatMessage('Teammate', data.message, '#0ff');
+            } else if (data.type === 'round_start') {
+                // Synchronize round with initiator's state
+                this.game.startRound(data.word);
+            } else if (data.type === 'boss_state') {
+                 // Used for Team Mode: Boss state
+                this.game.receiveBossState(data.state);
+            }
+        } catch (e) {
+            console.warn("WebRTC: Failed to parse incoming message:", event.data, e);
+        }
+    }
+
+    /**
+     * Handles DataChannel close event, indicating connection loss.
+     */
+    handleDataChannelClose() {
+        this.isConnected = false;
+        this.game.setMultiplayerState(false);
+        this.game.showCenterMessage("PEER DISCONNECTED. RETURNING TO LOBBY.", '#f00', 5000);
+        this.game.returnToLobby();
+        this.updateStatus('Disconnected', 'text-error');
+        console.log("WebRTC: DataChannel closed.");
+    }
+
+    /**
+     * Initiates the connection by creating the DataChannel and Offer (Peer A).
+     * @param {string} remoteId - The Peer ID of the opponent. (Unused in mock)
+     */
+    async createOffer(remoteId) {
+        this.isInitiator = true;
+        this.initializeConnection();
+        this.dataChannel = this.peerConnection.createDataChannel("gameChannel");
+        this.setupDataChannelHandlers();
+
+        try {
+            const offer = await this.peerConnection.createOffer();
+            await this.peerConnection.setLocalDescription(offer);
+            this.sendSignal({
+                type: 'offer',
+                sdp: this.peerConnection.localDescription,
+                senderId: this.localId,
+                targetId: remoteId
+            });
+            this.updateStatus('Waiting for opponent...', 'text-flair');
+            console.log("WebRTC: Created and sent offer.");
+        } catch (error) {
+            console.error("WebRTC: Error creating offer:", error);
+            this.updateStatus('Error creating offer', 'text-error');
+        }
+    }
+
+    /**
+     * Processes an incoming offer and sends an Answer (Peer B).
+     */
+    async handleOffer(offer, remoteId) {
+        this.isInitiator = false;
+        this.initializeConnection();
+
+        try {
+            await this.peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+            const answer = await this.peerConnection.createAnswer();
+            await this.peerConnection.setLocalDescription(answer);
+            this.sendSignal({
+                type: 'answer',
+                sdp: this.peerConnection.localDescription,
+                senderId: this.localId,
+                targetId: remoteId
+            });
+            this.updateStatus('Sent answer, connecting...', 'text-flair');
+            console.log("WebRTC: Handled offer and sent answer.");
+        } catch (error) {
+            console.error("WebRTC: Error handling offer:", error);
+            this.updateStatus('Error handling offer', 'text-error');
+        }
+    }
+
+    /**
+     * Processes an incoming answer. (Peer A)
+     */
+    async handleAnswer(answer) {
+        try {
+            await this.peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+            this.updateStatus('Answer received, connecting...', 'text-flair');
+            console.log("WebRTC: Handled answer.");
+        } catch (error) {
+            console.error("WebRTC: Error handling answer:", error);
+            this.updateStatus('Error handling answer', 'text-error');
+        }
+    }
+
+    /**
+     * Processes an incoming ICE candidate.
+     */
+    async handleCandidate(candidate) {
+        try {
+            if (candidate) {
+                await this.peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+                console.debug("WebRTC: Added remote ICE candidate.");
+            }
+        } catch (error) {
+            console.error("WebRTC: Error adding remote candidate:", error);
+        }
+    }
+
+    /**
+     * Sends a message over the DataChannel if connected.
+     */
+    send(data) {
+        if (this.isConnected && this.dataChannel && this.dataChannel.readyState === 'open') {
+            try {
+                this.dataChannel.send(JSON.stringify(data));
+            } catch (e) {
+                console.warn("WebRTC: Failed to send data:", e);
+            }
+        }
+    }
+
+    /**
+     * MOCK: Simulates sending a signal (offer, answer, candidate) through a server.
+     */
+    sendSignal(signal) {
+        // --- NOTE: This is the MOCK of the signaling server logic ---
+        console.log(`WebRTC MOCK: Sending signal to ${signal.targetId || 'unknown'}: ${signal.type}`);
+
+        const signalQueue = document.getElementById('local-peer-id');
+        if (signal.type === 'offer' || signal.type === 'answer') {
+            // Put the entire SDP into the local ID box for manual copy/paste exchange
+            signalQueue.value = JSON.stringify({
+                type: signal.type,
+                sdp: signal.sdp,
+                senderId: signal.senderId,
+                mode: this.game.matchMode, // Crucial for connection handshake
+            });
+        }
+    }
+
+    /**
+     * MOCK: Updates the status text in the multiplayer lobby UI.
+     */
+    updateStatus(text, className = 'text-gray-400') {
+        const statusEl = document.getElementById('rtc-status');
+        if (statusEl) {
+            statusEl.innerHTML = `Status: <span class="${className}">${text}</span>`;
+        }
+    }
+
+    /**
+     * Resets the entire WebRTC connection state.
+     */
+    close() {
+        if (this.dataChannel) {
+            this.dataChannel.close();
+        }
+        if (this.peerConnection) {
+            this.peerConnection.close();
+        }
+        this.peerConnection = null;
+        this.dataChannel = null;
+        this.isConnected = false;
+        this.isInitiator = false;
+        this.updateStatus('Idle', 'text-flair');
+        console.log("WebRTC: Connection closed and reset.");
+    }
+}
+
+// =========================================================================
+// PLAYER AND GAME CLASSES (New Architecture)
+// =========================================================================
+
+/**
+ * Represents a Player's state (Local or Opponent).
+ */
+class Player {
+    /**
+     * @param {string} id - 'local', 'opponent', 'teammate', or 'boss'
+     * @param {number} [maxHp=MAX_HEALTH] - Optional starting HP.
+     */
+    constructor(id, maxHp = MAX_HEALTH) {
+        this.id = id;
+        this.maxHp = maxHp;
+        this.hp = maxHp;
+        this.shield = 0;
+        this.dead = false;
+    }
+
+    /**
+     * Applies damage, factoring in shield before health.
+     * @param {number} amount - Damage amount.
+     */
+    takeDamage(amount) {
+        if (this.dead) return;
+
+        let remainingDamage = amount;
+        if (this.shield > 0) {
+            const shieldAbsorbed = Math.min(this.shield, remainingDamage);
+            this.shield -= shieldAbsorbed;
+            remainingDamage -= shieldAbsorbed;
+        }
+
+        if (remainingDamage > 0) {
+            this.hp -= remainingDamage;
+        }
+
+        if (this.hp <= 0) {
+            this.hp = 0;
+            this.dead = true;
+        }
+    }
+
+    /**
+     * Adds shield protection.
+     * @param {number} amount - Shield amount.
+     */
+    gainShield(amount) {
+        this.shield = Math.min(amount, this.maxHp / 2); // Max shield is 50% of max HP
+    }
+
+    /**
+     * Heals the player.
+     * @param {number} amount - Heal amount.
+     */
+    heal(amount) {
+        this.hp = Math.min(this.maxHp, this.hp + amount);
+    }
+
+    /**
+     * Resets the player state for a new match.
+     */
+    reset(newMaxHp = MAX_HEALTH) {
+        this.maxHp = newMaxHp;
+        this.hp = newMaxHp;
+        this.shield = 0;
+        this.dead = false;
+    }
+}
+
+/**
+ * Manages the core game loop, state, and UI.
+ */
+class Game {
+    constructor() {
+        this.canvas = document.getElementById('canvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.localPlayer = new Player('local');
+        this.remoteEntity = new Player('opponent'); // Can be opponent, teammate, or boss
+        this.progress = loadProgress();
+        this.money = this.progress.money;
+        this.equippedSkin = ALL_SKINS.find(s => s.id === this.progress.equippedSkinId);
+
+        this.rtcManager = new WebRTCManager(this);
+        this.isMultiplayer = false;
+        this.gameRunning = false;
+        this.matchMode = 'solo'; // 'solo', 'duel_mp', 'team_mp'
+        this.nextBossAttackTarget = 'local'; // For team mode, tracks who the Boss attacks next
+
+        // Typing State
+        this.targetWord = '';
+        this.typedWord = '';
+        this.wordStartTime = 0;
+        this.roundTimerId = null;
+        this.bossAttackIntervalId = null;
+
+        // UI Elements
+        this.ui = {
+            menu: document.getElementById('menu'),
+            shop: document.getElementById('shop'),
+            lobby: document.getElementById('multiplayer-lobby'),
+            hud: document.getElementById('hud'),
+            typingInput: document.getElementById('typing-input'),
+            targetWordEl: document.getElementById('target-word'),
+            centerMessage: document.getElementById('center-message'),
+            roundTimer: document.getElementById('round-timer'),
+            chatInput: document.getElementById('chat-input'),
+            chatMessages: document.getElementById('chat-messages'),
+            chatSendBtn: document.getElementById('chat-send'),
+            // HP Bars
+            playerTitle: document.getElementById('player-status-title'),
+            opponentTitle: document.getElementById('opponent-status-title'),
+            opponentHealthContainer: document.getElementById('opponent-health-container'),
         };
 
-        // =================================================================
-        // GAME STATE MANAGEMENT (New Architecture)
-        // =================================================================
+        this.initCanvas();
+        this.initEventListeners();
+        this.updateShopUI(); // This call is now safe
+    }
 
-        class GameEntity {
-            constructor(id, x, y, color, isLocal) {
-                this.id = id;
-                this.x = x;
-                this.y = y;
-                this.targetX = x; // For smooth movement
-                this.targetY = y;
-                this.vx = 0;
-                this.vy = 0;
-                this.radius = 15;
-                this.health = 100;
-                this.maxHealth = 100;
-                this.energy = MAX_ENERGY;
-                this.maxEnergy = MAX_ENERGY;
-                this.color = color;
-                this.isLocal = isLocal;
-                this.speed = 3;
-                this.cooldowns = {};
-                this.effects = {}; // Status effects like 'slow', 'stun'
-                this.skin = SKINS[0];
+    /**
+     * Shows a temporary popup message on the screen.
+     * @param {string} text - The message to display.
+     * @param {string} color - CSS color string.
+     * @param {number} duration - Duration in milliseconds.
+     */
+    showPopup(text, color = '#fff', duration = 1500) {
+        const popup = document.createElement('div');
+        popup.textContent = text;
+        popup.style.cssText = `
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 15px 30px;
+            background: rgba(0, 0, 0, 0.9);
+            color: ${color};
+            border: 2px solid ${color};
+            border-radius: 8px;
+            font-size: 24px;
+            font-weight: bold;
+            z-index: 2000;
+            opacity: 0;
+            transition: opacity 0.3s, transform 0.3s;
+        `;
+        document.body.appendChild(popup);
+
+        // Fade in
+        setTimeout(() => {
+            popup.style.opacity = '1';
+            popup.style.transform = 'translate(-50%, -50%) scale(1.05)';
+        }, 10);
+
+        // Fade out and remove
+        setTimeout(() => {
+            popup.style.opacity = '0';
+            popup.style.transform = 'translate(-50%, -50%) scale(0.95)';
+            setTimeout(() => popup.remove(), 300);
+        }, duration);
+    }
+
+    /**
+     * Initializes the canvas size and drawing context.
+     */
+    initCanvas() {
+        this.resizeCanvas();
+        window.addEventListener('resize', this.resizeCanvas.bind(this));
+    }
+
+    /**
+     * Adjusts the canvas size to fill the viewport.
+     */
+    resizeCanvas() {
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+    }
+
+    /**
+     * Initializes all event listeners for UI buttons and input.
+     */
+    initEventListeners() {
+        // --- Menu Buttons ---
+        document.getElementById('precodedBtn').onclick = () => this.startGame('solo', 'V1');
+        document.getElementById('precodedUniBtn').onclick = () => this.startGame('solo', 'V2');
+        document.getElementById('multiplayerDuelBtn').onclick = () => this.showMultiplayerLobby('duel_mp'); // 1v1 DUEL
+        document.getElementById('multiplayerTeamBtn').onclick = () => this.showMultiplayerLobby('team_mp'); // 2v1 TEAM
+        document.getElementById('skinsShopBtn').onclick = () => this.showSkinsShop();
+
+        // --- Shop Buttons ---
+        document.getElementById('shopBackBtn').onclick = () => this.showMenu();
+        document.getElementById('skin-grid').onclick = (e) => {
+            const item = e.target.closest('.skin-item');
+            if (item) {
+                this.handleSkinPurchaseEquip(item.dataset.id);
             }
+        };
 
-            update(dt) {
-                // Apply status effects
-                for (const effect in this.effects) {
-                    this.effects[effect] -= dt;
-                    if (this.effects[effect] <= 0) {
-                        delete this.effects[effect];
-                    }
-                }
+        // --- Multiplayer Lobby Buttons ---
+        document.getElementById('lobbyBackBtn').onclick = () => this.showMenu();
+        document.getElementById('connectBtn').onclick = () => this.connectWebRTC();
 
-                // Smooth movement towards target (interpolation)
-                const lerpFactor = 0.15;
-                this.x += (this.targetX - this.x) * lerpFactor;
-                this.y += (this.targetY - this.y) * lerpFactor;
+        // --- In-Game Input and Chat ---
+        this.ui.typingInput.oninput = this.handleTypingInput.bind(this);
+        this.ui.typingInput.onkeydown = this.handleTypingKeyDown.bind(this);
+        this.ui.chatSendBtn.onclick = this.sendChatMessage.bind(this);
+        this.ui.chatInput.onkeydown = (e) => {
+            if (e.key === 'Enter') this.sendChatMessage();
+        };
 
-                // Simple collision detection (keep within bounds)
-                this.x = Math.max(this.radius, Math.min(CANVAS.width - this.radius, this.x));
-                this.y = Math.max(this.radius, Math.min(CANVAS.height - this.radius, this.y));
-
-                // Energy regeneration
-                if (this.energy < this.maxEnergy) {
-                    this.energy += 0.5 * dt;
+        // --- Global Key Handlers (for restart 'R') ---
+        document.addEventListener('keydown', e => {
+            if (e.key === 'r' || e.key === 'R') {
+                if (this.localPlayer.dead || this.remoteEntity.dead) {
+                    this.localPlayer.reset();
+                    this.remoteEntity.reset(this.matchMode === 'team_mp' ? BOSS_HEALTH : MAX_HEALTH);
+                    this.startRound();
+                    this.showCenterMessage("RESTARTING MATCH!", '#ff0', 1000);
                 }
             }
+        });
+    }
 
-            draw() {
-                // Player Circle
-                CTX.fillStyle = this.color;
-                CTX.beginPath();
-                CTX.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                CTX.fill();
+    /**
+     * Handles key presses in the typing input field.
+     */
+    handleTypingKeyDown(e) {
+        const input = this.ui.typingInput;
 
-                // Player ID Label
-                CTX.fillStyle = 'white';
-                CTX.textAlign = 'center';
-                CTX.font = '10px Space Mono';
-                CTX.fillText(this.id, this.x, this.y + this.radius + 10);
+        // Block all non-text keys in the input area during a round
+        if (!this.gameRunning || this.localPlayer.dead) {
+            e.preventDefault();
+            return;
+        }
 
-                // Health Bar (Above)
-                const barWidth = 40;
-                const barHeight = 5;
-                const healthRatio = this.health / this.maxHealth;
-                CTX.fillStyle = 'gray';
-                CTX.fillRect(this.x - barWidth / 2, this.y - this.radius - barHeight - 5, barWidth, barHeight);
-                CTX.fillStyle = healthRatio > 0.3 ? 'lime' : 'red';
-                CTX.fillRect(this.x - barWidth / 2, this.y - this.radius - barHeight - 5, barWidth * healthRatio, barHeight);
+        // Allow backspace
+        if (e.key === 'Backspace') return;
 
-                // Draw skin marker (V1/V2 indicator)
-                CTX.fillStyle = this.skin.version === 'V2' ? '#f59e0b' : '#10b981';
-                CTX.beginPath();
-                CTX.arc(this.x + this.radius - 2, this.y - this.radius + 2, 4, 0, Math.PI * 2);
-                CTX.fill();
+        // Check for correct character input (key-specific attack system)
+        if (e.key.length === 1) {
+            this.handleKeyAttack(e.key);
+        }
 
-                // Draw status effects (if any)
-                if (this.effects.slow) {
-                    CTX.fillStyle = 'rgba(0, 0, 255, 0.5)';
-                    CTX.beginPath();
-                    CTX.arc(this.x, this.y, this.radius * 1.5, 0, Math.PI * 2);
-                    CTX.fill();
-                }
+        // Check for word submission
+        if (e.key === 'Enter') {
+            e.preventDefault(); // Prevent new line
+            if (input.value.trim() === this.targetWord) {
+                this.processWordCompletion();
+                input.value = '';
+            } else {
+                this.showPopup("Incorrect word!", '#f00');
+            }
+        }
+    }
+
+    /**
+     * Handles the 'input' event to update the typed word.
+     */
+    handleTypingInput() {
+        this.typedWord = this.ui.typingInput.value;
+    }
+
+    /**
+     * Processes a key press, triggering a minor, key-specific action.
+     */
+    handleKeyAttack(key) {
+        const charCode = key.charCodeAt(0);
+        const effectMagnitude = (charCode % 5) + 1; // 1 to 5 damage/effect
+
+        // Use the character itself to determine the action type
+        if (/[a-z]/i.test(key)) { // Letters: Minor damage boost
+            if (this.matchMode === 'duel_mp' || this.matchMode === 'solo') {
+                this.remoteEntity.takeDamage(1);
+            }
+        } else if (/[0-9]/.test(key)) { // Numbers: Minor shield boost
+            this.localPlayer.gainShield(effectMagnitude * 0.5);
+        } else if (/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?~`]/.test(key)) { // Symbols: Minor slow on opponent (visual only in solo)
+            this.showPopup(`Symbolic Interference: ${key}`, '#f8f', 500);
+        } else { // Unicode/Other: Very minor health bump
+            this.localPlayer.heal(0.5);
+        }
+
+        // Only send updates if in a multiplayer mode
+        if (this.isMultiplayer) {
+            this.sendLocalState();
+        }
+    }
+
+    /**
+     * Executes the main action upon successful word completion.
+     */
+    processWordCompletion() {
+        const timeTaken = Date.now() - this.wordStartTime;
+        const baseDamage = BASE_ATTACK_DAMAGE;
+        const speedBonus = timeTaken < 3000 ? 5 : 0; // Bonus for typing in under 3 seconds
+        const entityToHit = this.remoteEntity;
+
+        // Determine action based on the word
+        let action = 'ATTACK';
+        let effectColor = '#f00';
+        let actionMessage = `HIT! -${baseDamage} HP`;
+        let totalDamage = baseDamage + speedBonus;
+
+        if (this.targetWord === 'shield') {
+            this.localPlayer.gainShield(SHIELD_AMOUNT);
+            action = 'SHIELD';
+            effectColor = '#0bf';
+            actionMessage = `SHIELD GAINED! +${SHIELD_AMOUNT} SHD`;
+            totalDamage = 0;
+        } else if (this.targetWord === 'heal') {
+            this.localPlayer.heal(SHIELD_AMOUNT);
+            action = 'HEAL';
+            effectColor = '#0f0';
+            actionMessage = `HEALED! +${SHIELD_AMOUNT} HP`;
+            totalDamage = 0;
+        } else {
+            // Default attack
+            entityToHit.takeDamage(totalDamage);
+            actionMessage = `CRITICAL ATTACK! -${totalDamage} HP`;
+        }
+
+        // Reward money based on word length
+        const moneyReward = Math.ceil(this.targetWord.length / 2);
+        this.money += moneyReward;
+        this.saveState();
+
+        this.showPopup(`${actionMessage} (+${moneyReward} Gold)`, effectColor);
+
+        // Send state updates
+        if (this.isMultiplayer) {
+            this.sendLocalState();
+            // In Team Mode, we also need to send the Boss's new state
+            if (this.matchMode === 'team_mp' && entityToHit.id === 'boss') {
+                this.sendBossState();
             }
         }
 
-        class GameState {
-            constructor() {
-                this.localPlayer = new GameEntity(LOCAL_USER_ID, CANVAS.width / 4, CANVAS.height / 2, '#10b981', true);
-                this.remotePlayer = null; // Will be initialized upon connection
-                this.projectiles = [];
-                this.effects = [];
-                this.credits = 1000;
-                this.lastUpdate = performance.now();
-                this.roundDuration = 0; // Tracks the current round time
-                this.maxRoundTime = 0; // Set randomly between 5s and 12s
-                this.isRoundActive = false;
-                this.playerSkins = JSON.parse(JSON.stringify(SKINS)); // Deep copy skins for modification
-            }
+        if (!entityToHit.dead) {
+            this.startRound();
+        } else {
+            // Check win condition
+            const won = (this.matchMode === 'duel_mp' || this.matchMode === 'solo') ? entityToHit.dead : true;
+            this.endMatch(won);
+        }
+    }
 
-            initRound() {
-                this.maxRoundTime = Math.random() * (12 - 5) + 5; // 5s to 12s
-                this.roundDuration = 0;
-                this.isRoundActive = true;
-                this.localPlayer.health = this.localPlayer.maxHealth;
-                this.localPlayer.energy = this.localPlayer.maxEnergy;
-                this.projectiles = [];
-                UIManager.log('New Arena Round Started!', 'yellow');
-            }
+    /**
+     * Starts the game loop and hides menus.
+     * @param {string} mode - 'solo', 'duel_mp', or 'team_mp'.
+     * @param {string} type - 'V1' or 'V2' (for solo word type).
+     */
+    startGame(mode, type) {
+        this.matchMode = mode;
+        this.wordType = type;
+        this.gameRunning = true;
+        this.localPlayer.reset();
 
-            updateSkins(newSkins) {
-                 this.playerSkins = newSkins;
-            }
+        // Configure the remote entity based on mode
+        let remoteMaxHp = MAX_HEALTH;
+        let remoteIcon = 'ENEMY';
+        let remoteTitle = 'OPPONENT';
+        let healthBarClass = '';
+
+        if (mode === 'team_mp') {
+            remoteMaxHp = BOSS_HEALTH;
+            remoteIcon = '👾';
+            remoteTitle = 'BOSS (Teammate HP Below)';
+            healthBarClass = 'health-boss';
+            this.startBossAttackLoop();
+        } else if (mode === 'duel_mp') {
+            remoteIcon = 'DUELIST';
+            remoteTitle = 'OPPONENT';
+            this.stopBossAttackLoop();
+        } else { // solo
+            remoteIcon = 'AI';
+            remoteTitle = 'AI OPPONENT';
+            this.stopBossAttackLoop();
+            // Start a simple solo AI loop (just to have them heal sometimes)
+            this.soloAILoop = setInterval(() => {
+                if (Math.random() < 0.2 && !this.remoteEntity.dead) { // 20% chance to heal/shield
+                    this.remoteEntity.gainShield(10);
+                    this.showCenterMessage("AI SHIELDING!", '#f0f', 500);
+                }
+            }, 3000);
         }
 
-        let gameState = new GameState();
+        this.remoteEntity.reset(remoteMaxHp);
+        this.remoteEntity.id = mode === 'team_mp' ? 'boss' : (mode === 'duel_mp' ? 'teammate' : 'opponent');
 
-        // =================================================================
-        // NETWORK MANAGER (WebRTC)
-        // =================================================================
+        // Update UI status/styles
+        this.ui.opponentTitle.textContent = remoteTitle;
+        this.ui.opponentHealthContainer.className = `health-bar-container ${healthBarClass}`;
 
-        class NetworkManager {
-            constructor() {
-                this.pc = null; // RTCPeerConnection
-                this.dataChannel = null;
-                this.isInitiator = false;
-                this.remoteUserId = null;
-            }
+        // Hide all panels, show HUD
+        this.ui.menu.classList.add('hidden');
+        this.ui.shop.classList.add('hidden');
+        this.ui.lobby.classList.add('hidden');
+        this.ui.hud.classList.remove('hidden');
+        this.ui.typingInput.focus();
 
-            // Initializes the peer connection object
-            initPeerConnection(isInitiator) {
-                this.isInitiator = isInitiator;
-                this.pc = new RTCPeerConnection({
-                    iceServers: [
-                        { urls: 'stun:stun.l.google.com:19302' },
-                        { urls: 'stun:stun1.l.google.com:19302' }
-                    ]
-                });
-
-                this.pc.onicecandidate = (event) => {
-                    if (event.candidate) {
-                        // In a manual signaling scenario, we log candidates but rely on the user
-                        // copying the main Offer/Answer SDP, which contains gathered candidates.
-                        // The previous call here caused the 'this.handleSignal is not a function' error.
-                        UIManager.log(`ICE Candidate Found: ${event.candidate.type}`, 'gray');
-                    }
-                };
-
-                this.pc.oniceconnectionstatechange = () => {
-                    UIManager.updateConnectionStatus(this.pc.iceConnectionState);
-                    UIManager.log(`ICE State: ${this.pc.iceConnectionState}`, 'gray');
-                };
-
-                this.pc.onconnectionstatechange = () => {
-                    UIManager.updateConnectionStatus(this.pc.connectionState);
-                    UIManager.log(`Connection State: ${this.pc.connectionState}`, 'gray');
-                };
-            }
-
-            // Handles the Data Channel setup
-            setupDataChannel() {
-                this.dataChannel.onopen = () => {
-                    UIManager.log('Data Channel OPEN. P2P Connection established.', 'green');
-                    document.getElementById('dataChannelStatus').textContent = 'Data Channel: OPEN';
-
-                    // Initialize remote player and start the round
-                    gameState.remotePlayer = new GameEntity(this.remoteUserId, CANVAS.width * 3 / 4, CANVAS.height / 2, '#f00', false);
-                    gameState.initRound();
-
-                    // Send initial player state
-                    this.sendPlayerState();
-                };
-
-                this.dataChannel.onmessage = (event) => {
-                    this.receiveData(event.data);
-                };
-
-                this.dataChannel.onclose = () => {
-                    UIManager.log('Data Channel CLOSED. Opponent disconnected.', 'red');
-                    document.getElementById('dataChannelStatus').textContent = 'Data Channel: Closed';
-                    gameState.remotePlayer = null;
-                };
-
-                this.dataChannel.onerror = (error) => {
-                    UIManager.log(`Data Channel Error: ${error}`, 'red');
-                };
-            }
-
-            // 1. Initiator creates the WebRTC Offer
-            async createOffer() {
-                this.initPeerConnection(true);
-
-                // Create and set the data channel for the initiator
-                this.dataChannel = this.pc.createDataChannel('gameData');
-                this.setupDataChannel();
-                
-                try {
-                    const offer = await this.pc.createOffer();
-                    await this.pc.setLocalDescription(offer);
-                    const signal = JSON.stringify({
-                        sdp: this.pc.localDescription,
-                        senderId: LOCAL_USER_ID
-                    });
-                    UIManager.handleSignalOutput(signal);
-                    UIManager.log('Generated Offer SDP. Copy/Paste to opponent.', 'yellow');
-                    document.getElementById('btnCreateAnswer').disabled = true; // Only initiator creates offer
-                } catch (error) {
-                    UIManager.log(`Error creating Offer: ${error.name}`, 'red');
-                }
-            }
-
-            // 2. Receiver creates the WebRTC Answer
-            async createAnswer(offerSignal) {
-                try {
-                    const offer = JSON.parse(offerSignal).sdp;
-                    this.remoteUserId = JSON.parse(offerSignal).senderId;
-                    document.getElementById('remoteUserId').textContent = this.remoteUserId;
-
-                    this.initPeerConnection(false);
-
-                    // Set remote data channel listener
-                    this.pc.ondatachannel = (event) => {
-                        this.dataChannel = event.channel;
-                        this.setupDataChannel();
-                    };
-
-                    await this.pc.setRemoteDescription(new RTCSessionDescription(offer));
-                    const answer = await this.pc.createAnswer();
-                    await this.pc.setLocalDescription(answer);
-
-                    const signal = JSON.stringify({
-                        sdp: this.pc.localDescription,
-                        senderId: LOCAL_USER_ID
-                    });
-
-                    UIManager.handleSignalOutput(signal);
-                    UIManager.log('Generated Answer SDP. Copy/Paste back to initiator.', 'yellow');
-                } catch (error) {
-                    UIManager.log(`Error creating Answer: ${error.name}`, 'red');
-                }
-            }
-
-            // 3. Processes the received signal (Offer, Answer, or ICE candidate)
-            async processSignal(signalText) {
-                try {
-                    const signal = JSON.parse(signalText);
-
-                    // Check if the signal is intended for the local player
-                    if (signal.senderId === LOCAL_USER_ID) return;
-
-                    // Set remote ID if not set
-                    if (!this.remoteUserId) {
-                        this.remoteUserId = signal.senderId;
-                        document.getElementById('remoteUserId').textContent = this.remoteUserId;
-                    }
-
-                    if (signal.sdp) {
-                        // Received SDP (Offer or Answer)
-                        if (signal.sdp.type === 'offer' && !this.isInitiator) {
-                            // Automatically start creating answer if it's an offer and we are not the initiator
-                            document.getElementById('btnCreateAnswer').disabled = false;
-                            UIManager.log('Received Offer. Click "Create Answer" to respond.', 'teal');
-                            document.getElementById('signalBox').value = signalText; // Store for easy processing
-                        } else if (signal.sdp.type === 'answer' && this.isInitiator) {
-                            // Initiator receives the answer
-                            await this.pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
-                            UIManager.log('Received Answer. Connection attempt in progress...', 'green');
-                        }
-                    } else if (signal.candidate) {
-                        // Received ICE Candidate
-                        try {
-                            // We ignore the candidate if remote description hasn't been set yet
-                            if (this.pc.remoteDescription) {
-                                await this.pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
-                                UIManager.log('Added ICE Candidate.', 'gray');
-                            }
-                        } catch (e) {
-                            UIManager.log(`Error adding ICE candidate: ${e.name}`, 'red');
-                        }
-                    }
-                    document.getElementById('signalBox').value = ''; // Clear box after processing
-                } catch (error) {
-                    UIManager.log(`Invalid signal data: ${error.message}`, 'red');
-                }
-            }
-
-            // Sends local player state to opponent
-            sendPlayerState() {
-                if (this.dataChannel && this.dataChannel.readyState === 'open') {
-                    const localState = {
-                        x: gameState.localPlayer.x,
-                        y: gameState.localPlayer.y,
-                        health: gameState.localPlayer.health,
-                        energy: gameState.localPlayer.energy,
-                        skin: gameState.localPlayer.skin.id,
-                        projectiles: gameState.projectiles.map(p => ({ x: p.x, y: p.y, r: p.radius, c: p.color }))
-                    };
-                    this.dataChannel.send(JSON.stringify({ type: 'state', data: localState }));
-                }
-            }
-
-            // Receives data and updates remote player state
-            receiveData(data) {
-                try {
-                    const message = JSON.parse(data);
-                    if (message.type === 'state' && gameState.remotePlayer) {
-                        const state = message.data;
-                        gameState.remotePlayer.targetX = state.x;
-                        gameState.remotePlayer.targetY = state.y;
-                        gameState.remotePlayer.health = state.health;
-                        gameState.remotePlayer.energy = state.energy;
-                        // For simplicity, projectiles are rendered locally upon attack, but state must be synced
-                        //gameState.remoteProjectiles = state.projectiles;
-                    } else if (message.type === 'attack' && gameState.isRoundActive) {
-                        // Handle attack received
-                        gameState.localPlayer.health -= message.data.damage;
-                        UIManager.log(`HIT! Took ${message.data.damage} damage.`, 'red');
-                        if (gameState.localPlayer.health <= 0) {
-                            UIManager.log('DEFEAT! Opponent wins the round.', 'red');
-                            gameState.isRoundActive = false;
-                        }
-                    }
-                } catch (e) {
-                    // Ignore non-JSON or malformed messages
-                }
-            }
+        // Show chat only if multiplayer
+        if (mode.includes('_mp')) {
+            document.getElementById('multiplayer-overlay').classList.remove('hidden');
+        } else {
+            document.getElementById('multiplayer-overlay').classList.add('hidden');
         }
 
-        const networkManager = new NetworkManager();
+        this.showCenterMessage("DUEL START!", '#ffeb3b', 2000);
+        this.startRound();
+    }
 
-        // =================================================================
-        // UI MANAGER (All UI interactions and updates)
-        // =================================================================
+    /**
+     * Boss AI logic for Team Mode. Initiator handles the attack timing and target.
+     */
+    startBossAttackLoop() {
+        if (!this.rtcManager.isInitiator || this.bossAttackIntervalId) return;
 
-        const UIManager = {
-            gameLogElement: document.getElementById('gameLog'),
-            shopModal: document.getElementById('shopModal'),
-            shopContent: document.getElementById('shopContent'),
-
-            log(message, color = 'text-text-light') {
-                const logEntry = document.createElement('p');
-                logEntry.className = `mono-font ${color}`;
-                logEntry.textContent = `[${new Date().toLocaleTimeString()}] > ${message}`;
-                this.gameLogElement.prepend(logEntry);
-                // Keep log capped at 50 entries
-                while (this.gameLogElement.children.length > 50) {
-                    this.gameLogElement.removeChild(this.gameLogElement.lastChild);
-                }
-            },
-
-            updateHUD() {
-                document.getElementById('playerCredits').textContent = gameState.credits.toLocaleString();
-                document.getElementById('modalCredits').textContent = gameState.credits.toLocaleString();
-                document.getElementById('playerEnergy').textContent = gameState.localPlayer.energy.toFixed(0);
-
-                if (gameState.isRoundActive) {
-                     const remainingTime = gameState.maxRoundTime - gameState.roundDuration;
-                    document.getElementById('roundTimer').textContent = remainingTime > 0 ? remainingTime.toFixed(1) : '0.0';
-                } else {
-                    document.getElementById('roundTimer').textContent = 'STOPPED';
-                }
-
-                // Update input field placeholder based on skin
-                INPUT_FIELD.placeholder = `Current Skin: ${gameState.localPlayer.skin.name}`;
-            },
-
-            updateConnectionStatus(state) {
-                let color = 'text-text-mute';
-                if (state === 'connected' || state === 'open') color = 'text-accent-green';
-                if (state === 'connecting' || state === 'checking') color = 'text-accent-yellow';
-                if (state === 'failed' || state === 'disconnected' || state === 'closed') color = 'text-red-500';
-                document.getElementById('connectionStatus').className = color;
-                document.getElementById('connectionStatus').textContent = state.toUpperCase();
-            },
-
-            handleSignalOutput(signal) {
-                const signalBox = document.getElementById('signalBox');
-                signalBox.value = signal;
-                signalBox.select();
-                signalBox.focus();
-                this.log('Signal data copied to box. Please share it manually.', 'blue');
-            },
-
-            openShopModal() {
-                this.renderShopSkins();
-                this.shopModal.classList.remove('hidden');
-                this.shopModal.classList.add('flex');
-                setTimeout(() => {
-                    this.shopContent.classList.remove('scale-95', 'opacity-0');
-                    this.shopContent.classList.add('scale-100', 'opacity-100');
-                }, 10);
-                this.log('Shop Accessed.', 'gray');
-            },
-
-            closeShopModal() {
-                this.shopContent.classList.remove('scale-100', 'opacity-100');
-                this.shopContent.classList.add('scale-95', 'opacity-0');
-                setTimeout(() => {
-                    this.shopModal.classList.remove('flex');
-                    this.shopModal.classList.add('hidden');
-                }, 300);
-            },
-
-            handleModalClick(event) {
-                if (event.target === this.shopModal) {
-                    this.closeShopModal();
-                }
-            },
-
-            renderShopSkins() {
-                const container = document.getElementById('skinsContainer');
-                container.innerHTML = '';
-
-                gameState.playerSkins.forEach(skin => {
-                    const isEquipped = gameState.localPlayer.skin.id === skin.id;
-                    const canAfford = gameState.credits >= skin.cost;
-                    const isOwned = skin.equipped || skin.cost === 0;
-
-                    const card = document.createElement('div');
-                    card.className = `skin-card ui-panel p-4 rounded-xl ${isEquipped ? 'skin-card-equipped' : 'border-border-color'} transition-all duration-300 border-2`;
-                    card.innerHTML = `
-                        <div class="flex justify-between items-center border-b pb-2 mb-2 border-border-color">
-                            <h3 class="text-xl font-bold ${skin.version === 'V2' ? 'text-blue-400' : 'text-green-400'}">${skin.name}</h3>
-                            <span class="px-2 py-1 text-xs rounded-full font-bold mono-font" style="background-color:${skin.color}; color:var(--primary-bg)">${skin.version}</span>
-                        </div>
-                        <p class="text-sm text-text-mute mb-3">${skin.effectDesc}</p>
-                        <div class="text-center">
-                            ${isEquipped ?
-                                `<button class="w-full py-2 bg-accent-yellow text-primary-bg font-bold rounded-lg cursor-default">EQUIPPED</button>` :
-                                isOwned ?
-                                    `<button id="btnEquip-${skin.id}" class="btn-hover w-full py-2 bg-green-600 text-text-light font-bold rounded-lg" data-skin-id="${skin.id}">EQUIP</button>` :
-                                    `<button id="btnBuy-${skin.id}" class="btn-hover w-full py-2 ${canAfford ? 'bg-indigo-600' : 'bg-gray-700 cursor-not-allowed'}" ${canAfford ? '' : 'disabled'} data-skin-id="${skin.id}">BUY | ${skin.cost.toLocaleString()} CR</button>`
-                            }
-                        </div>
-                    `;
-                    container.appendChild(card);
-                });
-
-                // Attach event listeners for the newly created buttons
-                container.querySelectorAll('[data-skin-id]').forEach(button => {
-                    button.addEventListener('click', (e) => {
-                        const skinId = e.currentTarget.dataset.skinId;
-                        if (e.currentTarget.id.startsWith('btnBuy')) {
-                            ShopManager.buySkin(skinId);
-                        } else if (e.currentTarget.id.startsWith('btnEquip')) {
-                            ShopManager.equipSkin(skinId);
-                        }
-                    });
-                });
-            }
-        };
-
-        // =================================================================
-        // SHOP MANAGER (Handles all skin and credit logic)
-        // =================================================================
-
-        const ShopManager = {
-            buySkin(skinId) {
-                const skin = gameState.playerSkins.find(s => s.id === skinId);
-                if (skin && !skin.owned && gameState.credits >= skin.cost) {
-                    gameState.credits -= skin.cost;
-                    skin.equipped = true;
-                    UIManager.log(`Purchased and Equipped skin: ${skin.name}`, 'yellow');
-                    this.equipSkin(skinId);
-                } else if (skin && !skin.owned && gameState.credits < skin.cost) {
-                    UIManager.log('INSUFFICIENT CREDITS to purchase this skin.', 'red');
-                }
-                UIManager.updateHUD();
-                UIManager.renderShopSkins();
-            },
-
-            equipSkin(skinId) {
-                const newSkin = gameState.playerSkins.find(s => s.id === skinId);
-                if (newSkin) {
-                    // Unequip old skin
-                    gameState.playerSkins.forEach(s => s.equipped = false);
-
-                    // Equip new skin
-                    newSkin.equipped = true;
-                    gameState.localPlayer.skin = newSkin;
-
-                    UIManager.log(`Equipped skin: ${newSkin.name} (${newSkin.version})`, 'green');
-                }
-                UIManager.updateHUD();
-                UIManager.renderShopSkins();
-            }
-        };
-
-        // =================================================================
-        // GAME LOGIC (Attack and core mechanics)
-        // =================================================================
-
-        const GameLogic = {
-            attack(char, player) {
-                const action = CHARACTER_ACTIONS[char];
-                if (!action) return;
-
-                if (player.energy < action.cost) {
-                    UIManager.log(`Insufficient Energy for '${char}'. Cost: ${action.cost}.`, 'red');
-                    return;
-                }
-
-                player.energy -= action.cost;
-                UIManager.log(`Executing: ${action.description}`, 'accent-green');
-                networkManager.sendPlayerState(); // Sync state after energy change
-
-                switch (action.type) {
-                    case 'attack':
-                        // Create a projectile
-                        this.createProjectile(player, action.power);
-                        break;
-                    case 'defense':
-                        // Apply temporary shield/defense buff
-                        player.effects.shield = (player.effects.shield || 0) + 2; // 2 seconds shield
-                        break;
-                    case 'utility':
-                        // Handle utility logic (e.g., healing, energy burst)
-                        if (char === 'e') player.energy = Math.min(MAX_ENERGY, player.energy + action.power);
-                        if (char === 'z') player.effects = {}; // Clear debuffs
-                        if (char === 'l') {
-                             // Lifesteal implementation: deal damage and heal
-                            networkManager.dataChannel.send(JSON.stringify({ type: 'attack', data: { damage: 5 } }));
-                            player.health = Math.min(player.maxHealth, player.health + 5);
-                        }
-                        break;
-                    case 'movement':
-                        // Handle movement logic (e.g., dash, warp)
-                        const dashDistance = action.power * 50;
-                        player.targetX += dashDistance * (player.isLocal ? 1 : -1); // Dash forward
-                        break;
-                    case 'resource':
-                        // Handle resource logic (credits, health)
-                        if (char === '0' || char === '6') gameState.credits += action.power;
-                        if (char === '9' || char === '+') player.health = Math.min(player.maxHealth, player.health + action.power);
-                        break;
-                    case 'status':
-                        // Send status effect to opponent
-                         networkManager.dataChannel.send(JSON.stringify({ type: 'status', data: { effect: char, duration: 5 } }));
-                        break;
-                }
-
-                // V2 Skin Passive Check (REX Engine: Mobility)
-                if (player.skin.id === 'S202' && 'aeiou'.includes(char)) {
-                    player.effects.speedBoost = 3; // 3 seconds speed boost
-                    player.speed = 6;
-                } else if (player.skin.id === 'S202' && !player.effects.speedBoost) {
-                    player.speed = 3;
-                }
-            },
-
-            createProjectile(shooter, damage) {
-                if (!gameState.remotePlayer) return;
-
-                // Calculate direction towards opponent
-                const dx = gameState.remotePlayer.x - shooter.x;
-                const dy = gameState.remotePlayer.y - shooter.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                const angle = Math.atan2(dy, dx);
-
-                gameState.projectiles.push({
-                    x: shooter.x,
-                    y: shooter.y,
-                    vx: Math.cos(angle) * 5,
-                    vy: Math.sin(angle) * 5,
-                    damage: damage,
-                    radius: 5,
-                    color: shooter.color,
-                    ownerId: shooter.id,
-                    isLocal: shooter.isLocal
-                });
-            },
-
-            updateProjectiles(dt) {
-                gameState.projectiles = gameState.projectiles.filter(p => {
-                    p.x += p.vx;
-                    p.y += p.vy;
-
-                    // Check boundaries
-                    if (p.x < 0 || p.x > CANVAS.width || p.y < 0 || p.y > CANVAS.height) {
-                        return false; // Remove if out of bounds
-                    }
-
-                    // Only local player's projectiles can hit the remote player
-                    if (p.isLocal && gameState.remotePlayer) {
-                        const target = gameState.remotePlayer;
-                        const dist = Math.sqrt((p.x - target.x) ** 2 + (p.y - target.y) ** 2);
-                        if (dist < target.radius + p.radius) {
-                            // Hit detected: send attack message via DataChannel
-                            networkManager.dataChannel.send(JSON.stringify({ type: 'attack', data: { damage: p.damage } }));
-                            UIManager.log(`Dealt ${p.damage} damage to opponent.`, 'green');
-                            return false; // Projectile destroyed
-                        }
-                    }
-                    return true;
-                });
-            },
-        };
-
-        // =================================================================
-        // INPUT HANDLER (Handles all key/mouse events)
-        // =================================================================
-
-        function handleKeyPress(event) {
-            // Only allow typing if a round is active
-            if (!gameState.isRoundActive) {
-                UIManager.log('Round is inactive. Cannot execute commands.', 'red');
+        this.bossAttackIntervalId = setInterval(() => {
+            if (!this.gameRunning || this.localPlayer.dead || this.remoteEntity.dead) {
+                this.stopBossAttackLoop();
                 return;
             }
 
-            const char = event.key.toLowerCase();
-            const action = CHARACTER_ACTIONS[char];
+            // Boss attacks one of the two players (local or remote)
+            const target = this.nextBossAttackTarget;
+            const damage = BOSS_ATTACK_DAMAGE + Math.floor(Math.random() * 10); // Variable damage
 
-            if (action) {
-                GameLogic.attack(char, gameState.localPlayer);
+            if (target === 'local') {
+                this.localPlayer.takeDamage(damage);
+                this.showPopup(`BOSS HIT YOU! -${damage} HP`, '#f00', 1500);
+                this.sendLocalState();
+                this.nextBossAttackTarget = 'remote'; // Switch target
+            } else {
+                // Tell the remote player they got hit
+                this.rtcManager.send({ type: 'boss_attack', damage });
+                this.showCenterMessage("BOSS ATTACKED TEAMMATE!", '#ff0', 1500);
+                this.nextBossAttackTarget = 'local'; // Switch target
             }
 
-            // Update the attack queue display
-            const input = INPUT_FIELD.value;
-            document.getElementById('attackQueue').textContent = input.toUpperCase().split('').join(' ');
-        }
-
-        function handleCanvasClick(event) {
-            if (!gameState.isRoundActive) return;
-
-            // Simple movement based on click location
-            const rect = CANVAS.getBoundingClientRect();
-            const mouseX = event.clientX - rect.left;
-            const mouseY = event.clientY - rect.top;
-
-            gameState.localPlayer.targetX = mouseX;
-            gameState.localPlayer.targetY = mouseY;
-        }
-
-        // =================================================================
-        // GAME LOOP (The heart of the new system)
-        // =================================================================
-
-        function gameLoop(timestamp) {
-            const dt = (timestamp - gameState.lastUpdate) / MS_PER_FRAME; // Time delta for framerate independence
-            gameState.lastUpdate = timestamp;
-
-            // 1. Update Game State
-            if (gameState.isRoundActive) {
-                // Round Timer Update (5s - 12s)
-                gameState.roundDuration += dt * (MS_PER_FRAME / 1000); // Add real time
-
-                if (gameState.roundDuration >= gameState.maxRoundTime) {
-                    UIManager.log('Round Timer Expired. Credits awarded.', 'yellow');
-                    gameState.credits += 500; // Award credits for surviving the round
-                    gameState.isRoundActive = false;
-                }
-
-                gameState.localPlayer.update(dt);
-                if (gameState.remotePlayer) gameState.remotePlayer.update(dt);
-
-                GameLogic.updateProjectiles(dt);
-
-                // Send state update to opponent (throttled to network speed, e.g., every 50ms)
-                if (timestamp % 50 < 10) {
-                    networkManager.sendPlayerState();
-                }
-
-                // Check for win condition
-                if (gameState.remotePlayer && gameState.remotePlayer.health <= 0) {
-                     UIManager.log('VICTORY! Opponent defeated.', 'green');
-                     gameState.credits += 2000;
-                     gameState.isRoundActive = false;
-                }
+            // Check if local player died
+            if (this.localPlayer.dead) {
+                this.endMatch(false);
             }
+        }, 5000); // Boss attacks every 5 seconds
+    }
 
-            // 2. Render Graphics
-            render();
+    /**
+     * Stops the Boss AI attack loop.
+     */
+    stopBossAttackLoop() {
+        if (this.bossAttackIntervalId) {
+            clearInterval(this.bossAttackIntervalId);
+            this.bossAttackIntervalId = null;
+        }
+        if (this.soloAILoop) {
+            clearInterval(this.soloAILoop);
+            this.soloAILoop = null;
+        }
+    }
 
-            // 3. Update UI
-            UIManager.updateHUD();
-
-            // 4. Request next frame
-            requestAnimationFrame(gameLoop);
+    /**
+     * Starts a new round by selecting a word and setting a timer.
+     * @param {string} [fixedWord=null] - Optional word for MP synchronization.
+     */
+    startRound(fixedWord = null) {
+        if (this.roundTimerId) {
+            clearTimeout(this.roundTimerId);
+        }
+        if (this.localPlayer.dead || this.remoteEntity.dead) {
+            this.endMatch(this.localPlayer.dead ? false : true);
+            return;
         }
 
-        function render() {
-            // Clear canvas
-            CTX.fillStyle = '#000';
-            CTX.fillRect(0, 0, CANVAS.width, CANVAS.height);
-
-            // Draw game boundaries/grid
-            CTX.strokeStyle = '#374151';
-            CTX.lineWidth = 1;
-            CTX.strokeRect(0, 0, CANVAS.width, CANVAS.height);
-
-            // Draw projectiles
-            gameState.projectiles.forEach(p => {
-                CTX.fillStyle = p.color;
-                CTX.beginPath();
-                CTX.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-                CTX.fill();
+        // Select a new word
+        if (fixedWord) {
+            this.targetWord = fixedWord;
+        } else {
+            // Filter words based on complexity for solo mode
+            let pool = WORD_DICTIONARY.filter(word => {
+                const hasUnicode = !/^[a-zA-Z0-9]+$/.test(word);
+                return this.wordType === 'V2' ? true : !hasUnicode;
             });
+            this.targetWord = pool[Math.floor(Math.random() * pool.length)];
 
-            // Draw players (Local must be drawn last to ensure visibility)
-            if (gameState.remotePlayer) gameState.remotePlayer.draw();
-            gameState.localPlayer.draw();
-
-            // Draw round active overlay
-            if (!gameState.isRoundActive) {
-                 CTX.fillStyle = 'rgba(17, 24, 39, 0.9)'; // Dark overlay
-                 CTX.fillRect(0, 0, CANVAS.width, CANVAS.height);
-                 CTX.fillStyle = '#f59e0b';
-                 CTX.textAlign = 'center';
-                 CTX.font = '36px Space Mono';
-                 CTX.fillText('ARENA STANDBY (NO CONNECTION / ROUND ENDED)', CANVAS.width / 2, CANVAS.height / 2);
-                 CTX.font = '18px Inter';
-                 CTX.fillText('Initiate P2P Connection or wait for new round start.', CANVAS.width / 2, CANVAS.height / 2 + 40);
+            // Send round synchronization to opponent if MP and initiator
+            if (this.isMultiplayer && this.rtcManager.isInitiator) {
+                this.rtcManager.send({ type: 'round_start', word: this.targetWord });
             }
         }
 
+        this.ui.targetWordEl.textContent = this.targetWord;
+        this.ui.typingInput.value = '';
+        this.typedWord = '';
+        this.wordStartTime = Date.now();
 
-        // =================================================================
-        // INITIALIZATION AND EVENT LISTENERS
-        // =================================================================
+        // Set round timer (5s to 12s)
+        const duration = Math.floor(Math.random() * (ROUND_MAX_DURATION - ROUND_MIN_DURATION + 1)) + ROUND_MIN_DURATION;
+        let timeRemaining = Math.floor(duration / 1000);
+        this.ui.roundTimer.textContent = `${timeRemaining}s`;
 
-        window.onload = function() {
-            // Set canvas size to fill container
-            const canvasContainer = CANVAS.parentElement;
-            CANVAS.width = canvasContainer.clientWidth;
-            CANVAS.height = 600; // Fixed height, fill width
+        // Update timer every second
+        const intervalId = setInterval(() => {
+            timeRemaining--;
+            this.ui.roundTimer.textContent = `${timeRemaining}s`;
 
-            // Center initial player position based on new width
-            gameState.localPlayer.x = CANVAS.width / 4;
-            gameState.localPlayer.y = CANVAS.height / 2;
+            if (timeRemaining <= 0) {
+                clearInterval(intervalId);
+                // Round fails, small penalty
+                this.localPlayer.takeDamage(BASE_ATTACK_DAMAGE / 2);
+                this.showPopup('TIME OUT! -5 HP Penalty.', '#ffa07a', 1500);
+                if (this.isMultiplayer) this.sendLocalState();
+                this.startRound();
+            }
+        }, 1000);
 
-            // Attach all UI button event listeners (fixing the previous issue)
-            document.getElementById('btnOpenShop').addEventListener('click', UIManager.openShopModal);
-            document.getElementById('gameCanvas').addEventListener('click', handleCanvasClick);
-            document.getElementById('commandInput').addEventListener('input', handleKeyPress);
+        this.roundTimerId = intervalId;
+    }
 
-            // WebRTC Button Listeners
-            document.getElementById('btnCreateOffer').addEventListener('click', () => networkManager.createOffer());
-            document.getElementById('btnCreateAnswer').addEventListener('click', () => networkManager.createAnswer(document.getElementById('signalBox').value));
-            document.getElementById('btnProcessSignal').addEventListener('click', () => networkManager.processSignal(document.getElementById('signalBox').value));
+    /**
+     * Ends the current match and shows the winner/loser screen.
+     */
+    endMatch(won) {
+        this.gameRunning = false;
+        this.stopBossAttackLoop();
+        if (this.roundTimerId) {
+            clearInterval(this.roundTimerId);
+        }
 
-            UIManager.log('Lexi-Glitch Arena Initialized. Ready for P2P connection.', 'green');
-            UIManager.log('Click on the black arena to move your avatar.', 'gray');
-            UIManager.log('V1 Skins: Original / V2 Skins: Realistic, Complex Abilities.', 'yellow');
+        const message = won ? "VICTORY! +100 Gold Reward." : "DEFEAT! Try again.";
+        const color = won ? '#0f0' : '#f00';
+        this.showCenterMessage(message, color, 5000);
 
-            // Start the game loop
-            requestAnimationFrame(gameLoop);
-        };
+        if (won) {
+            this.money += 100; // Match win bonus
+        }
+        this.saveState();
 
-        // Handle window resize (responsive canvas)
-        window.addEventListener('resize', () => {
-            const canvasContainer = CANVAS.parentElement;
-            CANVAS.width = canvasContainer.clientWidth;
-            // Re-render immediately
-            render();
+        setTimeout(() => this.returnToLobby(), 5000);
+    }
+
+    /**
+     * Renders the game state on the canvas and HUD.
+     */
+    render() {
+        // Clear canvas
+        this.ctx.fillStyle = '#0a0a0a';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        if (!this.gameRunning) {
+            return;
+        }
+
+        // Draw Player 1 (Local) and Player 2 (Remote Entity)
+        this.drawPlayer(this.localPlayer, this.canvas.width / 4, this.canvas.height / 2, this.equippedSkin.icon, '#0f0');
+        this.drawPlayer(this.remoteEntity, this.canvas.width * 3 / 4, this.canvas.height / 2, this.getRemoteIcon(), this.getRemoteColor());
+
+        // Draw HUD updates
+        this.updateHUD();
+    }
+
+    /**
+     * Gets the appropriate icon for the remote entity based on mode.
+     */
+    getRemoteIcon() {
+        if (this.matchMode === 'team_mp') return '👾';
+        if (this.matchMode === 'duel_mp') return 'DUELIST';
+        return 'AI';
+    }
+
+    /**
+     * Gets the appropriate color for the remote entity based on mode.
+     */
+    getRemoteColor() {
+        if (this.matchMode === 'team_mp') return '#ff0000'; // Boss is red
+        if (this.matchMode === 'duel_mp') return '#00ffff'; // Opponent is cyan
+        return '#ffeb3b'; // Solo AI is yellow
+    }
+
+    /**
+     * Draws a player's avatar on the canvas.
+     */
+    drawPlayer(player, x, y, icon, color) {
+        this.ctx.save();
+        this.ctx.translate(x, y);
+
+        // Body outline/glow
+        this.ctx.shadowBlur = 20;
+        this.ctx.shadowColor = color;
+        this.ctx.fillStyle = color;
+        this.ctx.beginPath();
+        this.ctx.arc(0, 0, 40, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.ctx.shadowBlur = 0;
+
+        // Draw Icon/Skin
+        this.ctx.fillStyle = '#000';
+        this.ctx.font = '48px Inter';
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText(icon, 0, 0);
+
+        // Draw status (Dead)
+        if (player.dead) {
+            this.ctx.font = '24px Inter';
+            this.ctx.fillStyle = '#f00';
+            this.ctx.fillText('DEAD', 0, 70);
+        }
+
+        this.ctx.restore();
+    }
+
+    /**
+     * Updates the HUD elements (HP, Shields).
+     */
+    updateHUD() {
+        // Local Player HUD
+        const localPercent = this.localPlayer.hp / this.localPlayer.maxHp * 100;
+        const localShieldPercent = this.localPlayer.shield / (this.localPlayer.maxHp / 2) * 100;
+        document.getElementById('player-health-bar').style.width = `${localPercent}%`;
+        document.getElementById('player-shield-bar').style.width = `${localShieldPercent}%`;
+        document.getElementById('player-hp-text').textContent = `${Math.ceil(this.localPlayer.hp)} HP / ${Math.ceil(this.localPlayer.shield)} SHD`;
+
+        // Remote Entity HUD (Opponent/Boss/Teammate)
+        const remotePercent = this.remoteEntity.hp / this.remoteEntity.maxHp * 100;
+        const remoteShieldPercent = this.remoteEntity.shield / (this.remoteEntity.maxHp / 2) * 100;
+        document.getElementById('opponent-health-bar').style.width = `${remotePercent}%`;
+        document.getElementById('opponent-shield-bar').style.width = `${remoteShieldPercent}%`;
+
+        let remoteText = '';
+        if (this.matchMode === 'team_mp') {
+            remoteText = `BOSS: ${Math.ceil(this.remoteEntity.hp)} HP / TMMT: ${Math.ceil(this.remoteTeammate?.hp || 100)} HP`;
+        } else if (this.matchMode === 'duel_mp') {
+            remoteText = `OPPONENT: ${Math.ceil(this.remoteEntity.hp)} HP / ${Math.ceil(this.remoteEntity.shield)} SHD`;
+        } else {
+            remoteText = `AI: ${Math.ceil(this.remoteEntity.hp)} HP / ${Math.ceil(this.remoteEntity.shield)} SHD`;
+        }
+        document.getElementById('opponent-hp-text').textContent = remoteText;
+    }
+
+    /**
+     * Updates the center message on the HUD.
+     */
+    showCenterMessage(message, color, duration = 1500) {
+        const el = this.ui.centerMessage;
+        el.textContent = message;
+        el.style.color = color;
+        el.style.textShadow = `0 0 10px ${color}`;
+        if (this.centerMessageTimeout) {
+            clearTimeout(this.centerMessageTimeout);
+        }
+        this.centerMessageTimeout = setTimeout(() => {
+            el.textContent = "TYPING TITANS: KEYBOARD ARENA";
+            el.style.color = '#ffeb3b';
+            el.style.textShadow = '0 0 8px #ffeb3b';
+        }, duration);
+    }
+
+    /**
+     * Saves current money and skin data to localStorage.
+     */
+    saveState() {
+        this.progress.money = this.money;
+        this.progress.equippedSkinId = this.equippedSkin.id;
+        saveProgress(this.progress);
+        this.updateShopUI(); // Update UI after saving
+    }
+
+    // --- UI/Panel Management ---
+
+    /**
+     * Hides all panels and shows the main menu.
+     */
+    showMenu() {
+        this.gameRunning = false;
+        this.stopBossAttackLoop();
+        if (this.roundTimerId) {
+            clearInterval(this.roundTimerId);
+        }
+        this.rtcManager.close(); // Close any active RTC connection
+        this.ui.hud.classList.add('hidden');
+        document.getElementById('multiplayer-overlay').classList.add('hidden');
+        this.ui.shop.classList.add('hidden');
+        this.ui.lobby.classList.add('hidden');
+        this.ui.menu.classList.remove('hidden');
+    }
+
+    /**
+     * Shows the skins shop UI.
+     */
+    showSkinsShop() {
+        this.ui.menu.classList.add('hidden');
+        this.ui.lobby.classList.add('hidden');
+        this.ui.shop.classList.remove('hidden');
+        this.updateShopUI();
+    }
+
+    /**
+     * Updates the skins shop display based on player progress.
+     */
+    updateShopUI() {
+        document.getElementById('playerMoney').textContent = this.money;
+        const skinGrid = document.getElementById('skin-grid');
+        skinGrid.innerHTML = '';
+
+        ALL_SKINS.forEach(skin => {
+            const playerSkinData = this.progress.skins.find(s => s.id === skin.id);
+            const isOwned = playerSkinData ? playerSkinData.owned : false;
+            const isEquipped = this.equippedSkin.id === skin.id;
+
+            const statusText = isEquipped ? 'EQUIPPED' : (isOwned ? 'OWNED' : `${skin.price} GOLD`);
+            const statusClass = isEquipped ? 'text-success' : (isOwned ? 'text-flair' : 'text-yellow-400');
+            const itemClass = isEquipped ? 'equipped' : (isOwned ? 'owned' : 'locked');
+
+            const itemHTML = `
+                <div class="skin-item ${itemClass}" data-id="${skin.id}">
+                    <div class="skin-preview">${skin.icon}</div>
+                    <div class="skin-name">${skin.name}</div>
+                    <div class="${statusClass}">${statusText}</div>
+                </div>
+            `;
+            skinGrid.innerHTML += itemHTML;
         });
-    </script>
+    }
+
+    /**
+     * Handles purchase or equipping of a skin.
+     */
+    handleSkinPurchaseEquip(skinId) {
+        const skin = ALL_SKINS.find(s => s.id === skinId);
+        if (!skin) return;
+
+        const playerSkinData = this.progress.skins.find(s => s.id === skinId);
+        const isOwned = playerSkinData ? playerSkinData.owned : false;
+
+        if (isOwned) {
+            // Equip
+            this.equippedSkin = skin;
+            this.progress.equippedSkinId = skinId;
+            this.saveState();
+            this.showPopup(`${skin.name} Equipped!`, '#0ff');
+        } else {
+            // Buy
+            if (this.money >= skin.price) {
+                this.money -= skin.price;
+                if (playerSkinData) {
+                    playerSkinData.owned = true;
+                } else {
+                    this.progress.skins.push({ id: skinId, owned: true });
+                }
+                this.equippedSkin = skin; // Equip immediately upon purchase
+                this.progress.equippedSkinId = skinId;
+                this.saveState();
+                this.showPopup(`Purchased & Equipped ${skin.name}!`, '#0f0');
+            } else {
+                this.showPopup('Not enough Gold!', '#f00');
+            }
+        }
+    }
+
+    /**
+     * Displays the WebRTC lobby UI.
+     * @param {string} mode - The intended multiplayer mode ('duel_mp' or 'team_mp').
+     */
+    showMultiplayerLobby(mode) {
+        this.matchMode = mode;
+        this.ui.menu.classList.add('hidden');
+        this.ui.shop.classList.add('hidden');
+        this.ui.lobby.classList.remove('hidden');
+
+        document.getElementById('lobby-title').textContent = mode === 'duel_mp' ? '1V1 DUEL LOBBY' : '2V1 TEAM LOBBY';
+        document.getElementById('lobby-description').textContent = mode === 'duel_mp' ?
+            'Connect for a direct 1v1 battle, damaging your opponent directly.' :
+            'Connect with a teammate to fight a powerful AI Boss!';
+
+        // Reset and get local ID
+        this.rtcManager.close();
+        document.getElementById('local-peer-id').value = this.rtcManager.localId;
+        document.getElementById('remote-peer-id').value = '';
+    }
+
+    // --- Multiplayer Management ---
+
+    /**
+     * Initiates the WebRTC connection process.
+     */
+    async connectWebRTC() {
+        const remoteInput = document.getElementById('remote-peer-id').value.trim();
+        const localIdInput = document.getElementById('local-peer-id');
+
+        if (!remoteInput) {
+            this.rtcManager.updateStatus('Error: Paste opponent ID/Signal!', 'text-error');
+            return;
+        }
+
+        this.rtcManager.updateStatus('Connecting...', 'text-flair');
+        localIdInput.value = 'Waiting for SDP exchange...'; // Clear ID to show SDP
+
+        let signal;
+        try {
+            signal = JSON.parse(remoteInput);
+        } catch (e) {
+            // Treat as a regular ID and create an offer
+            this.rtcManager.createOffer(remoteInput);
+            return;
+        }
+
+        // If it's a signal, process it
+        if (signal.type === 'offer') {
+            // Crucial check: Ensure modes match before processing
+            if (signal.mode !== this.matchMode) {
+                this.rtcManager.updateStatus(`Error: Mode mismatch! (${signal.mode} vs ${this.matchMode})`, 'text-error');
+                return;
+            }
+            await this.rtcManager.handleOffer(signal.sdp, signal.senderId);
+        } else if (signal.type === 'answer') {
+            await this.rtcManager.handleAnswer(signal.sdp);
+        } else if (signal.type === 'candidate') {
+            await this.rtcManager.handleCandidate(signal.candidate);
+        } else {
+            this.rtcManager.updateStatus('Invalid signal/ID format.', 'text-error');
+        }
+    }
+
+    /**
+     * Sets the multiplayer flag and adjusts the game mode.
+     */
+    setMultiplayerState(isConnected) {
+        this.isMultiplayer = isConnected;
+        if (isConnected) {
+            this.startGame(this.matchMode, 'V2'); // Start game in the selected mode
+        }
+    }
+
+    // --- State Sending (Split for Duel vs. Team) ---
+
+    /**
+     * Sends the local player's state to the peer.
+     * In DUEL mode: this is the state of the opponent.
+     * In TEAM mode: this is the state of the teammate.
+     */
+    sendLocalState() {
+        const state = {
+            hp: this.localPlayer.hp,
+            shield: this.localPlayer.shield,
+            dead: this.localPlayer.dead,
+        };
+        const type = this.matchMode === 'duel_mp' ? 'game_state' : 'player_state';
+        this.rtcManager.send({ type, state });
+    }
+
+    /**
+     * Sends the Boss's state to the teammate (only in Team Mode).
+     */
+    sendBossState() {
+        if (this.matchMode === 'team_mp' && this.remoteEntity.id === 'boss') {
+            const state = {
+                hp: this.remoteEntity.hp,
+                dead: this.remoteEntity.dead,
+            };
+            this.rtcManager.send({ type: 'boss_state', state });
+        }
+    }
+
+    // --- State Receiving (Split for Duel vs. Team) ---
+
+    /**
+     * Receives and applies the opponent's game state (DUEL mode).
+     * The remote state is mapped to our local 'remoteEntity'.
+     */
+    receiveOpponentState(state) {
+        if (this.matchMode !== 'duel_mp') return;
+        this.remoteEntity.hp = state.hp;
+        this.remoteEntity.shield = state.shield;
+        this.remoteEntity.dead = state.dead;
+
+        if (this.remoteEntity.dead) {
+            this.endMatch(true); // Opponent is dead, I win
+        }
+    }
+
+    /**
+     * Receives and applies the teammate's game state (TEAM mode).
+     * We track the teammate's state separately.
+     */
+    receiveTeammateState(state) {
+        if (this.matchMode !== 'team_mp') return;
+        // Store teammate state for HUD update
+        this.remoteTeammate = state;
+
+        if (state.dead && this.localPlayer.dead) {
+            this.endMatch(false); // Both players dead, defeat
+        }
+    }
+
+    /**
+     * Receives the Boss's state from the initiator (TEAM mode).
+     */
+    receiveBossState(state) {
+        if (this.matchMode !== 'team_mp' || this.rtcManager.isInitiator) return;
+        this.remoteEntity.hp = state.hp;
+        this.remoteEntity.dead = state.dead;
+
+        if (this.remoteEntity.dead) {
+            this.endMatch(true); // Boss is dead, team victory
+        }
+    }
+
+    /**
+     * Receives a boss attack command from the initiator (TEAM mode).
+     */
+    receiveBossAttack(damage) {
+        if (this.matchMode !== 'team_mp' || this.rtcManager.isInitiator) return;
+        this.localPlayer.takeDamage(damage);
+        this.showPopup(`TEAMMATE's BOSS ATTACK HIT YOU! -${damage} HP`, '#f00', 1500);
+        this.sendLocalState(); // Send updated local HP back
+        if (this.localPlayer.dead) {
+            this.endMatch(false);
+        }
+    }
+
+    /**
+     * Sends a chat message over the data channel.
+     */
+    sendChatMessage() {
+        const message = this.ui.chatInput.value.trim();
+        if (message && this.isMultiplayer) {
+            this.rtcManager.send({ type: 'chat', message });
+            this.addChatMessage('You', message, '#0f0');
+            this.ui.chatInput.value = '';
+        } else if (message) {
+            this.addChatMessage('SYSTEM', 'Cannot send chat in Solo Mode.', '#ff0');
+            this.ui.chatInput.value = '';
+        }
+    }
+
+    /**
+     * Appends a chat message to the UI log.
+     */
+    addChatMessage(sender, message, color) {
+        const msgEl = document.createElement('div');
+        msgEl.innerHTML = `<span style="color:${color}; font-weight:bold;">[${sender}]:</span> ${message}`;
+        this.ui.chatMessages.appendChild(msgEl);
+        // Auto-scroll to bottom
+        this.ui.chatMessages.scrollTop = this.ui.chatMessages.scrollHeight;
+    }
+
+    /**
+     * Returns to the main menu/lobby after a match.
+     */
+    returnToLobby() {
+        this.ui.hud.classList.add('hidden');
+        document.getElementById('multiplayer-overlay').classList.add('hidden');
+        if (this.matchMode.includes('_mp')) {
+            // After an MP match, go back to the lobby selection state
+            this.showMenu();
+        } else {
+            this.showMenu();
+        }
+    }
+}
+
+// =========================================================================
+// MAIN EXECUTION AND ANIMATION LOOP
+// =========================================================================
+
+let gameInstance;
+
+/**
+ * The main game animation loop.
+ */
+function animate() {
+    requestAnimationFrame(animate);
+    if (gameInstance) {
+        gameInstance.render();
+    }
+}
+
+// Initialize the game instance when the window loads
+window.onload = function () {
+    gameInstance = new Game();
+    animate(); // Start the animation loop
+}
+
+</script>
 </body>
 </html>
+
